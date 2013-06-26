@@ -4,27 +4,35 @@
   `(let ,(loop for n in names collect `(,n (gensym)))
      ,@body))
 
-(defmacro define-handler ((name &key (default-type :integer)) (&rest args) &body body)
-  (let ((opts `(,name :uri (concatenate 'string "/" (string-downcase (symbol-name name))))))
+(defun type-exp (arg type)
+  "Given a symbol name and a type, returns the expression to read that type from a string"
+  (case type
+    (:int `(parse-integer ,arg))
+    (:string arg)
+    (:keyword `(intern (string-upcase ,arg) :keyword))
+    (:json `(decode-json-from-string ,arg))
+    (t (error "Invalid type label : '~a'" type))))
+
+(defmacro define-handler ((name) (&rest args) &body body)
+  (let ((opts `(,name :uri ,(concatenate 'string "/" (string-downcase (symbol-name name))))))
     (if (not args)
 	`(define-easy-handler ,opts nil (encode-json (progn ,@body)))
-	(flet ((type-exp (arg type)
-		 (case type
-		   (:integer `(parse-integer ,arg))
-		   (:string arg)
-		   (:keyword `(intern (string-upcase ,arg) :keyword)))))
-	  (let ((type-conversion (mapcar (lambda (a) 
-					   (if (atom a) 
-					       (list a (type-exp a default-type))
-					       (list (car a) (type-exp (first a) (second a)))))
-					 args))
-		(final-args (mapcar (lambda (a) (if (atom a) a (car a))) args)))
-	    `(define-easy-handler ,opts ,final-args
-	       (let ,type-conversion
-		 (encode-json (progn ,@body)))))))))
+	(let ((type-conversion (loop for (name type) in args collect (list name (type-exp name type))))
+	      (final-args (mapcar #'first args)))
+	  `(define-easy-handler ,opts ,final-args
+	     (assert (and ,@final-args))
+	     (let ,type-conversion
+	       (encode-json (progn ,@body))))))))
 
-(defmacro define-game-handler ((name &key (default-type :integer)) (&rest args) &body body)
-  `(define-handler (,name :default-type ,default-type) (game-id ,@args) ,@body))
+(defmacro define-table-handler ((name) (&rest args) &body body)
+  `(define-handler (,name) ((table-id :int) ,@args) 
+     (let ((table (or (gethash table-id (private-tables *server*)) (gethash table-id (public-tables *server*)))))
+       (assert table)
+       (with-lock-held ((lock table))
+	 ,@body))))
+
+(defun hash-keys (hash-table)
+  (loop for key being the hash-keys of hash-table collect key))
 
 (defmacro if-up (thing up down)
   `(if (eq :up (face ,thing))
