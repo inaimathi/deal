@@ -8,4 +8,7 @@
   :depends-on (#:optima #:hunchentoot #:cl-json #:cl-mop #:bordeaux-threads)
   :components ((:file "package")
 	       (:file "util")
-               (:file "deal")))
+	       (:file "model/table")
+	       (:file "model/server")
+	       (:file "deal")
+	       (:file "start")))

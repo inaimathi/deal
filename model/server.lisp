@@ -1,0 +1,36 @@
+(in-package :deal)
+
+(defclass server ()
+  ((public-tables :accessor public-tables :initform (make-hash-table))
+   (private-tables :accessor private-tables :initform (make-hash-table))
+   (decks :accessor decks :initform nil :initarg :decks)
+   (players :accessor players :initform (make-hash-table))
+   (table-count :accessor table-count :initform 0)
+   (max-tables :accessor max-tables :initform 10)
+   (player-count :accessor player-count :initform 0)
+   (max-players :accessor max-players :initform 50)
+   (lock :initform (make-lock) :accessor lock)))
+
+(defclass player ()
+  ((id :accessor id :initarg :id)
+   (hand :accessor hand :initform nil :initarg :hand)
+   (events :accessor events :initform nil :initarg :events)))
+
+(defmethod insert! ((server server) (table table))
+  (with-lock-held ((lock server))
+    (let ((id (table-count server)))
+      (setf (id table) id
+            (gethash id (if (passphrase table) 
+			    (private-tables server)
+			    (public-tables server)))
+	    table)
+      (incf (table-count server))
+      table)))
+
+(defmethod insert! ((server server) (player player))
+  (with-lock-held ((lock server))
+    (let ((id (player-count server)))
+      (setf (id player) id
+	    (gethash id (players server)) player)
+      (incf (player-count server))
+      player)))
