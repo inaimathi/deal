@@ -14,7 +14,7 @@
 
 ;;;;;;;;;; Game elements
 (defclass placeable ()
-  ((id :accessor id :initarg :id)
+  ((id :accessor id :initarg :id :initform nil)
    (x :accessor x :initform 0 :initarg :x)
    (y :accessor y :initform 0 :initarg :y)
    (z :accessor z :initform 0 :initarg :z)
@@ -39,7 +39,6 @@
 (defclass mini (placeable)
   ((sprite :accessor sprite :initarg :sprite)))
 
-;;;;;;;;;; table-related insertion methods
 (defmethod insert! ((table table) (thing placeable))
   "Places a new thing on the given table."
   (with-slots (thing-count things) table
@@ -47,9 +46,12 @@
 	  (gethash thing-count things) thing)
     (incf thing-count)))
 
-(defmethod insert! ((table table) (player player))
-  "Sits a new player down at the given table"
-  (push player (players table)))
+(defmethod delete! ((table table) (thing placeable))
+  "Removes a thing from the given table"
+  (with-slots (thing-count things) table
+    (remhash (id thing) things)
+    (setf (id thing) nil)
+    (decf thing-count)))
 
 ;;;;;;;;;; Publish methods
 (defmethod publish ((stack stack))
@@ -57,3 +59,8 @@
 	 (cons '(cards) 
 	       (remove-if (lambda (pair) (eq (first pair) 'cards)) 
 			  (to-alist stack)))))
+
+(defmethod publish ((card card))
+  (if-up card card
+	 (remove-if (lambda (pair) (or (eq (first pair) 'text) (eq (first pair) 'image)))
+		    (to-alist card))))

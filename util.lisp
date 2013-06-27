@@ -91,3 +91,14 @@ and wraps body in with-lock-held"
   "Returns a randomly sorted copy of the given list"
   (let ((l (copy-seq a-list)))
     (sort l #'> :key (lambda (n) (declare (ignore n)) (random 1.0)))))
+
+(defun take (count a-list)
+  (loop for elem in a-list repeat count
+     collect elem))
+
+(defun drop (count a-list)
+  (loop for (elem . rest) on a-list repeat (- count 1)
+     finally (return rest)))
+
+(defun remove-nth (n a-list)
+  (remove-if (constantly t) a-list :start n :end (1+ n)))

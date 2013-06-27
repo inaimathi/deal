@@ -34,3 +34,7 @@
 	  (gethash player-count players) player)
     (incf player-count)
     player))
+
+(defmethod insert! ((table table) (player player))
+  "Sits a new player down at the given table"
+  (push player (players table)))
