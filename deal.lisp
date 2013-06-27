@@ -24,14 +24,14 @@
 ;; yours
 
 ;;;;; Setters
-(define-handler (game/new-private-table) ((passphrase :string))
+(define-server-handler (game/new-private-table) ((passphrase :string))
   (insert! *server* (make-instance 'table :players (players *server*) :passphrase passphrase)))
 
-(define-handler (game/new-public-table) ()
+(define-server-handler (game/new-public-table) ()
   (insert! *server* (make-instance 'table :players (players *server*))))
 
 (define-table-handler (game/join-table) ()
-  (push *player* (players table)) :joining-table)
+  (insert! table *player*))
 
 ;; (define-handler (game/resume-table) ()
 ;;   :sitting-down-at-table)
@@ -49,13 +49,17 @@
   (list :making-new-stack cards-or-stacks))
 
 (define-table-handler (play/new-stack-from-deck) ((deck-name :string))
-  (push (deck->stack *player* (assoc deck-name (decks *server*) :test #'string=))
-	(things table))
-  (mapcar #'publish (things table)))
+  (let ((stack (deck->stack *player* (assoc deck-name (decks *server*) :test #'string=))))
+    (insert! table stack)
+    (publish stack)))
 
 ;;;;; Stacks
 (define-table-handler (stack/draw) ((stack-id :int) (num :int))
-  (list :drawing num :cards-from stack-id))
+  (let ((stack (gethash stack-id (things table))))
+    (with-slots (cards card-count) stack
+      (loop repeat (min num card-count)
+	 do (decf card-count)
+	 do (push (pop (cards stack)) (hand *player*))))))
 
 (define-table-handler (stack/peek-cards) ((stack-id :int) (min :int) (max :int))
   (list :peeking-at-cards min :to max :from stack-id))

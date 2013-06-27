@@ -12,7 +12,8 @@
 				   collect (format nil "~a of ~a" rank suit)))))
 	decks)
   (insert! *server* (make-instance 'player))
-  (insert! *server* (make-instance 'table :players (gethash 0 players))))
+  (insert! *server* (make-instance 'table))
+  (insert! (gethash 0 public-tables) (gethash 0 players)))
 
 (defparameter *player* (gethash 0 (players *server*)))
 ;;;;;;;;;;;;;;;;;

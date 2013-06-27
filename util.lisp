@@ -60,9 +60,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmacro define-server-handler ((name) (&rest args) &body body)
+  "Specifically defines handlers dealing with global server state.
+Shares similarity with define-table-handler (if another one comes along, we'll abstract this)"
+  `(define-handler (,name) ,args
+     (with-lock-held ((lock *server*))
+       ,@body)))
+
 (defmacro define-table-handler ((name) (&rest args) &body body)
   "Specifically defines handlers that deal with tables. 
-Takes care ofadding the appropriate argument/type for define-handler, 
+Takes care of adding the appropriate argument/type for define-handler, 
 and wraps body in with-lock-held"
   `(define-handler (,name) ((table :table) ,@args) 
      (with-lock-held ((lock table))
