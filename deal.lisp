@@ -68,35 +68,28 @@
     (publish stack)))
 
 ;;;;; Stacks
-(define-table-handler (stack/draw) ((stack-id :int) (num :int))
-  (let ((stack (gethash stack-id (things table))))
-    (with-slots (cards card-count) stack
-      (loop repeat (min num card-count)
-	 do (decf card-count)
-	 do (push (pop cards) (hand *player*))))))
+(define-table-handler (stack/draw) ((stack :stack) (num :int))
+  (with-slots (cards card-count) stack
+    (loop repeat (min num card-count)
+       do (decf card-count)
+       do (push (pop cards) (hand *player*)))))
 
-(define-table-handler (stack/peek-cards) ((stack-id :int) (min :int) (max :int))
-  (let ((stack (gethash stack-id (things table))))
-    (take (- max min) (drop (+ min 1) (cards stack)))))
+(define-table-handler (stack/peek-cards) ((stack :stack) (min :int) (max :int))
+  (take (- max min) (drop (+ min 1) (cards stack))))
 
-(define-table-handler (stack/show) ((stack-id :int) (min :int) (max :int))
-  (let ((stack (gethash stack-id (things table))))
-    (take (- max min) (drop (+ min 1) (cards stack)))))
+(define-table-handler (stack/show) ((stack :stack) (min :int) (max :int))
+  (take (- max min) (drop (+ min 1) (cards stack))))
 
-;; (define-table-handler (stack/reorder) ((stack-id :int) (min :int) (max :int))
+;; (define-table-handler (stack/reorder) ((stack :stack) (min :int) (max :int))
 ;;   ;; TODO
-;;   (list :reordering-cards min :to max :from stack-id))
+;;   (list :reordering-cards min :to max :from stack))
 
-(define-table-handler (stack/play) ((stack-id :int))
-  (let ((stack (gethash stack-id (things table))))
-    (check-type stack stack)
-    (with-slots (card card-count) stack
-      (insert! table (pop (cards stack))))))
+(define-table-handler (stack/play) ((stack :stack))
+  (with-slots (card card-count) stack
+    (insert! table (pop (cards stack)))))
 
-(define-table-handler (stack/add-to) ((stack-id :int) (card-id :int))
-  (let ((stack (gethash stack-id (things table)))
-	(card (gethash card-id (things table))))
-    (check-type stack stack)
+(define-table-handler (stack/add-to) ((stack :stack) (card-id :int))
+  (let ((card (gethash card-id (things table))))
     (check-type card card)
     (insert! stack card)
     (delete! table card)
@@ -111,11 +104,9 @@
     (insert! table card)
     (publish card)))
 
-(define-table-handler (hand/play-to) ((card-id :int) (stack-id :int))
-  (let ((stack (gethash stack-id (things table)))
-	(card (nth card-id (hand *player*))))
+(define-table-handler (hand/play-to) ((card-id :int) (stack :stack))
+  (let ((card (nth card-id (hand *player*))))
     (check-type card card)
-    (check-type stack stack)
     (insert! stack card)
     (remove-nth card-id (hand *player*))
     (publish stack)))

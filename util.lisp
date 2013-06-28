@@ -9,27 +9,32 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun type-exp (arg type)
   "Given a symbol name and a type, returns the expression to read that type from a string"
-  (cond
-    ((eq type :int) `(parse-integer ,arg))
-    ((eq type :string) arg)
-    ((eq type :json) `(decode-json-from-string ,arg))
-    ((or (eq type :keyword)
-	 (eq type :facing))
+  (match type
+    (:string 
+     arg)
+    (:int 
+     `(parse-integer ,arg))
+    (:json 
+     `(decode-json-from-string ,arg))
+    ((or :keyword :facing)
      `(intern (string-upcase ,arg) :keyword))
-    ((eq type :table) 
+    (:table 
      (with-gensyms (sym)
        `(let ((,sym (parse-integer ,arg)))
 	  (or (gethash ,sym (private-tables *server*)) 
 	      (gethash ,sym (public-tables *server*))))))
-    (t (error "Invalid type label: '~a'" type))))
+    (:stack
+     (with-gensyms (sym)
+       `(let ((,sym (parse-integer ,arg)))
+	  (gethash ,sym (things table)))))
+    (_ (error "Invalid type label: '~a'" type))))
 
 (defun lookup-assn (arg type)
-  (cond 
-    ((or (eq type :table) (eq type :table))
-     `(assert ,arg))
-    ((eq type :facing)
-     `(assert (or (eq ,arg :up) (eq ,arg :down))))
-    (t nil)))
+  (match type
+    (:table `(assert ,arg))
+    (:stack `(assert (typep ,arg 'stack)))
+    (:facing `(assert (or (eq ,arg :up) (eq ,arg :down))))
+    (_ nil)))
 
 (defun type-pieces (args)
   "Takes a list of arguments and returns three values:
@@ -53,7 +58,7 @@
 	(multiple-value-bind (type-conversion final-args lookup-assertions) (type-pieces args)
 	  `(define-easy-handler ,opts ,final-args
 	     (assert (and ,@final-args))
-	     (let ,type-conversion
+	     (let* ,type-conversion
 	       ,@lookup-assertions
 	       (encode-json (progn ,@body))))))))
 
