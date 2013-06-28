@@ -20,8 +20,10 @@
   (mapcar #'car (decks *server*)))
 
 ;;;;; SSEs
-;; game (also available to spectators)
-;; yours
+(define-table-handler (event-source) ()
+  (setf (header-out :cache-control) "no-cache"
+	(content-type*) "text/event-stream")
+  (events table))
 
 ;;;;; Setters
 (define-server-handler (game/new-private-table) ((passphrase :string))
@@ -34,19 +36,27 @@
   (insert! table *player*))
 
 ;; (define-handler (game/resume-table) ()
+;;   ;; TODO
 ;;   :sitting-down-at-table)
 
 (define-table-handler (play/move) ((thing-id :int) (x :int) (y :int) (z :int) (rot :int))
-  ;; TODO
-  (list :moving thing-id :to x y z rot))
+  (let ((thing (gethash thing-id (things table))))
+    (check-type thing placeable)
+    (setf (x thing) x
+	  (y thing) y
+	  (z thing) z
+	  (rot thing) rot)))
 
 (define-table-handler (play/take-control) ((thing-id :int))
-  ;; TODO
-  (list :assuming-direct-control-of thing-id))
+  (let ((thing (gethash thing-id (things table))))
+    (check-type thing placeable)
+    (setf (belongs-to thing) *player*)))
 
 (define-table-handler (play/flip) ((thing-id :int))
-  ;; TODO
-  (list :flipping thing-id))
+  (let ((thing (gethash thing-id (things table))))
+    (check-type thing flippable)
+    (with-slots (face) thing
+      (setf face (if (eq face :up) :down :up)))))
 
 (define-table-handler (play/new-stack) ((cards-or-stacks :json))
   ;; TODO
@@ -73,34 +83,45 @@
   (let ((stack (gethash stack-id (things table))))
     (take (- max min) (drop (+ min 1) (cards stack)))))
 
-(define-table-handler (stack/reorder) ((stack-id :int) (min :int) (max :int))
-  ;; TODO
-  (list :reordering-cards min :to max :from stack-id))
+;; (define-table-handler (stack/reorder) ((stack-id :int) (min :int) (max :int))
+;;   ;; TODO
+;;   (list :reordering-cards min :to max :from stack-id))
 
 (define-table-handler (stack/play) ((stack-id :int))
   (let ((stack (gethash stack-id (things table))))
-    (check-type stack 'stack)
+    (check-type stack stack)
     (with-slots (card card-count) stack
       (insert! table (pop (cards stack))))))
 
 (define-table-handler (stack/add-to) ((stack-id :int) (card-id :int))
-  ;; TODO
-  (list :adding card-id :to stack-id))
+  (let ((stack (gethash stack-id (things table)))
+	(card (gethash card-id (things table))))
+    (check-type stack stack)
+    (check-type card card)
+    (insert! stack card)
+    (delete! table card)
+    (publish stack)))
 
 ;;;;; Hand
 (define-table-handler (hand/play) ((card-id :int) (face :facing))
   (let ((card (nth card-id (hand *player*))))
+    (check-type card card)
     (setf (face card) face)
     (remove-nth card-id (hand *player*))
     (insert! table card)
     (publish card)))
 
 (define-table-handler (hand/play-to) ((card-id :int) (stack-id :int))
-  ;; TODO
-  (list :playing-card card-id :to stack-id))
+  (let ((stack (gethash stack-id (things table)))
+	(card (nth card-id (hand *player*))))
+    (check-type card card)
+    (check-type stack stack)
+    (insert! stack card)
+    (remove-nth card-id (hand *player*))
+    (publish stack)))
 
 (define-table-handler (hand/pick-up) ((card-id :int))
   (let ((card (gethash card-id (things table))))
-    (check-type card 'card)
+    (check-type card card)
     (push card (hand *player*))
     (remhash card-id (things table))) (list :picking-up card-id))

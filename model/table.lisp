@@ -46,6 +46,12 @@
 	  (gethash thing-count things) thing)
     (incf thing-count)))
 
+(defmethod insert! ((stack stack) (card card))
+  (with-slots (cards card-count face) stack
+    (setf (face card) face)
+    (push card cards)
+    (incf card-count)))
+
 (defmethod delete! ((table table) (thing placeable))
   "Removes a thing from the given table"
   (with-slots (thing-count things) table
