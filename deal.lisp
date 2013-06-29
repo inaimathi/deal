@@ -1,16 +1,6 @@
 ;;;; deal.lisp
 (in-package #:deal)
 
-;;;;;;;;;; Table and player
-(defun deck->stack (player a-deck &key (face :down))
-  (make-instance 'stack
-		 :face face
-		 :belongs-to player
-		 :cards (shuffle (mapcar (lambda (str)
-					   (make-instance 'card :text str :face face :belongs-to player))
-					 a-deck))
-		 :card-count (length a-deck)))
-
 ;;;;;;;;;; Handlers
 ;;;;; Getters
 (define-handler (list-games) ()
@@ -20,9 +10,7 @@
   (mapcar #'car (decks *server*)))
 
 ;;;;; SSEs
-(define-handler (event-source) ((table :table))
-  (setf (header-out :cache-control) "no-cache"
-	(content-type*) "text/event-stream")
+(define-sse-handler (event-source) ((table :table))
   (events table))
 
 ;;;;; Setters

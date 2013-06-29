@@ -45,9 +45,12 @@
 (defun type-exp (arg type)
   "Given a symbol name and a type, returns the expression to read that type from a string"
   (match type
-    (:string nil)
-    (:int `(parse-integer ,arg))
-    (:json `(decode-json-from-string ,arg))
+    (:string 
+     nil)
+    (:int 
+     `(parse-integer ,arg))
+    (:json 
+     `(decode-json-from-string ,arg))
     ((or :keyword :facing)
      `(intern (string-upcase ,arg) :keyword))
     (:table 
@@ -86,9 +89,6 @@
      when (lookup-assn name type) collect it into assrs
      finally (return (values convs as assrs))))
 
-(defun find-type (type list)
-  (find-if (lambda (e) (eq type (second e))) list))
-
 (defmacro define-handler ((name) (&rest args) &body body)
   "Defines handlers with an eye for self-documentation, DRY and portability"
   (let ((opts `(,name :uri ,(concatenate 'string "/" (string-downcase (symbol-name name))))))
@@ -103,3 +103,9 @@
 		     (encode-json ,@body))
 		  `(progn ,@lookup-assertions
 			  (encode-json ,@body))))))))
+
+(defmacro define-sse-handler ((name) (&rest args) &body body)
+  `(define-handler (,name) (,@args)
+     (setf (header-out :cache-control) "no-cache"
+	   (content-type*) "text/event-stream")
+     ,@body))

@@ -37,6 +37,17 @@
 (defclass mini (placeable)
   ((sprite :accessor sprite :initarg :sprite)))
 
+(defun deck->stack (player a-deck &key (face :down))
+  "Takes a deck (a list of card texts) and creates a stack (a pile of cards suitable for placing on a table)"
+  (make-instance 'stack
+		 :face face
+		 :belongs-to player
+		 :cards (shuffle (mapcar (lambda (str)
+					   (make-instance 'card :text str :face face :belongs-to player))
+					 a-deck))
+		 :card-count (length a-deck)))
+
+;;;;;;;;;; delete/insert methods (more in model/server.lisp)
 (defmethod delete! ((table table) (thing placeable))
   "Removes a thing from the given table"
   (remhash (id thing) things))
@@ -50,11 +61,6 @@
   (push card (cards stack)))
 
 ;;;;;;;;;; Publish methods
-(defgeneric publish (thing)
-  (:documentation "Passes the given thing out to the SSE handler.
-A better name for this might be `redact`, because it often doesn't publish full info. 
-For instance, when a card or stack is flipped, it won't publish text or image."))
-
 (defmethod publish ((table table))
   (mapcar #'publish (things table)))
 
