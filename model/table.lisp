@@ -1,11 +1,10 @@
 (in-package :deal)
 
 (defclass table ()
-  ((id :accessor id :initarg :id)
+  ((id :reader id :initform (intern (symbol-name (gensym)) :keyword))
    (started :reader started :initform (get-universal-time))
    (players :accessor players :initform nil)
    (things :accessor things :initform (make-hash-table))
-   (thing-count :accessor thing-count :initform 0)
    (passphrase :accessor passphrase :initform nil :initarg :passphrase)
    (tablecloth :accessor tablecloth :initform nil :initarg :tablecloth)
    (current-player :accessor current-player :initform nil)
@@ -14,7 +13,7 @@
 
 ;;;;;;;;;; Game elements
 (defclass placeable ()
-  ((id :accessor id :initarg :id :initform nil)
+  ((id :reader id :initform (intern (symbol-name (gensym)) :keyword))
    (x :accessor x :initform 0 :initarg :x)
    (y :accessor y :initform 0 :initarg :y)
    (z :accessor z :initform 0 :initarg :z)
@@ -29,8 +28,7 @@
    (image :accessor image :initform nil :initarg :image)))
 
 (defclass stack (flippable)
-  ((cards :accessor cards :initform nil :initarg :cards)
-   (card-count :accessor card-count :initform 0 :initarg :card-count)
+  ((cards :accessor cards :initform nil)
    (face :initform :down)))
 
 (defclass counter (placeable)
@@ -39,25 +37,17 @@
 (defclass mini (placeable)
   ((sprite :accessor sprite :initarg :sprite)))
 
-(defmethod insert! ((table table) (thing placeable))
-  "Places a new thing on the given table."
-  (with-slots (thing-count things) table
-    (setf (id thing) thing-count
-	  (gethash thing-count things) thing)
-    (incf thing-count)))
-
-(defmethod insert! ((stack stack) (card card))
-  (with-slots (cards card-count face) stack
-    (setf (face card) face)
-    (push card cards)
-    (incf card-count)))
-
 (defmethod delete! ((table table) (thing placeable))
   "Removes a thing from the given table"
-  (with-slots (thing-count things) table
-    (remhash (id thing) things)
-    (setf (id thing) nil)
-    (decf thing-count)))
+  (remhash (id thing) things))
+
+(defmethod insert! ((table table) (thing placeable))
+  "Places a new thing on the given table."
+  (setf (gethash (id thing) (things table)) thing))
+
+(defmethod insert! ((stack stack) (card card))
+  "Inserts the given card into the given stack."
+  (push card (cards stack)))
 
 ;;;;;;;;;; Publish methods
 (defgeneric publish (thing)

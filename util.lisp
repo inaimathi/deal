@@ -39,9 +39,6 @@
   (loop for (elem . rest) on a-list repeat (- count 1)
      finally (return rest)))
 
-(defun remove-nth (n a-list)
-  (remove-if (constantly t) a-list :start n :end (1+ n)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; All for the custom define-handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -54,23 +51,19 @@
     ((or :keyword :facing)
      `(intern (string-upcase ,arg) :keyword))
     (:table 
-     (with-gensyms (sym)
-       `(let ((,sym (parse-integer ,arg)))
-	  (or (gethash ,sym (private-tables *server*)) 
-	      (gethash ,sym (public-tables *server*))))))
-    ((or :stack :flippable :placeable)
-     (with-gensyms (sym)
-       `(let ((,sym (parse-integer ,arg)))
-	  (gethash ,sym (things table)))))
-    ((list :card :from-table)
-     (with-gensyms (sym)
-       `(let ((,sym (parse-integer ,arg)))
-	  (gethash ,sym (things table)))))
+     (lookup-exp arg '(private-tables *server*) '(public-tables *server*)))
+    ((or :stack :flippable :placeable
+	 (list :card :from-table))
+     (lookup-exp arg '(things table)))
     ((list :card :from-hand)
-     (with-gensyms (sym)
-       `(let ((,sym (parse-integer ,arg)))
-	  (nth ,sym (hand *player*)))))
+     (lookup-exp arg '(hand *player*)))
     (_ (error "Invalid type label: '~a'" type))))
+
+(defun lookup-exp (arg &rest places)
+  (with-gensyms (sym)
+    `(let ((,sym (intern ,arg :keyword)))
+       (or ,@(loop for p in places
+		collect `(gethash ,sym ,p))))))
 
 (defun lookup-assn (arg type)
   (match type

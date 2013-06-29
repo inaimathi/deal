@@ -12,28 +12,29 @@
    (lock :accessor lock :initform (make-lock))))
 
 (defclass player ()
-  ((id :accessor id :initarg :id)
-   (hand :accessor hand :initform nil :initarg :hand)
+  ((id :reader id :initform (intern (symbol-name (gensym)) :keyword))
+   (hand :accessor hand :initform (make-hash-table) :initarg :hand)
    (events :accessor events :initform nil)))
+
+(defmethod delete! ((player player) (card card))
+  (remhash (id card) (hand player)))
 
 (defmethod insert! ((server server) (table table))
   "Adds a new table to the server"
-  (with-slots (table-count private-tables public-tables) server
-    (setf (id table) table-count
-	  (gethash table-count
-		   (if (passphrase table) 
-		       private-tables
-		       public-tables)) table)
-    (incf table-count)
-    table))
+  (with-slots (table-count max-tables private-tables public-tables) server
+    (when (> max-tables table-count)
+      (setf (gethash (id table)
+		     (if (passphrase table) 
+			 private-tables
+			 public-tables)) table)
+      (incf table-count))))
 
 (defmethod insert! ((server server) (player player))
   "Adds a new player to the server"
-  (with-slots (player-count players) server
-    (setf (id player) player-count
-	  (gethash player-count players) player)
-    (incf player-count)
-    player))
+  (with-slots (player-count max-players players) server
+    (when (> max-players player-count)
+      (setf (gethash (id player) players) player)
+      (incf player-count))))
 
 (defmethod insert! ((table table) (player player))
   "Sits a new player down at the given table"
