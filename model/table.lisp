@@ -60,6 +60,14 @@
     (decf thing-count)))
 
 ;;;;;;;;;; Publish methods
+(defgeneric publish (thing)
+  (:documentation "Passes the given thing out to the SSE handler.
+A better name for this might be `redact`, because it often doesn't publish full info. 
+For instance, when a card or stack is flipped, it won't publish text or image."))
+
+(defmethod publish ((table table))
+  (mapcar #'publish (things table)))
+
 (defmethod publish ((stack stack))
   (if-up stack stack
 	 (cons '(cards) 

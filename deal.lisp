@@ -20,99 +20,104 @@
   (mapcar #'car (decks *server*)))
 
 ;;;;; SSEs
-(define-table-handler (event-source) ()
+(define-handler (event-source) ((table :table))
   (setf (header-out :cache-control) "no-cache"
 	(content-type*) "text/event-stream")
   (events table))
 
 ;;;;; Setters
-(define-server-handler (game/new-private-table) ((passphrase :string))
-  (insert! *server* (make-instance 'table :players (players *server*) :passphrase passphrase)))
+(define-handler (game/new-private-table) ((passphrase :string))
+  (with-lock-held ((lock *server*))
+    (insert! *server* (make-instance 'table :players (players *server*) :passphrase passphrase))))
 
-(define-server-handler (game/new-public-table) ()
-  (insert! *server* (make-instance 'table :players (players *server*))))
+(define-handler (game/new-public-table) ()
+  (with-lock-held ((lock *server*))
+    (insert! *server* (make-instance 'table :players (players *server*)))))
 
-(define-table-handler (game/join-table) ()
-  (insert! table *player*))
+(define-handler (game/join-table) ((table :table))
+  (with-lock-held ((lock table))
+    (insert! table *player*)))
 
 ;; (define-handler (game/resume-table) ()
 ;;   ;; TODO
 ;;   :sitting-down-at-table)
 
-(define-table-handler (play/move) ((thing-id :int) (x :int) (y :int) (z :int) (rot :int))
-  (let ((thing (gethash thing-id (things table))))
-    (check-type thing placeable)
+(define-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
+  (with-lock-held ((lock table))
     (setf (x thing) x
 	  (y thing) y
 	  (z thing) z
 	  (rot thing) rot)))
 
-(define-table-handler (play/take-control) ((thing-id :int))
-  (let ((thing (gethash thing-id (things table))))
-    (check-type thing placeable)
+(define-handler (play/take-control) ((table :table) (thing :placeable))
+  (with-lock-held ((lock table))
     (setf (belongs-to thing) *player*)))
 
-(define-table-handler (play/flip) ((thing-id :int))
-  (let ((thing (gethash thing-id (things table))))
-    (check-type thing flippable)
+(define-handler (play/flip) ((table :table) (thing :flippable))
+  (with-lock-held ((lock table))
     (with-slots (face) thing
       (setf face (if (eq face :up) :down :up)))))
 
-(define-table-handler (play/new-stack) ((cards-or-stacks :json))
-  ;; TODO
-  (list :making-new-stack cards-or-stacks))
+;; (define-handler (play/new-stack) ((table :table) (cards-or-stacks :json))
+;;   ;; TODO
+;;   (with-lock-held ((lock table))
+;;     (list :making-new-stack cards-or-stacks)))
 
-(define-table-handler (play/new-stack-from-deck) ((deck-name :string))
-  (let ((stack (deck->stack *player* (assoc deck-name (decks *server*) :test #'string=))))
-    (insert! table stack)
-    (publish stack)))
+(define-handler (play/new-stack-from-deck) ((table :table) (deck-name :string))
+  (with-lock-held ((lock table))
+    (let ((stack (deck->stack *player* (assoc deck-name (decks *server*) :test #'string=))))
+      (insert! table stack)
+      (publish stack))))
 
 ;;;;; Stacks
-(define-table-handler (stack/draw) ((stack :stack) (num :int))
-  (with-slots (cards card-count) stack
-    (loop repeat (min num card-count)
-       do (decf card-count)
-       do (push (pop cards) (hand *player*)))))
+(define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
+  (with-lock-held ((lock table))
+    (with-slots (cards card-count) stack
+      (loop repeat (min num card-count)
+	 do (decf card-count)
+	 do (push (pop cards) (hand *player*))))))
 
-(define-table-handler (stack/peek-cards) ((stack :stack) (min :int) (max :int))
+(define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
   (take (- max min) (drop (+ min 1) (cards stack))))
 
-(define-table-handler (stack/show) ((stack :stack) (min :int) (max :int))
+(define-handler (stack/show) ((table :table) (stack :stack) (min :int) (max :int))
   (take (- max min) (drop (+ min 1) (cards stack))))
 
-;; (define-table-handler (stack/reorder) ((stack :stack) (min :int) (max :int))
+;; (define-handler (stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))
 ;;   ;; TODO
 ;;   (list :reordering-cards min :to max :from stack))
 
-(define-table-handler (stack/play) ((stack :stack))
-  (with-slots (card card-count) stack
-    (insert! table (pop (cards stack)))))
+(define-handler (stack/play) ((table :table) (stack :stack))
+  (with-lock-held ((lock table))
+    (with-slots (card card-count) stack
+      (insert! table (pop (cards stack))))))
 
-(define-table-handler (stack/add-to) ((stack :stack) (card-id :int))
-  (let ((card (gethash card-id (things table))))
-    (check-type card card)
+(define-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
+  (with-lock-held ((lock table))
     (insert! stack card)
     (delete! table card)
     (publish stack)))
 
 ;;;;; Hand
-(define-table-handler (hand/play) ((card-id :int) (face :facing))
-  (let ((card (nth card-id (hand *player*))))
-    (check-type card card)
-    (setf (face card) face)
-    (remove-nth card-id (hand *player*))
-    (insert! table card)
-    (publish card)))
+(define-handler (hand/play) ((table :table) (card-id :int) (face :facing))
+  (with-lock-held ((lock table))
+    (let ((card (nth card-id (hand *player*))))
+      (check-type card card)
+      (setf (face card) face)
+      (remove-nth card-id (hand *player*))
+      (insert! table card)
+      (publish card))))
 
-(define-table-handler (hand/play-to) ((card-id :int) (stack :stack))
-  (let ((card (nth card-id (hand *player*))))
-    (check-type card card)
-    (insert! stack card)
-    (remove-nth card-id (hand *player*))
-    (publish stack)))
+(define-handler (hand/play-to) ((table :table) (card-id :int) (stack :stack))
+  (with-lock-held ((lock table))
+    (let ((card (nth card-id (hand *player*))))
+      (check-type card card)
+      (insert! stack card)
+      (remove-nth card-id (hand *player*))
+      (publish stack))))
 
-(define-table-handler (hand/pick-up) ((card-id :int))
-  (let ((card (gethash card-id (things table))))
-    (check-type card card)
+(define-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
+  (with-lock-held ((lock table))
     (push card (hand *player*))
-    (remhash card-id (things table))) (list :picking-up card-id))
+    (remhash (id card) (things table))
+    (publish table)))
