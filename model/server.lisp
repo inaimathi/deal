@@ -13,8 +13,7 @@
 
 (defclass player ()
   ((id :reader id :initform (intern (symbol-name (gensym)) :keyword))
-   (hand :accessor hand :initform (make-hash-table) :initarg :hand)
-   (events :accessor events :initform nil)))
+   (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
 
 (defmethod delete! ((player player) (card card))
   (remhash (id card) (hand player)))

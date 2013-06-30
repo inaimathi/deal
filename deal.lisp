@@ -24,7 +24,8 @@
 
 (define-handler (game/join-table) ((table :table))
   (with-lock-held ((lock table))
-    (insert! table *player*)))
+    (insert! table *player*)
+    (publish table)))
 
 ;; (define-handler (game/resume-table) ()
 ;;   ;; TODO
@@ -63,7 +64,8 @@
     (with-slots (cards card-count) stack
       (loop repeat (min num card-count)
 	 do (decf card-count)
-	 do (push (pop cards) (hand *player*))))))
+	 do (push (pop cards) (hand *player*)))
+      (hand *player*))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
   (take (- max min) (drop (+ min 1) (cards stack))))

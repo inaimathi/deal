@@ -62,7 +62,11 @@
 
 ;;;;;;;;;; Publish methods
 (defmethod publish ((table table))
-  (mapcar #'publish (things table)))
+  `((tablecloth . ,(tablecloth table)) 
+    (things . ,(mapcar #'publish (things table)))
+    (players . ,(mapcar #'id (players table)))
+    (started . ,(started table))
+    (events . ,(events table))))
 
 (defmethod publish ((stack stack))
   (if-up stack stack
