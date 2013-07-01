@@ -52,7 +52,7 @@
     (:string 
      nil)
     (:int 
-     `(parse-integer ,arg))
+     `(parse-integer ,arg :junk-allowed t))
     (:json 
      `(decode-json-from-string ,arg))
     ((or :keyword :facing)
@@ -74,7 +74,7 @@
 
 (defun lookup-assn (arg type)
   (match type
-    (:table `(assert ,arg))
+    (:table `(assert (typep ,arg 'table)))
     (:stack `(assert (typep ,arg 'stack)))
     (:facing `(assert (or (eq ,arg :up) (eq ,arg :down))))
     (:placeable `(assert (typep ,arg 'placeable)))

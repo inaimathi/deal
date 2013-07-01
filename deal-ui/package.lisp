@@ -6,4 +6,5 @@
 
 (in-package :deal-ui)
 
+;; (setf *js-string-delimiter* #\")
 (defparameter *debugging* t)

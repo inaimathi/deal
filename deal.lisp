@@ -3,7 +3,7 @@
 
 ;;;;;;;;;; Handlers
 ;;;;; Getters
-(define-handler (list-games) ()
+(define-handler (list-tables) ()
   (hash-keys (public-tables *server*)))
 
 (define-handler (list-decks) ()
@@ -68,7 +68,7 @@
       (loop with rep = (min num card-count) repeat rep
 	 do (let ((card (pop cards)))
 	      (decf card-count)
-	      (setf (gethash (id card) (hand *player*)) card)))
+	      (insert! *player* card)))
       (hand *player*))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))

@@ -16,7 +16,12 @@
    (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
 
 (defmethod delete! ((player player) (card card))
+  "Removes the given card from the given players' hand"
   (remhash (id card) (hand player)))
+
+(defmethod insert! ((player player) (card card))
+  "Adds the given card to the given players' hand"
+  (setf (gethash (id card) (hand player)) card))
 
 (defmethod insert! ((server server) (table table))
   "Adds a new table to the server"

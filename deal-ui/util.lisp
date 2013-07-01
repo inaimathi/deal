@@ -29,8 +29,14 @@
 (defun scripts (&rest files)
   "Shortcut for declaring js includes on the front-end."
   (html (dolist (f files)
-	  (htm (:script :src (concatenate 'string "/static/js/" f) 
-			:type "text/javascript")))))
+	  (htm (:script :type "text/javascript"
+			:src (concatenate 'string "/static/js/" f))))))
+
+(defun styles (&rest files)
+  "Shortcut for declaring CSS includes on the front-end."
+  (html (dolist (f files)
+	  (htm (:link :rel "stylesheet" :type "text/css"
+		      :href (concatenate 'string "/static/css/" f))))))
 
 ;;;;;;;;;; JS-related
 (defpsmacro $ (selector &body chains)
@@ -51,3 +57,9 @@
 		(lambda (data status jqXHR)
 		  (let ((res (chain j-query (parse-j-s-o-n (@ jqXHR response-text)))))
 		    ,@body)))))
+
+(defpsmacro $map (lst &body body)
+  `(chain j-query (map ,lst (lambda (elem i) ,@body))))
+
+(defpsmacro obj->string (thing)
+  `(chain -j-s-o-n (stringify ,thing)))

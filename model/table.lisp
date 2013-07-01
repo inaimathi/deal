@@ -66,17 +66,20 @@
   `((tablecloth . ,(tablecloth table)) 
     (things . ,(hash-map (lambda (k v) (declare (ignore k)) (publish v))
 			 (things table)))
-    (players . ,(mapcar #'id (players table)))
+    (players . ,(mapcar (lambda (p) `((id . ,(id p)) (hand . ,(hash-table-count (hand p))))) 
+			(players table)))
     (started . ,(started table))
     (events . ,(events table))))
 
 (defmethod publish ((stack stack))
   (if-up stack stack
-	 (cons '(cards) 
-	       (remove-if (lambda (pair) (eq (first pair) 'cards)) 
-			  (to-alist stack)))))
+	 (cons '(type . stack)
+	       (cons '(cards) 
+		     (remove-if (lambda (pair) (eq (first pair) 'cards)) 
+				(to-alist stack))))))
 
 (defmethod publish ((card card))
-  (if-up card card
-	 (remove-if (lambda (pair) (or (eq (first pair) 'text) (eq (first pair) 'image)))
-		    (to-alist card))))
+  (cons '(type . card)
+	(if-up card card
+	       (remove-if (lambda (pair) (or (eq (first pair) 'text) (eq (first pair) 'image)))
+			  (to-alist card)))))
