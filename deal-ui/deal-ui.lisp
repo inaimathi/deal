@@ -2,28 +2,33 @@
 
 (in-package #:deal-ui)
 
-;;;;;;;;;; JS util
-(defparameter *debugging* t)
-
-(defpsmacro $ (selector &body chains)
-  `(chain (j-query ,selector) ,@chains))
-
-(defpsmacro doc-ready (&body body) 
-  `($ document (ready (fn ,@body))))
-
-(defpsmacro fn (&body body) `(lambda () ,@body))
-
-(defpsmacro log (&body body)
-  (when *debugging*
-    `(chain console (log (list ,@body)))))
-
-;;;;;;;;;; deal-ui
 (to-file "static/js/global.js"
-	 (ps (log "Hello from the JS file!")
+	 (ps (defvar test-game "g1015")
+	     (defvar test-stack "g1186")
+	     (defvar games nil)
+	     (defvar table nil)
 	     (doc-ready
-	      (log "Hello from the document.ready event!"))))
+	      ($post "/list-games" () 
+		     (setf games res)
+		     (log res))
+	      ($post "/show-table" 
+		     (:table test-game)
+		     (setf table res)
+		     (log res))
+	      ($ "#test-btn" (click 
+			      (fn
+			       ($post "/play/new-stack-from-deck" (:table test-game :deck-name "54-Card Standard")
+				      (setf table res)
+				      (log res)))))
+	      ($ "#draw" (click 
+			  (fn ($post "/stack/draw" (:table test-game :stack test-stack :num 1)
+				     (log res))))))))
 
 (to-file "static/index.html"
-	 (html (:head (:title "Tabletop Prototyping System - Deal")
-		      (scripts "jquery.min.js" "jquery-ui.min.js" "global.js"))
-	       (:body (:p "Testing..."))))
+	 (html-str
+	   (:html :xmlns "http://www.w3.org/1999/xhtml" :lang "en"
+		  (:head (:title "Tabletop Prototyping System - Deal")
+			 (scripts "jquery.min.js" "jquery-ui.min.js" "global.js"))
+		  (:body (:button :id "test-btn" "Test")
+			 (:button :id "draw" "Draw")
+			 (:div :id "board")))))

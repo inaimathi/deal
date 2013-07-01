@@ -9,6 +9,9 @@
 (define-handler (list-decks) ()
   (mapcar #'car (decks *server*)))
 
+(define-handler (show-table) ((table :table))
+  (publish table))
+
 ;;;;; SSEs
 (define-sse-handler (event-source) ((table :table))
   (events table))
@@ -40,7 +43,7 @@
 
 (define-handler (play/take-control) ((table :table) (thing :placeable))
   (with-lock-held ((lock table))
-    (setf (belongs-to thing) *player*)))
+    (setf (belongs-to thing) (id *player*))))
 
 (define-handler (play/flip) ((table :table) (thing :flippable))
   (with-lock-held ((lock table))
@@ -56,15 +59,16 @@
   (with-lock-held ((lock table))
     (let ((stack (deck->stack *player* (assoc deck-name (decks *server*) :test #'string=))))
       (insert! table stack)
-      (publish stack))))
+      (publish table))))
 
 ;;;;; Stacks
 (define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (with-lock-held ((lock table))
     (with-slots (cards card-count) stack
-      (loop repeat (min num card-count)
-	 do (decf card-count)
-	 do (push (pop cards) (hand *player*)))
+      (loop with rep = (min num card-count) repeat rep
+	 do (let ((card (pop cards)))
+	      (decf card-count)
+	      (setf (gethash (id card) (hand *player*)) card)))
       (hand *player*))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))

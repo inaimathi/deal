@@ -22,6 +22,10 @@
 (defun hash-keys (hash-table)
   (loop for key being the hash-keys of hash-table collect key))
 
+(defun hash-map (fn hash-table)
+  (loop for key being the hash-keys of hash-table
+     collect (funcall fn key (gethash key hash-table))))
+
 (defun pick (a-list)
   "Randomly selects an element from the given list with equal probability."
   (nth (random (length a-list)) a-list))
@@ -64,7 +68,7 @@
 
 (defun lookup-exp (arg &rest places)
   (with-gensyms (sym)
-    `(let ((,sym (intern ,arg :keyword)))
+    `(let ((,sym (intern (string-upcase ,arg) :keyword)))
        (or ,@(loop for p in places
 		collect `(gethash ,sym ,p))))))
 
@@ -93,16 +97,16 @@
   "Defines handlers with an eye for self-documentation, DRY and portability"
   (let ((opts `(,name :uri ,(concatenate 'string "/" (string-downcase (symbol-name name))))))
     (if (not args)
-	`(define-easy-handler ,opts nil (encode-json (progn ,@body)))
+	`(define-easy-handler ,opts nil (encode-json-to-string (progn ,@body)))
 	(multiple-value-bind (type-conversion final-args lookup-assertions) (type-pieces args)
 	  `(define-easy-handler ,opts ,final-args
 	     (assert (and ,@final-args))
 	     ,(if type-conversion
 		  `(let* ,type-conversion
 		     ,@lookup-assertions
-		     (encode-json ,@body))
+		     (encode-json-to-string ,@body))
 		  `(progn ,@lookup-assertions
-			  (encode-json ,@body))))))))
+			  (encode-json-to-string ,@body))))))))
 
 (defmacro define-sse-handler ((name) (&rest args) &body body)
   `(define-handler (,name) (,@args)

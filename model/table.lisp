@@ -28,7 +28,8 @@
    (image :accessor image :initform nil :initarg :image)))
 
 (defclass stack (flippable)
-  ((cards :accessor cards :initform nil)
+  ((cards :accessor cards :initform nil :initarg :cards)
+   (card-count :accessor card-count :initform 0 :initarg :card-count)
    (face :initform :down)))
 
 (defclass counter (placeable)
@@ -41,9 +42,9 @@
   "Takes a deck (a list of card texts) and creates a stack (a pile of cards suitable for placing on a table)"
   (make-instance 'stack
 		 :face face
-		 :belongs-to player
+		 :belongs-to (id player)
 		 :cards (shuffle (mapcar (lambda (str)
-					   (make-instance 'card :text str :face face :belongs-to player))
+					   (make-instance 'card :text str :face face :belongs-to (id player)))
 					 a-deck))
 		 :card-count (length a-deck)))
 
@@ -63,7 +64,8 @@
 ;;;;;;;;;; Publish methods
 (defmethod publish ((table table))
   `((tablecloth . ,(tablecloth table)) 
-    (things . ,(mapcar #'publish (things table)))
+    (things . ,(hash-map (lambda (k v) (declare (ignore k)) (publish v))
+			 (things table)))
     (players . ,(mapcar #'id (players table)))
     (started . ,(started table))
     (events . ,(events table))))
