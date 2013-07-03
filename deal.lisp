@@ -1,6 +1,8 @@
 ;;;; deal.lisp
 (in-package #:deal)
 
+(define-handler (list-handlers) () *handlers*)
+
 ;;;;;;;;;; Handlers
 ;;;;; Getters
 (define-handler (list-tables) ()
@@ -83,8 +85,8 @@
 
 (define-handler (stack/play) ((table :table) (stack :stack))
   (with-lock-held ((lock table))
-    (with-slots (card card-count) stack
-      (insert! table (pop (cards stack))))))
+    (with-slots (cards card-count) stack
+      (insert! table (pop cards)))))
 
 (define-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
   (with-lock-held ((lock table))
@@ -93,9 +95,9 @@
     (publish stack)))
 
 ;;;;; Hand
-(define-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing))
+(define-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (with-lock-held ((lock table))
-    (setf (face card) face)
+    (setf (face card) face (x card) x (y card) y (z card) z (rot card) rot)
     (delete! *player* card)
     (insert! table card)
     (publish card)))

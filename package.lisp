@@ -9,6 +9,8 @@
 (defparameter *server-port* 8080)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defparameter *handlers* (make-hash-table :test 'equal))
+
 ;;;;;;;;;; Generic definitions
 (defgeneric insert! (container item)
   (:documentation "A generic insertion function. It takes a container object and an item, and inserts the second into the first in a destructive manner. It takes care of updating object state related to, but not part of, naive item insertion."))

@@ -24,8 +24,8 @@
   ((face :accessor face :initform :up :initarg :face)))
 
 (defclass card (flippable)
-  ((text :accessor text :initarg :text)
-   (image :accessor image :initform nil :initarg :image)))
+  ((content :accessor content :initarg :content)
+   (card-type :accessor card-type :initarg :card-type)))
 
 (defclass stack (flippable)
   ((cards :accessor cards :initform nil :initarg :cards)
@@ -44,7 +44,7 @@
 		 :face face
 		 :belongs-to (id player)
 		 :cards (shuffle (mapcar (lambda (str)
-					   (make-instance 'card :text str :face face :belongs-to (id player)))
+					   (make-instance 'card :content str :face face :belongs-to (id player)))
 					 a-deck))
 		 :card-count (length a-deck)))
 
@@ -81,5 +81,5 @@
 (defmethod publish ((card card))
   (cons '(type . card)
 	(if-up card card
-	       (remove-if (lambda (pair) (or (eq (first pair) 'text) (eq (first pair) 'image)))
+	       (remove-if (lambda (pair) (eq (first pair) 'content))
 			  (to-alist card)))))

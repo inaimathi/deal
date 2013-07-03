@@ -95,18 +95,18 @@
 
 (defmacro define-handler ((name) (&rest args) &body body)
   "Defines handlers with an eye for self-documentation, DRY and portability"
-  (let ((opts `(,name :uri ,(concatenate 'string "/" (string-downcase (symbol-name name))))))
-    (if (not args)
-	`(define-easy-handler ,opts nil (encode-json-to-string (progn ,@body)))
-	(multiple-value-bind (type-conversion final-args lookup-assertions) (type-pieces args)
-	  `(define-easy-handler ,opts ,final-args
-	     (assert (and ,@final-args))
-	     ,(if type-conversion
-		  `(let* ,type-conversion
-		     ,@lookup-assertions
-		     (encode-json-to-string ,@body))
-		  `(progn ,@lookup-assertions
-			  (encode-json-to-string ,@body))))))))
+  (let* ((uri (concatenate 'string "/" (string-downcase (symbol-name name)))) 
+	 (opts `(,name :uri ,uri)))
+    (multiple-value-bind (type-conversion final-args lookup-assertions) (type-pieces args)
+      `(progn
+	 (setf (gethash ,uri *handlers*) (list ,@(mapcar (lambda (s) (string-downcase (symbol-name s))) final-args)))
+	 ,(if (not args)
+	      `(define-easy-handler ,opts nil (encode-json-to-string (progn ,@body)))
+	      `(define-easy-handler ,opts ,final-args
+		 (assert (and ,@final-args))
+		 (let* ,type-conversion
+		   ,@lookup-assertions
+		   (encode-json-to-string ,@body))))))))
 
 (defmacro define-sse-handler ((name) (&rest args) &body body)
   `(define-handler (,name) (,@args)
