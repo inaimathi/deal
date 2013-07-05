@@ -43,10 +43,11 @@
   (make-instance 'stack
 		 :face face
 		 :belongs-to (id player)
-		 :cards (shuffle (mapcar (lambda (str)
-					   (make-instance 'card :content str :face face :belongs-to (id player)))
-					 a-deck))
-		 :card-count (length a-deck)))
+		 :card-count (length (rest a-deck))
+		 :cards (shuffle (loop for c in (rest a-deck)
+				    collect (make-instance 
+					     'card :content c :face face 
+					     :card-type (first a-deck) :belongs-to (id player))))))
 
 ;;;;;;;;;; delete/insert methods (more in model/server.lisp)
 (defmethod delete! ((table table) (thing placeable))
@@ -61,24 +62,25 @@
   "Inserts the given card into the given stack."
   (push card (cards stack)))
 
-;;;;;;;;;; Publish methods
-(defmethod publish ((table table))
-  `((tablecloth . ,(tablecloth table)) 
-    (things . ,(hash-map (lambda (k v) (declare (ignore k)) (publish v))
+;;;;;;;;;; Redact methods
+(defmethod redact ((table table))
+  `((type . table)
+    (tablecloth . ,(tablecloth table)) 
+    (things . ,(hash-map (lambda (k v) (declare (ignore k)) (redact v))
 			 (things table)))
     (players . ,(mapcar (lambda (p) `((id . ,(id p)) (hand . ,(hash-table-count (hand p))))) 
 			(players table)))
     (started . ,(started table))
     (events . ,(events table))))
 
-(defmethod publish ((stack stack))
+(defmethod redact ((stack stack))
   (if-up stack stack
 	 (cons '(type . stack)
-	       (cons '(cards) 
+	       (cons `(cards, (mapcar #'redact (cards stack)))
 		     (remove-if (lambda (pair) (eq (first pair) 'cards)) 
 				(to-alist stack))))))
 
-(defmethod publish ((card card))
+(defmethod redact ((card card))
   (cons '(type . card)
 	(if-up card card
 	       (remove-if (lambda (pair) (eq (first pair) 'content))

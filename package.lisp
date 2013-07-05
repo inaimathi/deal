@@ -1,10 +1,11 @@
 ;;;; package.lisp
 
 (defpackage #:deal 
-  (:use #:cl #:optima #:json #:cl-mop #:bordeaux-threads)
+  (:use #:cl #:optima #:json #:cl-mop)
+  (:import-from #:bordeaux-threads #:make-lock #:with-lock-held)
   (:import-from #:hunchentoot #:start-session #:define-easy-handler))
 
-(in-package :deal)
+(in-package #:deal)
 ;;;;;;;;;; Config variables
 (defparameter *server-port* 8080)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -18,6 +19,5 @@
 (defgeneric delete! (container item)
   (:documentation "The inverse of `insert!`. Takes a container and an item, and removes the second from the first in a destructive matter. Undoes the same related object state that an insert! would have touched."))
 
-(defgeneric publish (thing)
-  (:documentation "Passes the given thing out to the SSE handler.
-A better name for this might be `redact`, because it often doesn't publish full info. For instance, when a card or stack is flipped, it won't publish text or image."))
+(defgeneric redact (thing)
+  (:documentation "Returns a copy of its argument with private information removed. Notably, doesn't show card text for face-down cards or stacks."))

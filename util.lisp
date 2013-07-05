@@ -18,6 +18,14 @@
   `(let ,(loop for n in names collect `(,n (gensym)))
      ,@body))
 
+(defmacro set-props (target &rest props)
+  (assert (every #'symbolp props))
+  (with-gensyms (tgt)
+    `(let ((,tgt ,target))
+       (setf ,@(loop for p in props
+		  collect `(,p ,tgt)
+		  collect p)))))
+
 ;;;;; Basic functions
 (defun hash-keys (hash-table)
   (loop for key being the hash-keys of hash-table collect key))
