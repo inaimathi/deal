@@ -15,6 +15,10 @@
   ((id :reader id :initform (intern (symbol-name (gensym)) :keyword))
    (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
 
+(defmethod redact ((player player))
+  `((id . ,(id player))
+    (hand . ,(hash-table-count (hand player)))))
+
 (defmethod delete! ((player player) (card card))
   "Removes the given card from the given players' hand"
   (remhash (id card) (hand player)))

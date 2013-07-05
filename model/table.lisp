@@ -64,24 +64,27 @@
 
 ;;;;;;;;;; Redact methods
 (defmethod redact ((table table))
-  `((type . table)
+  `((type . :table)
+    (id . ,(id table))
     (tablecloth . ,(tablecloth table)) 
-    (things . ,(hash-map (lambda (k v) (declare (ignore k)) (redact v))
-			 (things table)))
-    (players . ,(mapcar (lambda (p) `((id . ,(id p)) (hand . ,(hash-table-count (hand p))))) 
-			(players table)))
-    (started . ,(started table))
-    (events . ,(events table))))
+    (things . ,(redact (things table)))
+    (players . ,(mapcar #'redact (players table)))))
+
+(defmethod redact ((hash-table hash-table))
+  (let ((res (make-hash-table)))
+    (loop for k being the hash-keys of hash-table
+       do (setf (gethash k res) (redact (gethash k hash-table))))
+    res))
 
 (defmethod redact ((stack stack))
-  (if-up stack stack
-	 (cons '(type . stack)
+  (cons '(type . :stack)
+	(if-up stack stack
 	       (cons `(cards, (mapcar #'redact (cards stack)))
 		     (remove-if (lambda (pair) (eq (first pair) 'cards)) 
 				(to-alist stack))))))
 
 (defmethod redact ((card card))
-  (cons '(type . card)
+  (cons '(type . :card)
 	(if-up card card
 	       (remove-if (lambda (pair) (eq (first pair) 'content))
 			  (to-alist card)))))
