@@ -51,6 +51,9 @@
   (loop for (elem . rest) on a-list repeat (- count 1)
      finally (return rest)))
 
+(defun make-id ()
+  (intern (symbol-name (gensym)) :keyword))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; All for the custom define-handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

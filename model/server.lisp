@@ -12,7 +12,7 @@
    (lock :accessor lock :initform (make-lock))))
 
 (defclass player ()
-  ((id :reader id :initform (intern (symbol-name (gensym)) :keyword))
+  ((id :reader id :initform (make-id))
    (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
 
 (defmethod redact ((player player))
@@ -25,7 +25,8 @@
 
 (defmethod insert! ((player player) (card card))
   "Adds the given card to the given players' hand"
-  (setf (gethash (id card) (hand player)) card))
+  (setf (id card) (make-id)
+	(gethash (id card) (hand player)) card))
 
 (defmethod insert! ((server server) (table table))
   "Adds a new table to the server"

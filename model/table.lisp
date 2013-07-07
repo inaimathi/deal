@@ -1,7 +1,7 @@
 (in-package :deal)
 
 (defclass table ()
-  ((id :reader id :initform (intern (symbol-name (gensym)) :keyword))
+  ((id :reader id :initform (make-id))
    (started :reader started :initform (get-universal-time))
    (players :accessor players :initform nil)
    (things :accessor things :initform (make-hash-table))
@@ -13,7 +13,7 @@
 
 ;;;;;;;;;; Game elements
 (defclass placeable ()
-  ((id :reader id :initform (intern (symbol-name (gensym)) :keyword))
+  ((id :accessor id :initform (make-id))
    (x :accessor x :initform 0 :initarg :x)
    (y :accessor y :initform 0 :initarg :y)
    (z :accessor z :initform 0 :initarg :z)
@@ -54,12 +54,18 @@
   "Removes a thing from the given table"
   (remhash (id thing) things))
 
+(defmethod insert! ((table table) (card card))
+  "Place a new card on the given table. Re-assigns (id card) to maintain secrecy about card properties."
+  (setf (id card) (make-id)
+	(gethash (id card) (things table)) card))
+
 (defmethod insert! ((table table) (thing placeable))
   "Places a new thing on the given table."
   (setf (gethash (id thing) (things table)) thing))
 
 (defmethod insert! ((stack stack) (card card))
   "Inserts the given card into the given stack."
+  (setf (id card) (make-id))
   (push card (cards stack)))
 
 ;;;;;;;;;; Redact methods

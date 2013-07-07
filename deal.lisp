@@ -75,8 +75,8 @@
 
 (define-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
   (with-lock-held ((lock table))
-    (insert! stack card)
     (delete! table card)
+    (insert! stack card)
     (redact table)))
 
 ;;;;; Hand
@@ -89,8 +89,8 @@
 
 (define-handler (hand/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
   (with-lock-held ((lock table))
-    (insert! stack card)
     (delete! *player* card)
+    (insert! stack card)
     (redact table)))
 
 (define-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
