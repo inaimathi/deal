@@ -1,5 +1,7 @@
 (in-package #:deal)
 
+(proclaim '(inline sym->keyword))
+
 ;;;;; Simple anaphorics/custom flow control constructs
 (defmacro aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
@@ -30,6 +32,9 @@
 (defun hash-keys (hash-table)
   (loop for key being the hash-keys of hash-table collect key))
 
+(defun hash-values (hash-table)
+  (loop for val being the hash-values of hash-table collect val))
+
 (defun hash-map (fn hash-table)
   (loop for key being the hash-keys of hash-table
      collect (funcall fn key (gethash key hash-table))))
@@ -51,8 +56,10 @@
   (loop for (elem . rest) on a-list repeat (- count 1)
      finally (return rest)))
 
-(defun make-id ()
-  (intern (symbol-name (gensym)) :keyword))
+(defun make-id () (sym->keyword (gensym)))
+
+(defun sym->keyword (symbol)
+  (intern (symbol-name symbol) :keyword))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; All for the custom define-handler

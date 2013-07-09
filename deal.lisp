@@ -1,6 +1,6 @@
 ;;;; deal.lisp
 (in-package #:deal)
-
+ 
 (define-handler (list-handlers) () *handlers*)
 
 ;;;;;;;;;; Handlers
@@ -15,7 +15,7 @@
   (redact table))
 
 (define-handler (my-hand) ()
-  (hand *player*))
+  (hash-values (hand *player*)))
 
 ;;;;; SSEs
 (define-sse-handler (event-source) ((table :table))
@@ -108,7 +108,7 @@
 	 do (let ((card (pop cards)))
 	      (decf card-count)
 	      (insert! *player* card)))
-      (hand *player*))))
+      (hash-values (hand *player*)))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
   (take (- max min) (drop (+ min 1) (cards stack))))
