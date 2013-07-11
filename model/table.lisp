@@ -91,6 +91,6 @@
 
 (defmethod redact ((card card))
   (cons '(type . :card)
-	(if-up card card
+	(if-up card (to-alist card)
 	       (remove-if (lambda (pair) (eq (first pair) 'content))
 			  (to-alist card)))))
