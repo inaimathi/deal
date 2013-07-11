@@ -42,3 +42,6 @@
   (html (dolist (f files)
 	  (htm (:link :rel "stylesheet" :type "text/css"
 		      :href (concatenate 'string "/static/css/" f))))))
+
+;;;;;;;;;; CSS-related
+(defun px (num) (format nil "~apx" num))
