@@ -32,6 +32,19 @@
 		  (let ((res (string->obj (@ jqXHR response-text))))
 		    ,@body)))))
 
+(defpsmacro $droppable (target &rest class/action-list)
+  `($ ,target (droppable 
+	       (create 
+		:drop (lambda (event ui)
+			(let ((dropped (@ ui helper context)))
+			  ;; not sure if this should be a cond or a list of independent whens
+			  (cond ,@(loop for (class action) in class/action-list
+				     collect `(($ dropped (has-class ,class)) ,action)))))))))
+
+(defpsmacro $draggable (target (&key revert) &body body)
+  `($ ,target (draggable (create :stop (lambda (event ui) ,@body) :revert ,revert))))
+
+;;;;;;;;;; Define client-side ajax handlers
 (defpsmacro define-ajax (name uri arg-list &body body)
   `(defun ,name ,arg-list
      (log *current-table-id* ,@arg-list)

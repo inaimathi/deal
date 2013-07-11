@@ -29,15 +29,10 @@
 	 (ps (defun render-board (table)
 	       (let ((board-selector "#board")
 		     (ts (@ table things)))
-		 ($ board-selector 
-		    (empty)
-		    (droppable 
-		     (create 
-		      :drop (lambda (event ui)
-			      (let ((dropped (@ ui helper context)))
-				(when ($ dropped (has-class "card-in-hand"))
-				  (log "PLAYING" event ui)
-				  (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0)))))))
+		 ($ board-selector (empty))
+		 ($droppable board-selector
+		  (:card-in-hand 
+		   (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0)))
 		 (when ts ($map ts 
 				(cond ((= (@ elem type) :stack) (create-stack board-selector elem))
 				      ((= (@ elem type) :card) (create-card board-selector elem)))))))
@@ -56,7 +51,8 @@
 		       :title (self id)
 		       (:button :class "draw" "Draw")
 		       (:div :class "card-count" (+ "x" (self card-count))))
-	       ($ css-id (draggable (create :stop (lambda (event ui) (move (self id) (@ ui offset left) (@ ui offset top) 0 0)))))
+	       ($draggable css-id () 
+			   (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
 	       ($ (+ css-id " .draw") (click (fn (draw (self id) 1)))))
 	     
 	     (define-thing card 
@@ -65,14 +61,15 @@
 		       :style (self position)
 		       (:span :class "content" (self content))
 		       (:div :class "type" (self card-type)))
-	       ($ css-id (draggable (create :stop (lambda (event ui) (move (@ card id) (@ ui offset left) (@ ui offset top) 0 0))))))
+	       ($draggable css-id () 
+			   (move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
 	     (define-thing card-in-hand
 		 (:div :id (self id)
 		       :class (+ "card card-in-hand" (if (= (self face) "down") " face-down" ""))
 		       (:span :class "content" (self content))
 		       (:div :class "type" (self card-type)))
-	       ($ css-id (draggable (create :revert t))))))
+	       ($draggable css-id (:revert t)))))
 
 (to-file "static/js/deal.js"
 	 (ps (defvar *current-table-id* nil)
