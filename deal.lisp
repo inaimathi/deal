@@ -79,48 +79,40 @@
 ;;;;; Stacks
 (define-handler (stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
   (with-lock-held ((lock table))
-    (with-slots (cards card-count) stack
-      (let ((card (pop cards)))
-	(set-props card x y z rot)
-	(insert! table (pop cards))
-	(redact table)))))
+    (let ((card (pop! stack)))
+      (set-props card x y z rot)
+      (insert! table card)
+      (redact table))))
 
 (define-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
   (with-lock-held ((lock table))
-    (delete! table card)
-    (insert! stack card)
+    (move! card table stack)
     (redact table)))
 
 ;;;;; Hand
 (define-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (with-lock-held ((lock table))
     (setf (face card) face (x card) x (y card) y (z card) z (rot card) rot)
-    (delete! *player* card)
-    (insert! table card)
+    (move! card *player* table)
     (redact table)))
 
 (define-handler (hand/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
   (with-lock-held ((lock table))
-    (delete! *player* card)
-    (insert! stack card)
+    (move! card *player* stack)
     (redact table)))
 
 (define-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
   (with-lock-held ((lock table))
-    (push card (hand *player*))
-    (delete! table card)
+    (move! card table *player*)
     (redact table)))
 
 ;;;;; Odd ducks
-;;; These handlers are the only ones that don't respond with a redacted table object
+;;; These handlers are the only ones that don't respond with a redacted table object because it wouldn't make sense
 (define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (with-lock-held ((lock table))
-    (with-slots (cards card-count) stack
-      (loop with rep = (min num card-count) repeat rep
-	 do (let ((card (pop cards)))
-	      (decf card-count)
-	      (insert! *player* card)))
-      (hash-values (hand *player*)))))
+    (loop with rep = (min num card-count) repeat rep
+       do (insert! *player* (pop! cards)))
+    (hash-values (hand *player*))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
   (take (- max min) (drop (+ min 1) (cards stack))))

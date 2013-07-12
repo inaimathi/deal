@@ -69,6 +69,18 @@
   (incf (card-count stack))
   (push card (cards stack)))
 
+(defmethod pop! ((stack stack))
+  "First decrements the card-count, then pops a card from the stack."
+  (decf (card-count stack))
+  (pop (cards stack)))
+
+(defmethod move! ((card card) from to)
+  "Method specifically for naive moves. It happens in at least four places, 
+and because of our ID system, delete! must be called before insert!, 
+so it made sense to formalize this."
+  (delete! from card)
+  (insert! to card))
+
 ;;;;;;;;;; Redact methods
 (defmethod redact ((table table))
   `((type . :table)
@@ -86,7 +98,7 @@
 (defmethod redact ((stack stack))
   (cons '(type . :stack)
 	(if-up stack stack
-	       (cons `(cards, (mapcar #'redact (cards stack)))
+	       (cons `(cards . ,(mapcar #'redact (cards stack)))
 		     (remove-if (lambda (pair) (eq (first pair) 'cards)) 
 				(to-alist stack))))))
 
