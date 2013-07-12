@@ -41,8 +41,24 @@
 			  (cond ,@(loop for (class action) in class/action-list
 				     collect `(($ dropped (has-class ,class)) ,action)))))))))
 
-(defpsmacro $draggable (target (&key revert) &body body)
-  `($ ,target (draggable (create :stop (lambda (event ui) ,@body) :revert ,revert))))
+(defpsmacro $draggable (target (&key revert handle cancel) &body body)
+  `($ ,target (draggable (create :stop (lambda (event ui) ,@body)
+				 ,@(when revert `(:revert ,revert))
+				 ,@(when handle `(:handle ,handle))
+				 ,@(when cancel `(:cancel ,cancel))))))
+
+(defpsmacro $right-click (target &rest body)
+  (with-gensyms (fn)
+    `(let ((,fn (lambda (event) ,@body)))
+       ($ ,target
+	  (bind :contextmenu
+		(lambda (event)
+		  (,fn event)
+		  (chain event (prevent-default))))
+	  (bind :oncontextmenu
+		(lambda (event)
+		  (,fn event)
+		  (setf (@ window event return-value) false)))))))
 
 ;;;;;;;;;; Define client-side ajax handlers
 (defpsmacro define-ajax (name uri arg-list &body body)
@@ -71,14 +87,8 @@
     `(defun ,(intern (format nil "create-~a" name)) (container thing)
        (let* ((,thing thing)
 	      (,container container)
+	      (face-class (if (= (@ ,thing face) "down") " face-down" ""))
 	      (css-id (+ "#" (@ ,thing id))))
 	 ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
 	 ,@(loop for clause in behavior
 	      collect (expand-self-expression clause thing))))))
-
-;; (ps (define-thing card 
-;; 	(:div :id (self id)
-;; 	      :class (+ "card" (if (= (self face) :down) " face-down" "")) :style (self position)
-;; 	      (:span :class "content" (self content))
-;; 	      (:div :class "type" (self card-type)))
-;;       (draggable (create :stop (lambda (elem ui) (move (self id) (@ ui offset left) (@ ui offset top) 0 0))))))

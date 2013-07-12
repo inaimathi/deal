@@ -3,7 +3,6 @@
 
 ;;;;;;;;;; File generation
 ;;;;; CSS
-(defparameter css-hand-height 100)
 (defparameter css-card-size '(:width 50px :height 70px))
 
 (defun css-square (side-length) (list :width (px side-length) :height (px side-length) :border "1px solid #ddd"))
@@ -18,11 +17,16 @@
 	       (".card .content" :font-size small :font-weight bold)
 	       (".card .type" :font-size xx-small :text-align right)
 	       (.card-in-hand :position relative)
+	       (".stack:hover .cards" :padding-top 50px)
+	       (".stack:hover .card" :position relative :margin-top -50px)
+	       (".stack:hover .card:hover" :margin-bottom 40px)
 	       
-	       (\#board ,@(css-square 500) :margin-bottom ,(px (* 1.5 css-hand-height)))
-
-	       (\#hand :width 100% :height ,(px css-hand-height) :bottom 0px :left 0px :position fixed :padding-left 20px :border "1px solid #ddd" :background-color "#fff")
-	       ("#hand .card" :float left :margin-left 10px)))
+	       (\#board ,@(css-square 500))
+	       
+	       (\#hand-container :width 400px :height 120px :top 0px :left 0px :position absolute :border "1px solid #ddd" :background-color "#fff")
+	       ("#hand-container h3" :margin 0px :padding 3px :background-color "#eee" :cursor move)
+	       (\#hand :clear both :padding 3px :max-height 85px :overflow auto)
+	       ("#hand .card" :float left)))
 
 ;;;;; JS
 (to-file "static/js/render.js"
@@ -46,27 +50,35 @@
 
 	     (define-thing stack
 		 (:div :id (self id) 
-		       :class (+ "stack" (when (= (self face) "down") " face-down"))
+		       :class (+ "stack" face-class)
 		       :style (self position)
-		       :title (self id)
 		       (:button :class "draw" "Draw")
+		       (:div :class "cards")
 		       (:div :class "card-count" (+ "x" (self card-count))))
+	       (when (self cards)
+		 ($map (self cards)
+		       (create-card-in-stack (+ css-id " .cards") elem)))
 	       ($draggable css-id () 
 			   (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
 	       ($ (+ css-id " .draw") (click (fn (draw (self id) 1)))))
 	     
 	     (define-thing card 
 		 (:div :id (self id)
-		       :class (+ "card" (if (= (self face) "down") " face-down" ""))
+		       :class (+ "card" face-class)
 		       :style (self position)
 		       (:span :class "content" (self content))
 		       (:div :class "type" (self card-type)))
 	       ($draggable css-id () 
 			   (move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
+	     (define-thing card-in-stack
+		 (:div :id (self id)
+		       :class (+ "card card-in-stack" face-class)
+		       (:span :class "content" (self content))))
+
 	     (define-thing card-in-hand
 		 (:div :id (self id)
-		       :class (+ "card card-in-hand" (if (= (self face) "down") " face-down" ""))
+		       :class (+ "card card-in-hand" face-class)
 		       (:span :class "content" (self content))
 		       (:div :class "type" (self card-type)))
 	       ($draggable css-id (:revert t)))))
@@ -85,8 +97,12 @@
 			   *current-table-id* (@ *tables-list* 0))
 		     (show-table)
 		     (show-hand))
-	      ($ "#btn-add-deck" (click (fn (new-stack (@ *decks-list* 0) :down 0 0 0 0)))))
+	      ($draggable "#hand-container" (:handle "h3"))
+	      ($ "#btn-add-deck" (click (fn (new-stack (@ *decks-list* 0) :down 0 0 0 0))))
 
+	      ($context-menu "#board" (log "CONTEXT MENU on #board"))
+	      )
+	     
 	     ;;; Client-side handler definitions
 	     (define-ajax show-table "/show-table" ()
 			  (log "SHOWING BOARD" res)			  
@@ -121,4 +137,6 @@
 			 (scripts "jquery.min.js" "jquery-ui.min.js" "render.js" "deal.js"))
 		  (:body (:button :id "btn-add-deck" "Add Deck")
 			 (:div :id "board")
-			 (:div :id "hand")))))
+			 (:div :id "hand-container"
+			       (:h3 "Hand")
+			       (:div :id "hand"))))))
