@@ -6,7 +6,7 @@
 ;;;;; TEST STATE
 (with-slots (players player-count public-tables table-count decks) *server*
   (push (cons "54-Card Standard" 
-	      (append (list :french "Joker" "Joker" "Rules for Poker") 
+	      (append (list :french "Joker" "Joker" "Rules for Draw and Stud Poker") 
 		      (loop for suit in (list :hearts :clubs :spades :diamonds) 
 			 append (loop for rank from 1 to 13 
 				   collect (format nil "~a of ~a" rank suit)))))

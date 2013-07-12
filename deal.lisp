@@ -71,7 +71,7 @@
 
 (define-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (with-lock-held ((lock table))
-    (let ((stack (deck->stack *player* (assoc deck-name (decks *server*) :test #'string=) :face face)))
+    (let ((stack (deck->stack *player* (cdr (assoc deck-name (decks *server*) :test #'string=)) :face face)))
       (set-props stack x y z rot)
       (insert! table stack)
       (redact table))))
@@ -110,8 +110,8 @@
 ;;; These handlers are the only ones that don't respond with a redacted table object because it wouldn't make sense
 (define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (with-lock-held ((lock table))
-    (loop with rep = (min num card-count) repeat rep
-       do (insert! *player* (pop! cards)))
+    (loop with rep = (min num (card-count stack)) repeat rep
+       do (insert! *player* (pop! stack)))
     (hash-values (hand *player*))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
