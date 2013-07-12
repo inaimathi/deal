@@ -77,6 +77,9 @@
      `(intern (string-upcase ,arg) :keyword))
     (:table 
      (lookup-exp arg '(private-tables *server*) '(public-tables *server*)))
+    ((list :list _)
+     `(loop for elem in (decode-json-from-string ,arg)
+	 collect (gethash elem (things table))))
     ((or :stack :flippable :placeable
 	 (list :card :from-table))
      (lookup-exp arg '(things table)))
@@ -98,6 +101,8 @@
     (:placeable `(assert (typep ,arg 'placeable)))
     (:flippable `(assert (typep ,arg 'flippable)))
     ((list :card _) `(assert (typep ,arg 'card)))
+    ((list :list lst-type)
+     `(assert (every (lambda (a) (typep a ',lst-type)) ,arg)))
     (_ nil)))
 
 (defun type-pieces (args)

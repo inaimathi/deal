@@ -66,6 +66,7 @@
 (defmethod insert! ((stack stack) (card card))
   "Inserts the given card into the given stack."
   (setf (id card) (make-id))
+  (incf (card-count stack))
   (push card (cards stack)))
 
 ;;;;;;;;;; Redact methods

@@ -52,10 +52,22 @@
       (setf face (if (eq face :up) :down :up))
       (redact table))))
 
-;; (define-handler (play/new-stack) ((table :table) (cards-or-stacks :json))
-;;   ;; TODO
-;;   (with-lock-held ((lock table))
-;;     (list :making-new-stack cards-or-stacks)))
+(define-handler (play/merge-stacks) ((table :table) (stacks (:list stack)))
+  (with-lock-held ((lock table))
+    (let ((stack (first stacks)))
+      (loop for s in (rest stacks)
+	 do (dolist (c (cards s)) (insert! c (cards stack)))
+	 do (remhash (id s) (things table)))
+      (redact table))))
+
+(define-handler (play/new-stack-from-cards) ((table :table) (cards (:list card)))
+  (with-lock-held ((lock table))
+    (let* ((c (first cards))
+	   (stack (make-instance 'stack :belongs-to *player* :x (x c) :y (y c) :z (z c) :rot (rot c))))
+      (loop for card in cards 
+	 do (remhash (id card) (things table))
+	 do (insert! stack card))
+      (redact table))))
 
 (define-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (with-lock-held ((lock table))
