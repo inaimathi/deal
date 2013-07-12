@@ -99,9 +99,7 @@
 		     (show-hand))
 	      ($draggable "#hand-container" (:handle "h3"))
 	      ($ "#btn-add-deck" (click (fn (new-stack (@ *decks-list* 0) :down 0 0 0 0))))
-
-	      ($context-menu "#board" (log "CONTEXT MENU on #board"))
-	      )
+	      ($right-click "#board" (log "RIGHT CLICKED on #board" event)))
 	     
 	     ;;; Client-side handler definitions
 	     (define-ajax show-table "/show-table" ()
