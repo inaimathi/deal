@@ -9,6 +9,8 @@
 
 (compile-css "static/css/main.css"
 	     `((body :font-family sans-serif)
+
+	       (.floating-menu :font-size x-small :width 150px)
 	       
 	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc")
 	       (".stack .card-count" :font-size x-small :text-align right)
@@ -99,6 +101,7 @@
 		     (show-hand))
 	      ($draggable "#hand-container" (:handle "h3"))
 	      ($ "#btn-add-deck" (click (fn (new-stack (@ *decks-list* 0) :down 0 0 0 0))))
+	      ($ "#board-menu" (menu))
 	      ($right-click "#board" (log "RIGHT CLICKED on #board" event)))
 	     
 	     ;;; Client-side handler definitions
@@ -131,10 +134,15 @@
 	 (html-str
 	   (:html :xmlns "http://www.w3.org/1999/xhtml" :lang "en"
 		  (:head (:title "Tabletop Prototyping System - Deal")
-			 (styles "main.css")
-			 (scripts "jquery.min.js" "jquery-ui.min.js" "render.js" "deal.js"))
+			 (styles "jquery-ui-1.10.3.custom.min.css" "main.css")
+			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "render.js" "deal.js"))
 		  (:body (:button :id "btn-add-deck" "Add Deck")
 			 (:div :id "board")
 			 (:div :id "hand-container"
 			       (:h3 "Hand")
-			       (:div :id "hand"))))))
+			       (:div :id "hand"))
+			 (:ul :id "board-menu" :class "floating-menu"
+			      (:li (:a :href "#" "Add Deck")
+				   (:ul (:li (:a :href "#" "54-card french"))))
+			      (:li (:a :href "#" "Roll"))
+			      (:li (:a :href "#" "Flip Coin")))))))
