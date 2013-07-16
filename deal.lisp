@@ -23,7 +23,7 @@
 
 ;;;;; Table-related
 (define-handler (game/new-private-table) ((passphrase :string))
-  (with-table-lock
+  (with-lock-held ((lock *server*))
     (insert! *server* (make-instance 'table :players (players *server*) :passphrase passphrase))))
 
 (define-handler (game/new-public-table) ()
@@ -118,7 +118,8 @@
   (take (- max min) (drop (+ min 1) (cards stack))))
 
 (define-handler (stack/show) ((table :table) (stack :stack) (min :int) (max :int))
-  ;; This one should publish the cards out to the table event stack
+  ;;   This one should publish the cards out to the table event stack, 
+  ;; rather than just notifying everyone of the action.
   (take (- max min) (drop (+ min 1) (cards stack))))
 
 ;; (define-handler (stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))

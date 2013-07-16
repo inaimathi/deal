@@ -129,16 +129,18 @@
 	 (setf (gethash ,uri *handlers*) '(,@args))
 	 ,(if (not args)
 	      `(define-easy-handler ,opts nil (encode-json-to-string (progn ,@body)))
-	      (if (and (listp (car body)) (eq (caar body) 'with-table-lock) table-lookups)
-		  `(define-easy-handler ,opts ,final-args
-		     (assert (and ,@final-args))
-		     (let* ,table-lookups
-		       ,@table-assertions
-		       (with-lock-held ((lock ,(caar table-lookups)))
-			 (let* ,type-conversions
-			   ,@lookup-assertions
-			   (encode-json-to-string (progn ,@(cdar body)))))
-		       ,@(cdr body)))
+	      (if (and (listp (car body)) (eq (caar body) 'with-table-lock))
+		  (progn
+		    (assert table-lookups nil "You used with-table-lock, but no :table argument in `~a`" name)
+		    `(define-easy-handler ,opts ,final-args
+		       (assert (and ,@final-args))
+		       (let* ,table-lookups
+			 ,@table-assertions
+			 (with-lock-held ((lock ,(caar table-lookups)))
+			   (let* ,type-conversions
+			     ,@lookup-assertions
+			     (encode-json-to-string (progn ,@(cdar body)))))
+			 ,@(cdr body))))
 		  `(define-easy-handler ,opts ,final-args
 		     (assert (and ,@final-args))
 		     (let* ,(append table-lookups type-conversions)
