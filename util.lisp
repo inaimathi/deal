@@ -129,7 +129,7 @@
 	 (setf (gethash ,uri *handlers*) '(,@args))
 	 ,(if (not args)
 	      `(define-easy-handler ,opts nil (encode-json-to-string (progn ,@body)))
-	      (if (and (eq (caar body) 'with-table-lock) table-lookups)
+	      (if (and (listp (car body)) (eq (caar body) 'with-table-lock) table-lookups)
 		  `(define-easy-handler ,opts ,final-args
 		     (assert (and ,@final-args))
 		     (let* ,table-lookups
@@ -137,7 +137,8 @@
 		       (with-lock-held ((lock ,(caar table-lookups)))
 			 (let* ,type-conversions
 			   ,@lookup-assertions
-			   (encode-json-to-string (progn ,@(cddar body)))))))
+			   (encode-json-to-string (progn ,@(cdar body)))))
+		       ,@(cdr body)))
 		  `(define-easy-handler ,opts ,final-args
 		     (assert (and ,@final-args))
 		     (let* ,(append table-lookups type-conversions)
