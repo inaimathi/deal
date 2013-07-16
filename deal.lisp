@@ -23,7 +23,7 @@
 
 ;;;;; Table-related
 (define-handler (game/new-private-table) ((passphrase :string))
-  (with-lock-held ((lock *server*))
+  (with-table-lock
     (insert! *server* (make-instance 'table :players (players *server*) :passphrase passphrase))))
 
 (define-handler (game/new-public-table) ()
@@ -31,29 +31,29 @@
     (insert! *server* (make-instance 'table :players (players *server*)))))
 
 (define-handler (game/join-table) ((table :table) (passphrase :string))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (insert! table *player*)
     (redact table)))
 
 ;;;; Game related (once you're already at a table)
 (define-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (set-props thing x y z rot)
     (redact table)))
 
 (define-handler (play/take-control) ((table :table) (thing :placeable))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (setf (belongs-to thing) (id *player*))
     (redact table)))
 
 (define-handler (play/flip) ((table :table) (thing :flippable))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (with-slots (face) thing
       (setf face (if (eq face :up) :down :up))
       (redact table))))
 
 (define-handler (play/merge-stacks) ((table :table) (stacks (:list stack)))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (let ((stack (first stacks)))
       (loop for s in (rest stacks)
 	 do (dolist (c (cards s)) (insert! c (cards stack)))
@@ -61,7 +61,7 @@
       (redact table))))
 
 (define-handler (play/new-stack-from-cards) ((table :table) (cards (:list card)))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (let* ((c (first cards))
 	   (stack (make-instance 'stack :belongs-to *player* :x (x c) :y (y c) :z (z c) :rot (rot c))))
       (loop for card in cards 
@@ -70,7 +70,7 @@
       (redact table))))
 
 (define-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (face :facing) (x :int) (y :int) (z :int) (rot :int))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (let ((stack (deck->stack *player* (cdr (assoc deck-name (decks *server*) :test #'string=)) :face face)))
       (set-props stack x y z rot)
       (insert! table stack)
@@ -78,38 +78,38 @@
 
 ;;;;; Stacks
 (define-handler (stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (let ((card (pop! stack)))
       (set-props card x y z rot)
       (insert! table card)
       (redact table))))
 
 (define-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (move! card table stack)
     (redact table)))
 
 ;;;;; Hand
 (define-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (setf (face card) face (x card) x (y card) y (z card) z (rot card) rot)
     (move! card *player* table)
     (redact table)))
 
 (define-handler (hand/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (move! card *player* stack)
     (redact table)))
 
 (define-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
-  (with-lock-held ((lock table))
+  (with-table-lock
     (move! card table *player*)
     (redact table)))
 
 ;;;;; Odd ducks
 ;;; These handlers are the only ones that don't respond with a redacted table object because it wouldn't make sense
-(define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
-  (with-lock-held ((lock table))
+(define-handler (stack/draw) ((table :table) (other-table :table) (stack :stack) (num :int))
+  (with-table-lock
     (loop with rep = (min num (card-count stack)) repeat rep
        do (insert! *player* (pop! stack)))
     (hash-values (hand *player*))))
