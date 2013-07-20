@@ -52,14 +52,6 @@
       (setf face (if (eq face :up) :down :up))
       (redact table))))
 
-(define-handler (play/merge-stacks) ((table :table) (stacks (:list stack)))
-  (with-table-lock
-    (let ((stack (first stacks)))
-      (loop for s in (rest stacks)
-	 do (dolist (c (cards s)) (insert! c (cards stack)))
-	 do (remhash (id s) (things table)))
-      (redact table))))
-
 (define-handler (play/new-stack-from-cards) ((table :table) (cards (:list card)))
   (with-table-lock
     (let* ((c (first cards))
@@ -89,6 +81,14 @@
     (move! card table stack)
     (redact table)))
 
+(define-handler (stack/merge) ((table :table) (stacks (:list stack)))
+  (with-table-lock
+    (let ((stack (first stacks)))
+      (loop for s in (rest stacks)
+	 do (dolist (c (cards s)) (insert! c (cards stack)))
+	 do (remhash (id s) (things table)))
+      (redact table))))
+
 ;;;;; Hand
 (define-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (with-table-lock
@@ -106,9 +106,20 @@
     (move! card table *player*)
     (redact table)))
 
-;;;;; Odd ducks
-;;; These handlers are the only ones that don't respond with a redacted table object because it wouldn't make sense
-(define-handler (stack/draw) ((table :table) (other-table :table) (stack :stack) (num :int))
+;;;;; Non-table handlers
+;;; These handlers don't respond with a redacted table object because it wouldn't make sense in context
+(define-handler (play/roll) ((num-dice :int) (die-size :int) (modifier :int))
+  (assert (and (> num-dice 0) (> die-size 0)))
+  (let ((mod (cond ((> modifier 0) (format nil "+~a" modifier))
+		   ((> 0 modifier) modifier)
+		   (t nil))))
+    (multiple-value-bind (total rolls) (roll num-dice die-size)
+      `((dice . ,(format nil "~ad~a~@[~a~]" num-dice die-size mod)) (total . ,(+ total modifier)) (rolls . ,rolls)))))
+
+(define-handler (play/coin-toss) ()
+  (pick (list :heads :tails)))
+
+(define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (with-table-lock
     (loop with rep = (min num (card-count stack)) repeat rep
        do (insert! *player* (pop! stack)))

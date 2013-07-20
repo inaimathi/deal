@@ -97,10 +97,9 @@ so it made sense to formalize this."
 
 (defmethod redact ((stack stack))
   (cons '(type . :stack)
-	(if-up stack stack
-	       (cons `(cards . ,(mapcar #'redact (cards stack)))
-		     (remove-if (lambda (pair) (eq (first pair) 'cards)) 
-				(to-alist stack))))))
+	(cons `(cards . ,(mapcar #'redact (cards stack)))
+	      (remove-if (lambda (pair) (eq (first pair) 'cards)) 
+			 (to-alist stack)))))
 
 (defmethod redact ((card card))
   (cons '(type . :card)

@@ -61,6 +61,12 @@
 (defun sym->keyword (symbol)
   (intern (symbol-name symbol) :keyword))
 
+;;;;;;;;;; Game-related utility
+(defun roll (num-dice die-size)
+  (loop for d = (+ 1 (random die-size)) repeat num-dice
+     collect d into rolls summing d into total
+     finally (return (values total rolls))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; All for the custom define-handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -145,7 +151,7 @@
 		     (assert (and ,@final-args))
 		     (let* ,(append table-lookups type-conversions)
 		       ,@(append table-assertions lookup-assertions)
-		       (encode-json-to-string ,@body)))))))))
+		       (encode-json-to-string (progn ,@body))))))))))
 
 (defmacro define-sse-handler ((name) (&rest args) &body body)
   `(define-handler (,name) (,@args)
