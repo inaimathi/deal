@@ -15,7 +15,7 @@
   (redact table))
 
 (define-handler (my-hand) ()
-  (hash-values (hand *player*)))
+  (hash-values (hand (session-value :player))))
 
 ;;;;; SSEs
 (define-sse-handler (event-source) ((table :table))
@@ -24,15 +24,18 @@
 ;;;;; Table-related
 (define-handler (game/new-private-table) ((passphrase :string))
   (with-lock-held ((lock *server*))
-    (insert! *server* (make-instance 'table :players (players *server*) :passphrase passphrase))))
+    (setf (session-value :player) (make-instance 'player))
+    (insert! *server* (make-instance 'table :players (list (session-value :player)) :passphrase passphrase))))
 
 (define-handler (game/new-public-table) ()
   (with-lock-held ((lock *server*))
-    (insert! *server* (make-instance 'table :players (players *server*)))))
+    (setf (session-value :player) (make-instance 'player))
+    (insert! *server* (make-instance 'table :players (list (session-value :player))))))
 
 (define-handler (game/join-table) ((table :table) (passphrase :string))
   (with-table-lock
-    (insert! table *player*)
+    (setf (session-value :player) (make-instance 'player))
+    (insert! table (session-value :player))
     (redact table)))
 
 ;;;; Game related (once you're already at a table)
@@ -43,7 +46,7 @@
 
 (define-handler (play/take-control) ((table :table) (thing :placeable))
   (with-table-lock
-    (setf (belongs-to thing) (id *player*))
+    (setf (belongs-to thing) (id (session-value :player)))
     (redact table)))
 
 (define-handler (play/flip) ((table :table) (thing :flippable))
@@ -55,7 +58,7 @@
 (define-handler (play/new-stack-from-cards) ((table :table) (cards (:list card)))
   (with-table-lock
     (let* ((c (first cards))
-	   (stack (make-instance 'stack :belongs-to *player* :x (x c) :y (y c) :z (z c) :rot (rot c))))
+	   (stack (make-instance 'stack :belongs-to (session-value :player) :x (x c) :y (y c) :z (z c) :rot (rot c))))
       (loop for card in cards 
 	 do (remhash (id card) (things table))
 	 do (insert! stack card))
@@ -63,10 +66,12 @@
 
 (define-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (with-table-lock
-    (let ((stack (deck->stack *player* (cdr (assoc deck-name (decks *server*) :test #'string=)) :face face)))
+    (let ((stack (deck->stack (session-value :player) (cdr (assoc deck-name (decks *server*) :test #'string=)) :face face)))
       (set-props stack x y z rot)
       (insert! table stack)
       (redact table))))
+
+
 
 ;;;;; Stacks
 (define-handler (stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
@@ -93,17 +98,17 @@
 (define-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (with-table-lock
     (setf (face card) face (x card) x (y card) y (z card) z (rot card) rot)
-    (move! card *player* table)
+    (move! card (session-value :player) table)
     (redact table)))
 
 (define-handler (hand/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
   (with-table-lock
-    (move! card *player* stack)
+    (move! card (session-value :player) stack)
     (redact table)))
 
 (define-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
   (with-table-lock
-    (move! card table *player*)
+    (move! card table (session-value :player))
     (redact table)))
 
 ;;;;; Non-table handlers
@@ -122,8 +127,8 @@
 (define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (with-table-lock
     (loop with rep = (min num (card-count stack)) repeat rep
-       do (insert! *player* (pop! stack)))
-    (hash-values (hand *player*))))
+       do (insert! (session-value :player) (pop! stack)))
+    (hash-values (hand (session-value :player)))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
   (take (- max min) (drop (+ min 1) (cards stack))))

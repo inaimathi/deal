@@ -90,7 +90,7 @@
 	 (list :card :from-table))
      (lookup-expression arg '(things table)))
     ((list :card :from-hand)
-     (lookup-expression arg '(hand *player*)))
+     (lookup-expression arg '(hand (session-value :player))))
     (_ (error "Invalid type label: '~a'" type))))
 
 (defun lookup-expression (arg &rest places)

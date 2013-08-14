@@ -11,12 +11,8 @@
 			 append (loop for rank from 1 to 13 
 				   collect (format nil "~a of ~a" rank suit)))))
 	decks)
-  (let ((player (make-instance 'player))
-	(table (make-instance 'table)))
-    (insert! *server* player)
-    (insert! *server* table)
-    (insert! table player)
-    (defparameter *player* player)))
+  (let ((table (make-instance 'table)))
+    (insert! *server* table)))
 ;;;;;;;;;;;;;;;;;
 
 (defvar *web-server* (hunchentoot:start (make-instance 'hunchentoot:easy-acceptor :port *server-port*)))

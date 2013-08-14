@@ -1,9 +1,8 @@
 ;;;; package.lisp
 
 (defpackage #:deal 
-  (:use #:cl #:optima #:json #:cl-mop)
-  (:import-from #:bordeaux-threads #:make-lock #:with-lock-held)
-  (:import-from #:hunchentoot #:start-session #:define-easy-handler))
+  (:use #:cl #:optima #:json #:cl-mop #:hunchentoot)
+  (:import-from #:bordeaux-threads #:make-lock #:with-lock-held))
 
 (in-package #:deal)
 ;;;;;;;;;; Config variables
