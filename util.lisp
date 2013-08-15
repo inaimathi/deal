@@ -67,13 +67,6 @@
      collect d into rolls summing d into total
      finally (return (values total rolls))))
 
-;;; This'll actually have to be side-effect producting. It needs to save history AS WELL AS
-;;; sending the request out to the appropriate stream server. Also, we need a history handler.
-(defun publish-move! (move game-id &optional (stream-server *stream-server*))
-  (http-request 
-   (format nil "~apub?id=~a" stream-server game-id) 
-   :method :post :content move))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; All for the custom define-handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

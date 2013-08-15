@@ -8,7 +8,7 @@
    (passphrase :accessor passphrase :initform nil :initarg :passphrase)
    (tablecloth :accessor tablecloth :initform nil :initarg :tablecloth)
    (current-player :accessor current-player :initform nil)
-   (events :accessor events :initform nil)
+   (history :accessor history :initform nil)
    (lock :accessor lock :initform (make-lock))))
 
 ;;;;;;;;;; Game elements
@@ -48,6 +48,12 @@
 				    collect (make-instance 
 					     'card :content c :face face 
 					     :card-type (first a-deck) :belongs-to (id player))))))
+
+(defmethod publish! ((table table) move &optional (stream-server *stream-server*))
+  (push move (history table))
+  (http-request
+   (format nil "~apub?id=~a" stream-server (id table))
+   :method :post :content (encode-json-to-string move)))
 
 ;;;;;;;;;; delete/insert methods (more in model/server.lisp)
 (defmethod delete! ((table table) (thing placeable))

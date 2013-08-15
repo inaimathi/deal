@@ -14,12 +14,11 @@
 (define-handler (show-table) ((table :table))
   (redact table))
 
+(define-handler (table-history) ((table :table))
+  (history table))
+
 (define-handler (my-hand) ()
   (hash-values (hand (session-value :player))))
-
-;;;;; SSEs
-(define-sse-handler (event-source) ((table :table))
-  (events table))
 
 ;;;;; Table-related
 (define-handler (game/new-private-table) ((passphrase :string))
