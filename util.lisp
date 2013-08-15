@@ -2,7 +2,7 @@
 
 (proclaim '(inline sym->keyword))
 
-;;;;; Simple anaphorics/custom flow control constructs
+;;;;; Simple anaphors/custom flow control constructs
 (defmacro aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
@@ -67,6 +67,13 @@
      collect d into rolls summing d into total
      finally (return (values total rolls))))
 
+;;; This'll actually have to be side-effect producting. It needs to save history AS WELL AS
+;;; sending the request out to the appropriate stream server. Also, we need a history handler.
+(defun publish-move! (move game-id &optional (stream-server *stream-server*))
+  (http-request 
+   (format nil "~apub?id=~a" stream-server game-id) 
+   :method :post :content move))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;; All for the custom define-handler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -112,10 +119,15 @@
     (_ nil)))
 
 (defun type-pieces (args)
-  "Takes a list of arguments and returns three values:
+  "Takes a list of arguments and returns five values:
+- The final argument list
+- The table lookups
+- The table-related assertions
 - The conversion expressions
-- The names (for use as final args)
-- The lookup assertions"
+- The lookup assertions for all non-tables
+
+  Tables and others have to be separaed because the other lookups/assertions
+need access to a valid Table object to do anything other than error."
   (loop for (name type) in args
      for table? = (eq type :table)
      for t-exp = (type-expression name type)
@@ -152,9 +164,3 @@
 		     (let* ,(append table-lookups type-conversions)
 		       ,@(append table-assertions lookup-assertions)
 		       (encode-json-to-string (progn ,@body))))))))))
-
-(defmacro define-sse-handler ((name) (&rest args) &body body)
-  `(define-handler (,name) (,@args)
-     (setf (header-out :cache-control) "no-cache"
-	   (content-type*) "text/event-stream")
-     ,@body))
