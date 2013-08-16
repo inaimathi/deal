@@ -33,25 +33,30 @@
 
 (define-handler (game/join-table) ((table :table) (passphrase :string))
   (with-table-lock
-    (setf (session-value :player) (make-instance 'player))
-    (insert! table (session-value :player))
-    (redact table)))
+      (let ((pl (make-instance 'player)))
+	(setf (session-value :player) player)
+	(insert! table player)
+	(publish! table :joined)
+	(redact table))))
 
 ;;;; Game related (once you're already at a table)
 (define-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
   (with-table-lock
     (set-props thing x y z rot)
+    (publish! table :moved  `((thing . ,(id thing)) (x . ,x) (y . ,y) (z . ,z) (rot . ,rot)))
     (redact table)))
 
 (define-handler (play/take-control) ((table :table) (thing :placeable))
   (with-table-lock
     (setf (belongs-to thing) (id (session-value :player)))
+    (publish! table :took-control `((thing . ,(id thing))))
     (redact table)))
 
 (define-handler (play/flip) ((table :table) (thing :flippable))
   (with-table-lock
     (with-slots (face) thing
       (setf face (if (eq face :up) :down :up))
+      (publish! table :flipped `((thing . ,(redact thing))))
       (redact table))))
 
 (define-handler (play/new-stack-from-cards) ((table :table) (cards (:list card)))
@@ -61,6 +66,7 @@
       (loop for card in cards 
 	 do (remhash (id card) (things table))
 	 do (insert! stack card))
+      (publish! table :stacked-up `((stack . ,(redact stack)) (cards . ,(mapcar #'id cards))))
       (redact table))))
 
 (define-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (face :facing) (x :int) (y :int) (z :int) (rot :int))
@@ -68,9 +74,8 @@
     (let ((stack (deck->stack (session-value :player) (cdr (assoc deck-name (decks *server*) :test #'string=)) :face face)))
       (set-props stack x y z rot)
       (insert! table stack)
+      (publish! table :new-deck `((name . ,deck-name) (stack . ,(redact stack))))
       (redact table))))
-
-
 
 ;;;;; Stacks
 (define-handler (stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
@@ -78,11 +83,13 @@
     (let ((card (pop! stack)))
       (set-props card x y z rot)
       (insert! table card)
+      (publish! table :played-from-stack `((stack . ,(id stack)) (card . ,(redact card))))
       (redact table))))
 
 (define-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
   (with-table-lock
     (move! card table stack)
+    (publish! table :added-to-stack `((stack . ,(id stack)) (card . ,(id card))))
     (redact table)))
 
 (define-handler (stack/merge) ((table :table) (stacks (:list stack)))
@@ -91,6 +98,7 @@
       (loop for s in (rest stacks)
 	 do (dolist (c (cards s)) (insert! c (cards stack)))
 	 do (remhash (id s) (things table)))
+      (publish! table :merged-stacks `((stack . ,(redact stack)) (stacks ,@(mapcar #'id stacks))))
       (redact table))))
 
 ;;;;; Hand
@@ -98,16 +106,19 @@
   (with-table-lock
     (setf (face card) face (x card) x (y card) y (z card) z (rot card) rot)
     (move! card (session-value :player) table)
+    (publish! table :played-from-hand `((card . ,(redact card))))
     (redact table)))
 
 (define-handler (hand/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
   (with-table-lock
     (move! card (session-value :player) stack)
+    (publish! table :played-to-stack `((stack . ,(id stack)) (card . ,(redact card))))
     (redact table)))
 
 (define-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
   (with-table-lock
     (move! card table (session-value :player))
+    (publish! table :picked-up `((card . ,(id card))))
     (redact table)))
 
 ;;;;; Non-table handlers
@@ -118,24 +129,27 @@
 		   ((> 0 modifier) modifier)
 		   (t nil))))
     (multiple-value-bind (total rolls) (roll num-dice die-size)
-      `((dice . ,(format nil "~ad~a~@[~a~]" num-dice die-size mod)) (total . ,(+ total modifier)) (rolls . ,rolls)))))
+      (publish! table :rolled
+		`((dice . ,(format nil "~ad~a~@[~a~]" num-dice die-size mod)) 
+		  (total . ,(+ total modifier))
+		  (rolls . ,rolls))))))
 
 (define-handler (play/coin-toss) ()
-  (pick (list :heads :tails)))
+  (publish! table :flipped-coin `((result . ,(pick (list :heads :tails))))))
 
 (define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (with-table-lock
     (loop with rep = (min num (card-count stack)) repeat rep
        do (insert! (session-value :player) (pop! stack)))
+    (publish! table :drew-from `((stack . ,(id stack)) (count . ,num)))
     (hash-values (hand (session-value :player)))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
+  (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))
   (take (- max min) (drop (+ min 1) (cards stack))))
 
 (define-handler (stack/show) ((table :table) (stack :stack) (min :int) (max :int))
-  ;;   This one should publish the cards out to the table event stack, 
-  ;; rather than just notifying everyone of the action.
-  (take (- max min) (drop (+ min 1) (cards stack))))
+  (publish! table :revealed `((stack . ,(id stack)) (cards ,@(take (- max min) (drop (+ min 1) (cards stack)))))))
 
 ;; (define-handler (stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))
 ;;   ;; TODO
