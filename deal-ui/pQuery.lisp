@@ -60,11 +60,47 @@
 		  (,fn event)
 		  (setf (@ window event return-value) false)))))))
 
+(defpsmacro $click (target &rest body)
+  `($ ,target (click (lambda (event) ,@body))))
+
+;;;;;;;;;; Menus
+
+;;;;; From
+;; ($context-menu ($right-click "#board")
+;;;;;          ("New Deck" (sequence (lambda (deck-name) (new-deck deck-name current-x current-y 0 0)) *deck-lists*))
+;;;;; 	       ("New Deck" (list ("54-card french" (new-deck (@ *decks-list* 0) :down current-x current-y 0 0))
+;; 				 ("Some other deck")))
+;; 	       ("Add Counter")
+;; 	       ("Add Mini")
+;; 	       ("Roll")
+;; 	       ("Flip Coin"))
+
+;;;;; To
+;; ($ "#board-menu" (menu) (hide))
+;; ($right-click "#board" 
+;; 	      (log "RIGHT CLICKED on #board" event ($ "#board-menu" (position)) :left (@ event client-x) :top (@ event client-y))
+;; 	      ($ "#board-menu" (show) (css (create :left (@ event client-x) :top (@ event client-y)))))
+;; ($ "#new-deck" (click 
+;; 		(fn 
+;; 		 (let* ((position ($ "#board-menu" (position)))
+;; 			(x (@ position left))
+;; 			(y (@ position top)))
+;; 		   (new-deck (@ *decks-list* 0) :down x y 0 0)
+;; 		   ($ "#board-menu" (hide))))))
+;; (:ul :id "board-menu" :class "floating-menu"
+;; 			      (:li (:a :href "javascript: void(0)" "New Deck")
+;; 				   (:ul (:li (:a :id "new-deck" :href "javascript: void(0)" "54-card french"))
+;; 					(:li (:a :href "javascript: void(0)" "Some other deck"))))
+;; 			      (:li (:a :href "javascript: void(0)" "Add Counter"))
+;; 			      (:li (:a :href "javascript: void(0)" "Add Mini"))
+;; 			      (:li (:a :href "javascript: void(0)" "Roll"))
+;; 			      (:li (:a :href "javascript: void(0)" "Flip Coin"))
+;; 			      (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel")))
+
 ;;;;;;;;;; Define client-side ajax handlers
 (defpsmacro define-ajax (name uri arg-list &body body)
   `(defun ,name ,arg-list
-     (log *current-table-id* ,@arg-list)
-     ($post ,uri (:table *current-table-id* ,@(args->plist arg-list))
+     ($post ,uri (,@(unless (member 'table arg-list) `(:table *current-table-id*)) ,@(args->plist arg-list)) 
 	    ,@body)))
 
 ;;;;;;;;;; Defining markup/behavior hybrids made easier

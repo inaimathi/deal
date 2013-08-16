@@ -10,12 +10,12 @@
 (compile-css "static/css/main.css"
 	     `((body :font-family sans-serif)
 
-	       (.floating-menu :font-size x-small :width 150px)
+	       (.floating-menu :font-size x-small :width 150px :position absolute)
 	       
-	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc")
+	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc" :cursor move)
 	       (".stack .card-count" :font-size x-small :text-align right)
 
-	       (.card ,@css-card-size :background-color "#fff" :border "1px solid #ccc" :position absolute)
+	       (.card ,@css-card-size :background-color "#fff" :border "1px solid #ccc" :position absolute :cursor move)
 	       (".card .content" :font-size small :font-weight bold)
 	       (".card .type" :font-size xx-small :text-align right)
 	       (.card-in-hand :position relative)
@@ -25,9 +25,9 @@
 	       
 	       (\#board ,@(css-square 500))
 	       
-	       (\#hand-container :width 400px :height 120px :top 0px :left 0px :position absolute :border "1px solid #ddd" :background-color "#fff")
+	       (\#hand-container :width 400px :height 120px :top 8px :left 518px :position absolute :border "1px solid #ddd" :background-color "#fff")
 	       ("#hand-container h3" :margin 0px :padding 3px :background-color "#eee" :cursor move)
-	       (\#hand :clear both :padding 3px :max-height 85px :overflow auto)
+	       (\#hand :clear both :padding 3px)
 	       ("#hand .card" :float left)))
 
 ;;;;; JS
@@ -40,8 +40,8 @@
 		  (:card-in-hand 
 		   (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0)))
 		 (when ts ($map ts 
-				(cond ((= (@ elem type) :stack) (create-stack board-selector elem))
-				      ((= (@ elem type) :card) (create-card board-selector elem)))))))
+				(cond ((= (@ elem type) :stack) (create-stack "body" elem))
+				      ((= (@ elem type) :card) (create-card "body" elem)))))))
 	     
 	     (defun render-hand (cards)
 	       (let ((hand-selector "#hand"))
@@ -95,25 +95,39 @@
 	      ($post "/list-handlers" () (setf *handlers-list* res))
 	      ($post "/list-decks" () (setf *decks-list* res))
 	      ($post "/list-tables" () 
-		     (setf *tables-list* res
-			   *current-table-id* (@ *tables-list* 0))
-		     (show-table)
-		     (show-hand))
+		     (join-table (@ res 0) ""))
 	      ($draggable "#hand-container" (:handle "h3"))
-	      ($ "#btn-add-deck" (click (fn (new-stack (@ *decks-list* 0) :down 0 0 0 0))))
-	      ($ "#board-menu" (menu))
-	      ($right-click "#board" (log "RIGHT CLICKED on #board" event)))
+
+	      ;;; Menu definition (plus the markup from the HTML file)
+	      ($ "#board-menu" (menu) (hide))
+	      ($right-click "#board" 
+			    (log "RIGHT CLICKED on #board" event ($ "#board-menu" (position)) :left (@ event client-x) :top (@ event client-y))
+			    ($ "#board-menu" (show) (css (create :left (@ event client-x) :top (@ event client-y)))))
+	      ($ "#new-deck" (click 
+			      (fn 
+			       (let* ((position ($ "#board-menu" (position)))
+				      (x (@ position left))
+				      (y (@ position top)))
+				 (log :down x y 0 0)
+				 (new-deck (@ *decks-list* 0) :down x y 0 0)
+				 ($ "#board-menu" (hide)))))))
 	     
 	     ;;; Client-side handler definitions
+	     (define-ajax join-table "/game/join-table" (table passphrase)
+			  (log "JOINING TABLE" res)
+			  (setf *current-table-id* (@ res :id))
+			  (show-hand)
+			  (render-board res))
+
 	     (define-ajax show-table "/show-table" ()
 			  (log "SHOWING BOARD" res)			  
 			  (render-board res))
-
+	     
 	     (define-ajax show-hand "/my-hand" ()
 			  (log "SHOWING HAND" res)
 			  (render-hand res))
 	     
-	     (define-ajax new-stack "/play/new-stack-from-deck" (deck-name face x y z rot)
+	     (define-ajax new-deck "/play/new-stack-from-deck" (deck-name face x y z rot)
 			  (log "NEW DECK" res)
 			  (render-board res))
 	     
@@ -127,6 +141,10 @@
 	     (define-ajax play "/hand/play" (card face x y z rot)
 			  (log "PLAYED" res)
 			  ($ (+ "#" card) (remove))
+			  (render-board res))
+	     
+	     (define-ajax new-stack-from-cards "/play/new-stack-from-cards" (cards)
+			  (log "NEW STACK" cards)
 			  (render-board res))))
 
 ;;;;; HTML
@@ -136,13 +154,16 @@
 		  (:head (:title "Tabletop Prototyping System - Deal")
 			 (styles "jquery-ui-1.10.3.custom.min.css" "main.css")
 			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "render.js" "deal.js"))
-		  (:body (:button :id "btn-add-deck" "Add Deck")
-			 (:div :id "board")
+		  (:body (:div :id "board")
 			 (:div :id "hand-container"
 			       (:h3 "Hand")
 			       (:div :id "hand"))
 			 (:ul :id "board-menu" :class "floating-menu"
-			      (:li (:a :href "#" "Add Deck")
-				   (:ul (:li (:a :href "#" "54-card french"))))
-			      (:li (:a :href "#" "Roll"))
-			      (:li (:a :href "#" "Flip Coin")))))))
+			      (:li (:a :href "javascript: void(0)" "New Deck")
+				   (:ul (:li (:a :id "new-deck" :href "javascript: void(0)" "54-card french"))
+					(:li (:a :href "javascript: void(0)" "Some other deck"))))
+			      (:li (:a :href "javascript: void(0)" "Add Counter"))
+			      (:li (:a :href "javascript: void(0)" "Add Mini"))
+			      (:li (:a :href "javascript: void(0)" "Roll"))
+			      (:li (:a :href "javascript: void(0)" "Flip Coin"))
+			      (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel")))))))
