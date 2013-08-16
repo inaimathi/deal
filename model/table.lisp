@@ -50,14 +50,13 @@
 					     :card-type (first a-deck) :belongs-to (id player))))))
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server*))
-  (push move (history table))
-  (http-request
-   (format nil "~apub?id=~a" stream-server (id table))
-   :method :post 
-   :content (encode-json-to-string 
-	     (cons `(type . ,action-type)
-		   (cons `(player . ,(session-value :player))
-			 move)))))
+  (let ((full-move (cons `(type . ,action-type)
+			 (cons `(player . ,(id (session-value :player)))
+			       move))))
+    (push full-move (history table))
+    (http-request
+     (format nil "~apub?id=~a" stream-server (id table))
+     :method :post :content (encode-json-to-string full-move))))
 
 ;;;;;;;;;; delete/insert methods (more in model/server.lisp)
 (defmethod delete! ((table table) (thing placeable))
