@@ -97,11 +97,17 @@
 ;; 			      (:li (:a :href "javascript: void(0)" "Flip Coin"))
 ;; 			      (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel")))
 
-;;;;;;;;;; Define client-side ajax handlers
+;;;;;;;;;; Define client-side handlers
 (defpsmacro define-ajax (name uri arg-list &body body)
   `(defun ,name ,arg-list
      ($post ,uri (,@(unless (member 'table arg-list) `(:table *current-table-id*)) ,@(args->plist arg-list)) 
 	    ,@body)))
+
+(defpsmacro define-stream-handlers (name args &body type/body-list)
+  (declare (ignore args)) ;; just for indenting purposes
+  `(defvar ,name
+     (create ,@(loop for (type . fn-body) in type/body-list
+		  collect type collect `(lambda (ev) ,@fn-body)))))
 
 ;;;;;;;;;; Defining markup/behavior hybrids made easier
 (defun expand-self-expression (form self-elem)

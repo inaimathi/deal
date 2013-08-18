@@ -1,3 +1,4 @@
+### -*- mode: conf; -*-
 pid         logs/nginx.pid;
 error_log   logs/nginx-main_error.log debug;
 
@@ -133,13 +134,8 @@ http {
         }
 
         location ~ /ev/(.*) {
-            # activate subscriber mode for this location
             push_stream_subscriber;
-
-            # positional channel path
             set $push_stream_channels_path              $1;
-
-            # activate event source support for this location
             push_stream_eventsource_support on;
         }
     }
