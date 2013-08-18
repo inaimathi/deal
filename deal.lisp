@@ -37,6 +37,11 @@
 	(redact table))))
 
 ;;;; Game related (once you're already at a table)
+(define-handler (play/speak) ((table :table) (message :string))
+  (let ((msg (if (> (length message) 255) (subseq message 0 255))))
+    (publish! table :said `((message . ,msg)))
+    :ok))
+
 (define-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
   (with-table-lock
     (set-props thing x y z rot)
