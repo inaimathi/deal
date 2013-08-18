@@ -95,9 +95,10 @@
 	     (doc-ready
 	      ($post "/server-info" ()
 		     (log res)
-		     (setf *handlers-list* (@ res 'handlers)
-			   *decks-list* (@ res 'decks)
-			   *tables-list* (@ res 'public-tables))
+		     (with-slots (handlers decks public-tables) res
+		       (setf *handlers-list* handlers
+			     *decks-list* decks
+			     *tables-list* public-tables))
 		     (log *handlers-list* *decks-list* *tables-list*)
 		     (join-table (@ *tables-list* 0) ""))
 	      
@@ -136,24 +137,41 @@
 			  (render-board res))
 
 	     (define-stream-handlers *stream-handlers* ()
-	       (:joined (log "New Player joined"))
-	       (:moved (log "WE'VE GOT A MOVE HERE!"))
-	       (:took-control (log "Someone took something"))
-	       (:flipped (log "Someone flipped something"))
-	       (:stacked-up (log "Made a stack from cards"))
-	       (:new-deck (log "Plonked down a new deck"))
-	       (:played-from-stack (log "Played the top card from a stack"))
-	       (:added-to-stack (log "Put a card onto a stack"))
-	       (:merged-stacks (log "Put some stacks together"))
-	       (:played-from-hand (log "Played a card"))
-	       (:played-to-stack (log "Played to the top of a stack"))
-	       (:picked-up (log "Picked up a card"))
-	       (:rolled (log "Rolled"))
-	       (:flipped-coin (log "Flipped a coin"))
-	       (:drew-from (log "Drew a card from a stack"))
-	       (:peeked (log "Peeked at cards from a stack"))
-	       (:revealed (log "Showed everyone cards from a stack")))
+	       (joined (log "New Player joined"))
 
+	       (moved 
+		(with-slots (thing x y) ev
+		  ($ (+ "#" thing) (offset (create :left x :top y)))))
+	       (took-control (log "Someone took something"))
+	       (flipped (log "Someone flipped something"))
+
+	       (new-deck 
+		(log "Plonked down a new deck" ev)
+		(create-stack "body" (@ ev stack)))
+	       (stacked-up (log "Made a stack from cards"))
+	       (merged-stacks (log "Put some stacks together"))
+	       (added-to-stack (log "Put a card onto a stack"))
+
+	       (drew-from 
+		(let* ((id (+ "#" (@ ev stack)))
+		       (count ($int (+ id " .card-count") 1)))
+		  ($ (+ id " .cards .card") (first) (remove))
+		  ($ (+ id " .card-count") (html (+ "x" (- count 1)))))
+		($highlight (+ "#" (@ ev stack))))
+
+	       (peeked (log "Peeked at cards from a stack"))
+	       (revealed (log "Showed everyone cards from a stack"))
+
+	       (played-from-hand 
+		(create-card "body" (@ ev card)))
+
+	       (played-from-stack (log "Played the top card from a stack"))
+	       (played-to-stack (log "Played to the top of a stack"))
+	       (picked-up (log "Picked up a card"))
+
+	       (rolled (log "Rolled"))
+	       (flipped-coin (log "Flipped a coin")))
+	     
 	     (define-ajax show-table "/show-table" ()
 			  (log "SHOWING BOARD" res)			  
 			  (render-board res))
@@ -162,21 +180,17 @@
 			  (log "SHOWING HAND" res)
 			  (render-hand res))
 	     
-	     (define-ajax new-deck "/play/new-stack-from-deck" (deck-name face x y z rot)
-			  (log "NEW DECK" res)
-			  (render-board res))
+	     (define-ajax new-deck "/play/new-stack-from-deck" (deck-name face x y z rot))
 	     
 	     (define-ajax draw "/stack/draw" (stack num)
-			  (log "DREW" res)
+			  (log "DREW" res "FROM" stack)
 			  (render-hand res))
 	     
 	     (define-ajax move "/play/move" (thing x y z rot)
 			  (log "MOVED" res))
 	     
 	     (define-ajax play "/hand/play" (card face x y z rot)
-			  (log "PLAYED" res)
-			  ($ (+ "#" card) (remove))
-			  (render-board res))
+			  ($ (+ "#" card) (remove)))
 	     
 	     (define-ajax new-stack-from-cards "/play/new-stack-from-cards" (cards)
 			  (log "NEW STACK" cards)

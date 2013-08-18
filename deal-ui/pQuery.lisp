@@ -19,6 +19,9 @@
 (defpsmacro $ (selector &body chains)
   `(chain (j-query ,selector) ,@chains))
 
+(defpsmacro $int (selector &optional (start 0))
+  `(parse-int (chain ($ ,selector (text)) (substring ,start))))
+
 (defpsmacro doc-ready (&body body) 
   `($ document (ready (fn ,@body))))
 
@@ -31,6 +34,9 @@
 		(lambda (data status jqXHR)
 		  (let ((res (string->obj (@ jqXHR response-text))))
 		    ,@body)))))
+
+(defpsmacro $highlight (target)
+  `($ ,target (effect :highlight nil 500)))
 
 (defpsmacro $droppable (target &rest class/action-list)
   `($ ,target (droppable 
@@ -107,7 +113,7 @@
   (declare (ignore args)) ;; just for indenting purposes
   `(defvar ,name
      (create ,@(loop for (type . fn-body) in type/body-list
-		  collect type collect `(lambda (ev) ,@fn-body)))))
+		  collect `,type collect `(lambda (ev) ,@fn-body)))))
 
 ;;;;;;;;;; Defining markup/behavior hybrids made easier
 (defun expand-self-expression (form self-elem)
@@ -125,7 +131,7 @@
 		 (recur (cdr form)))))))
 
 (defpsmacro define-thing (name markup &body behavior)
-  (deal::with-gensyms (thing container)
+  (with-gensyms (thing container)
     `(defun ,(intern (format nil "create-~a" name)) (container thing)
        (let* ((,thing thing)
 	      (,container container)

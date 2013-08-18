@@ -129,8 +129,8 @@ http {
             # Message size limit
             # client_max_body_size MUST be equal to client_body_buffer_size or
             # you will be sorry.
-            client_max_body_size                    32k;
-            client_body_buffer_size                 32k;
+            client_max_body_size                    64k;
+            client_body_buffer_size                 64k;
         }
 
         location ~ /ev/(.*) {
