@@ -49,7 +49,7 @@
 					     'card :content c :face face 
 					     :card-type (first a-deck) :belongs-to (id player))))))
 
-(defmethod publish! ((table table) action-type &optional move (stream-server *stream-server*))
+(defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
   (let ((full-move (cons `(type . ,action-type)
 			 (cons `(player . ,(id (session-value :player)))
 			       move))))

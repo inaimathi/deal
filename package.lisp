@@ -8,7 +8,7 @@
 (in-package #:deal)
 ;;;;;;;;;; Config variables
 (defparameter *server-port* 8080)
-(defparameter *stream-server* "http://localhost:9080/")
+(defparameter *stream-server-uri* "http://localhost:9080/")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *handlers* (make-hash-table :test 'equal))

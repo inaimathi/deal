@@ -90,12 +90,17 @@
 	     (defvar *handlers-list* nil)
 	     (defvar *decks-list* nil)
 	     (defvar *tables-list* nil)
+	     (defvar *game-stream* nil)
 
 	     (doc-ready
-	      ($post "/list-handlers" () (setf *handlers-list* res))
-	      ($post "/list-decks" () (setf *decks-list* res))
-	      ($post "/list-tables" () 
-		     (join-table (@ res 0) ""))
+	      ($post "/server-info" ()
+		     (log res)
+		     (setf *handlers-list* (@ res 'handlers)
+			   *decks-list* (@ res 'decks)
+			   *tables-list* (@ res 'public-tables))
+		     (log *handlers-list* *decks-list* *tables-list*)
+		     (join-table (@ *tables-list* 0) ""))
+	      
 	      ($draggable "#hand-container" (:handle "h3"))
 
 	      ;;; Menu definition (plus the markup from the HTML file)
@@ -116,6 +121,14 @@
 	     (define-ajax join-table "/game/join-table" (table passphrase)
 			  (log "JOINING TABLE" res)
 			  (setf *current-table-id* (@ res :id))
+			  (let ((game-stream-uri (concatenate 'string "/ev/" (chain *current-table-id* (to-upper-case)))))
+			    (setf *game-stream* (new (-event-source game-stream-uri)))
+			    (setf (@ *game-stream* onopen)
+				  (lambda (e) (log "Stream OPENED!"))
+				  (@ *game-stream* onerror)
+				  (lambda (e) (log "Stream ERRORED!" e))
+				  (@ *game-stream* onmessage)
+				  (lambda (e) (log "Stream UNLABELED MESSAGE!" e))))
 			  (show-hand)
 			  (render-board res))
 

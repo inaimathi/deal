@@ -5,11 +5,10 @@
 
 ;;;;;;;;;; Handlers
 ;;;;; Getters
-(define-handler (list-tables) ()
-  (hash-keys (public-tables *server*)))
-
-(define-handler (list-decks) ()
-  (mapcar #'car (decks *server*)))
+(define-handler (server-info) ()
+  `((handlers . ,*handlers*)
+    (public-tables . ,(hash-keys (public-tables *server*)))
+    (decks . ,(mapcar #'car (decks *server*)))))
 
 (define-handler (show-table) ((table :table))
   (redact table))
@@ -18,7 +17,7 @@
   (history table))
 
 (define-handler (my-hand) ()
-  (hash-values (hand (session-value :player))))
+   (hash-values (hand (session-value :player))))
 
 ;;;;; Table-related
 (define-handler (game/new-private-table) ((passphrase :string))
@@ -33,7 +32,7 @@
 
 (define-handler (game/join-table) ((table :table) (passphrase :string))
   (with-table-lock
-      (let ((pl (make-instance 'player)))
+      (let ((player (make-instance 'player)))
 	(setf (session-value :player) player)
 	(insert! table player)
 	(publish! table :joined)
