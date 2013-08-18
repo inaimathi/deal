@@ -19,9 +19,6 @@
 	       (".card .content" :font-size small :font-weight bold)
 	       (".card .type" :font-size xx-small :text-align right)
 	       (.card-in-hand :position relative)
-	       (".stack:hover .cards" :padding-top 50px)
-	       (".stack:hover .card" :position relative :margin-top -50px)
-	       (".stack:hover .card:hover" :margin-bottom 40px)
 	       
 	       (\#board ,@(css-square 500))
 	       
@@ -55,11 +52,7 @@
 		       :class (+ "stack" face-class)
 		       :style (self position)
 		       (:button :class "draw" "Draw")
-		       (:div :class "cards")
 		       (:div :class "card-count" (+ "x" (self card-count))))
-	       (when (self cards)
-		 ($map (self cards)
-		       (create-card-in-stack (+ css-id " .cards") elem)))
 	       ($draggable css-id () 
 			   (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
 	       ($ (+ css-id " .draw") (click (fn (draw (self id) 1)))))
@@ -155,7 +148,6 @@
 	       (drew-from 
 		(let* ((id (+ "#" (@ ev stack)))
 		       (count ($int (+ id " .card-count") 1)))
-		  ($ (+ id " .cards .card") (first) (remove))
 		  ($ (+ id " .card-count") (html (+ "x" (- count 1)))))
 		($highlight (+ "#" (@ ev stack))))
 

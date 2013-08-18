@@ -36,7 +36,7 @@
 		    ,@body)))))
 
 (defpsmacro $highlight (target)
-  `($ ,target (effect :highlight nil 500)))
+  `($ ,target (stop t t) (effect :highlight nil 500)))
 
 (defpsmacro $droppable (target &rest class/action-list)
   `($ ,target (droppable 

@@ -30,6 +30,7 @@
 (defclass stack (flippable)
   ((cards :accessor cards :initform nil :initarg :cards)
    (card-count :accessor card-count :initform 0 :initarg :card-count)
+   (card-type :accessor card-type :initarg :card-type)
    (face :initform :down)))
 
 (defclass counter (placeable)
@@ -42,7 +43,7 @@
   "Takes a deck (a list of card texts) and creates a stack (a pile of cards suitable for placing on a table)"
   (make-instance 'stack
 		 :face face
-		 :belongs-to (id player)
+		 :belongs-to (id player) :card-type (first a-deck)
 		 :card-count (length (rest a-deck))
 		 :cards (shuffle (loop for c in (rest a-deck)
 				    collect (make-instance 
@@ -106,9 +107,8 @@ so it made sense to formalize this."
 
 (defmethod redact ((stack stack))
   (cons '(type . :stack)
-	(cons `(cards . ,(mapcar #'redact (cards stack)))
-	      (remove-if (lambda (pair) (eq (first pair) 'cards)) 
-			 (to-alist stack)))))
+	(remove-if  (lambda (pair) (eq (first pair) 'cards)) 
+		    (to-alist stack))))
 
 (defmethod redact ((card card))
   (cons '(type . :card)

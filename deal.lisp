@@ -1,7 +1,5 @@
 ;;;; deal.lisp
 (in-package #:deal)
- 
-(define-handler (list-handlers) () *handlers*)
 
 ;;;;;;;;;; Handlers
 ;;;;; Getters
