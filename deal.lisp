@@ -20,13 +20,15 @@
 ;;;;; Table-related
 (define-handler (game/new-private-table) ((passphrase :string))
   (with-lock-held ((lock *server*))
-    (setf (session-value :player) (make-instance 'player))
-    (insert! *server* (make-instance 'table :players (list (session-value :player)) :passphrase passphrase))))
+    (let ((player (make-instance 'player)))
+      (setf (session-value :player) player)
+      (insert! *server* (make-instance 'table :players (list player) :passphrase passphrase)))))
 
 (define-handler (game/new-public-table) ()
   (with-lock-held ((lock *server*))
-    (setf (session-value :player) (make-instance 'player))
-    (insert! *server* (make-instance 'table :players (list (session-value :player))))))
+    (let ((player (make-instance 'player)))
+      (setf (session-value :player) player)
+      (insert! *server* (make-instance 'table :players (list player))))))
 
 (define-handler (game/join-table) ((table :table) (passphrase :string))
   (with-table-lock
