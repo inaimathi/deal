@@ -48,9 +48,11 @@
   (let ((l (copy-seq a-list)))
     (sort l #'> :key (lambda (n) (declare (ignore n)) (random 1.0)))))
 
-(defun take (count a-list)
-  (loop for elem in a-list repeat count
-     collect elem))
+(defmethod take ((count integer) (seq list))
+  (loop for elem in seq repeat count collect elem))
+
+(defmethod take ((count integer) (seq string))
+  (if (> (length seq) count) (subseq seq 0 count) seq))
 
 (defun drop (count a-list)
   (loop for (elem . rest) on a-list repeat (- count 1)

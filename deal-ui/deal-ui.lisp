@@ -29,7 +29,45 @@
 
 ;;;;; JS
 (to-file "static/js/render.js"
-	 (ps (defun render-board (table)
+	 (ps 
+	   (define-component lobby 
+	       (:div (:h3 "Welcome to Deal")
+		     (:ul :id "controls"
+			  (:li "New Game"))
+		     (:ul :id "open-games")))
+
+	   (define-component game
+	       (:div
+		(:div :id "board")
+		(:div :id "hand-container"
+		      (:h3 "Hand")
+		      (:div :id "hand"))
+		(:ul :id "board-menu" :class "floating-menu"
+		     (:li (:a :href "javascript: void(0)" "New Deck")
+			  (:ul (:li (:a :id "new-deck" :href "javascript: void(0)" "54-card french"))
+			       (:li (:a :href "javascript: void(0)" "Some other deck"))))
+		     (:li (:a :href "javascript: void(0)" "Add Counter"))
+		     (:li (:a :href "javascript: void(0)" "Add Mini"))
+		     (:li (:a :href "javascript: void(0)" "Roll"))
+		     (:li (:a :href "javascript: void(0)" "Flip Coin"))
+		     (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel"))))
+	     ($draggable "#hand-container" (:handle "h3"))
+
+	     ;;; Menu definition (plus the markup from the HTML file)
+	     ($ "#board-menu" (menu) (hide))
+	     ($right-click "#board" 
+			   (log "RIGHT CLICKED on #board" event ($ "#board-menu" (position)) :left (@ event client-x) :top (@ event client-y))
+			   ($ "#board-menu" (show) (css (create :left (@ event client-x) :top (@ event client-y)))))
+	     ($ "#new-deck" (click 
+			     (fn 
+			      (let* ((position ($ "#board-menu" (position)))
+				     (x (@ position left))
+				     (y (@ position top)))
+				(log :down x y 0 0)
+				(new-deck (@ *decks-list* 0) :down x y 0 0)
+				($ "#board-menu" (hide)))))))
+	   
+	   (defun render-board (table)
 	       (let ((board-selector "#board")
 		     (ts (@ table things)))
 		 ($ board-selector (empty))
@@ -94,22 +132,7 @@
 			     *tables-list* public-tables))
 		     (log *handlers-list* *decks-list* *tables-list*)
 		     (join-table (@ *tables-list* 0) ""))
-	      
-	      ($draggable "#hand-container" (:handle "h3"))
-
-	      ;;; Menu definition (plus the markup from the HTML file)
-	      ($ "#board-menu" (menu) (hide))
-	      ($right-click "#board" 
-			    (log "RIGHT CLICKED on #board" event ($ "#board-menu" (position)) :left (@ event client-x) :top (@ event client-y))
-			    ($ "#board-menu" (show) (css (create :left (@ event client-x) :top (@ event client-y)))))
-	      ($ "#new-deck" (click 
-			      (fn 
-			       (let* ((position ($ "#board-menu" (position)))
-				      (x (@ position left))
-				      (y (@ position top)))
-				 (log :down x y 0 0)
-				 (new-deck (@ *decks-list* 0) :down x y 0 0)
-				 ($ "#board-menu" (hide)))))))
+	      (show-game "body"))
 	     
 	     ;;; Client-side handler definitions
 	     (define-ajax join-table "/game/join-table" (table passphrase)
@@ -195,16 +218,4 @@
 		  (:head (:title "Tabletop Prototyping System - Deal")
 			 (styles "jquery-ui-1.10.3.custom.min.css" "main.css")
 			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "render.js" "deal.js"))
-		  (:body (:div :id "board")
-			 (:div :id "hand-container"
-			       (:h3 "Hand")
-			       (:div :id "hand"))
-			 (:ul :id "board-menu" :class "floating-menu"
-			      (:li (:a :href "javascript: void(0)" "New Deck")
-				   (:ul (:li (:a :id "new-deck" :href "javascript: void(0)" "54-card french"))
-					(:li (:a :href "javascript: void(0)" "Some other deck"))))
-			      (:li (:a :href "javascript: void(0)" "Add Counter"))
-			      (:li (:a :href "javascript: void(0)" "Add Mini"))
-			      (:li (:a :href "javascript: void(0)" "Roll"))
-			      (:li (:a :href "javascript: void(0)" "Flip Coin"))
-			      (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel")))))))
+		  (:body))))

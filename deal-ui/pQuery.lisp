@@ -140,3 +140,8 @@
 	 ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
 	 ,@(loop for clause in behavior
 	      collect (expand-self-expression clause thing))))))
+
+(defpsmacro define-component (name markup &body behavior)
+  `(defun ,(intern (format nil "show-~a" name)) (container)
+     ($ container (empty) (append (who-ps-html ,markup)))
+     ,@behavior))

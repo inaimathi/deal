@@ -17,20 +17,32 @@
 (define-handler (my-hand) ()
    (hash-values (hand (session-value :player))))
 
-;;;;; Table-related
-(define-handler (game/new-private-table) ((passphrase :string))
+;;;;; Lobby-related
+(define-handler (lobby/speak) ((message :string))
+  (ensure-player)
+  (publish! *server* :said (take 255 message))
+  :ok)
+
+(define-handler (lobby/tag) ((new-tag :string))
+  (let ((tg (take 255 new-tag))))
+  (aif (session-value :player)
+       (setf (tag it) tg)
+       (setf it (make-instance 'player :tag tg)))
+  :ok)
+
+(define-handler (lobby/new-private-table) ((passphrase :string))
   (with-lock-held ((lock *server*))
     (let ((player (make-instance 'player)))
       (setf (session-value :player) player)
       (insert! *server* (make-instance 'table :players (list player) :passphrase passphrase)))))
 
-(define-handler (game/new-public-table) ()
+(define-handler (lobby/new-public-table) ()
   (with-lock-held ((lock *server*))
     (let ((player (make-instance 'player)))
       (setf (session-value :player) player)
       (insert! *server* (make-instance 'table :players (list player))))))
 
-(define-handler (game/join-table) ((table :table) (passphrase :string))
+(define-handler (lobby/join-table) ((table :table) (passphrase :string))
   (with-table-lock
       (let ((player (make-instance 'player)))
 	(setf (session-value :player) player)
@@ -40,9 +52,8 @@
 
 ;;;; Game related (once you're already at a table)
 (define-handler (play/speak) ((table :table) (message :string))
-  (let ((msg (if (> (length message) 255) (subseq message 0 255))))
-    (publish! table :said `((message . ,msg)))
-    :ok))
+  (publish! table :said `((message . ,(take 255 message))))
+  :ok)
 
 (define-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
   (with-table-lock

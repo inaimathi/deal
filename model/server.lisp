@@ -13,7 +13,12 @@
 
 (defclass player ()
   ((id :reader id :initform (make-id))
+   (tag :accessor tag :initform "" :initarg :tag)
    (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
+
+(defun ensure-player (&optional (tag ""))
+  (unless (session-value :player)
+    (setf (session-value :player) (make-instance 'player :tag tag))))
 
 (defmethod redact ((player player))
   `((id . ,(id player))
@@ -48,3 +53,8 @@
 (defmethod insert! ((table table) (player player))
   "Sits a new player down at the given table"
   (push player (players table)))
+
+(defmethod publish! ((target server) action-type &optional message (stream-server *stream-server-uri*))
+  (let ((full-message `((type . ,action-type) (player . ,(id (session-value :player))) (message . ,message))))
+    (http-request (format nil "~apub?id=lobby" stream-server)
+		  :method :post :content (encode-json-to-string full-message))))
