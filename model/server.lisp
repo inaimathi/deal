@@ -13,7 +13,7 @@
 
 (defclass player ()
   ((id :reader id :initform (make-id))
-   (tag :accessor tag :initform "" :initarg :tag)
+   (tag :accessor tag :initform nil :initarg :tag)
    (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
 
 (defun ensure-player (&optional (tag ""))
@@ -55,6 +55,9 @@
   (push player (players table)))
 
 (defmethod publish! ((target server) action-type &optional message (stream-server *stream-server-uri*))
-  (let ((full-message `((type . ,action-type) (player . ,(id (session-value :player))) (message . ,message))))
+  (let ((full-message `((type . ,action-type) 
+			(player . ,(or (tag (session-value :player))
+				       (id (session-value :player)))) 
+			(message . ,message))))
     (http-request (format nil "~apub?id=lobby" stream-server)
 		  :method :post :content (encode-json-to-string full-message))))

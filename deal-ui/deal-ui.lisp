@@ -4,8 +4,9 @@
 ;;;;;;;;;; File generation
 ;;;;; CSS
 (defparameter css-card-size '(:width 50px :height 70px))
-
 (defun css-square (side-length) (list :width (px side-length) :height (px side-length) :border "1px solid #ddd"))
+
+(defparameter css-display-line '(:height 16px :display inline-block))
 
 (compile-css "static/css/main.css"
 	     `((body :font-family sans-serif)
@@ -25,17 +26,62 @@
 	       (\#hand-container :width 400px :height 120px :top 8px :left 518px :position absolute :border "1px solid #ddd" :background-color "#fff")
 	       ("#hand-container h3" :margin 0px :padding 3px :background-color "#eee" :cursor move)
 	       (\#hand :clear both :padding 3px)
-	       ("#hand .card" :float left)))
+	       ("#hand .card" :float left)
+
+	       ("#lobby .left-pane" :width 670px :float left)
+	       ("#lobby .right-pane" :width 300px :float left :margin-left 25px)
+	       ("#lobby ul" :padding 0px :list-style-type none)
+	       ("#lobby ul li" :margin-top 5px)
+	       
+	       ("#open-games" :height 400px :overflow auto)
+	       ("#open-games li span" ,@css-display-line)
+	       ("#open-games li .tag" :width 150px :text-align left)
+	       ("#open-games li .id" :font-size x-small)
+	       ("#open-games li .players" :width 50px :padding-right 5px :text-align right)
+	       ("#open-games button, #new-game" :float right)
+
+	       ("#chat-history" :height 400px :width 650px :overflow auto)
+	       ("#chat-history li span" ,@css-display-line :vertical-align text-top :clear both)
+	       ("#chat-history li .time" :font-size xx-small :text-align right :padding 5px :padding-right 10px)
+	       ("#chat-history li .poster" :font-style oblique :padding-right 10px)
+	       ("#chat-history li .message" :height auto :width 400px :word-break break-all)
+	       ("#chat-controls .text" :width 450px)))
 
 ;;;;; JS
 (to-file "static/js/render.js"
 	 (ps 
 	   (define-component lobby 
-	       (:div (:h3 "Welcome to Deal")
-		     (:ul :id "controls"
-			  (:li "New Game"))
-		     (:ul :id "open-games")))
-
+	       (:div :id "lobby"
+		     (:div :class "left-pane"
+			   (:ul :id "chat-history"
+				(:li (:span :class "time" "22:41:13 GMT-0400 (EDT)")
+				     (:span :class "poster" "Inaimathi:")
+				     (:span :class "message" "Test test test...")))
+			   (:ul :id "chat-controls"
+				(:li (:input :class "text" :type "text")
+				     (:button "Chat"))))
+		     (:div :class "right-pane"
+			   (:ul :id "open-games")
+			   (:ul (:li (:button :id "new-game" "New Game")))))
+	     ($post "/server-info" ()
+		    (with-slots (handlers decks public-tables) res
+		      (setf *handlers-list* handlers
+			    *decks-list* decks
+			    *tables-list* public-tables)
+		      (setf *lobby-stream*
+			    (event-source "/ev/lobby"
+					  (said (log "Someone said something" ev))
+					  (changed-nick (log "Someone changed nicks" ev))
+					  (started-game (log "New game started" ev))
+					  (filled-game (log "Game is now full" ev))))
+		      ($map *tables-list*
+			    (with-slots (id tag seated of) elem
+			      ($ "#open-games"
+				 (prepend (who-ps-html (:li (:span :class "tag" tag)
+							    (:span :class "id" id) 
+							    (:span :class "players" seated "/" of)
+							    (:button "Join"))))))))))
+	   
 	   (define-component game
 	       (:div
 		(:div :id "board")
@@ -65,7 +111,9 @@
 				     (y (@ position top)))
 				(log :down x y 0 0)
 				(new-deck (@ *decks-list* 0) :down x y 0 0)
-				($ "#board-menu" (hide)))))))
+				($ "#board-menu" (hide))))))
+;;	     (join-table (@ *tables-list* 0) "")
+	     )
 	   
 	   (defun render-board (table)
 	       (let ((board-selector "#board")
@@ -121,71 +169,52 @@
 	     (defvar *handlers-list* nil)
 	     (defvar *decks-list* nil)
 	     (defvar *tables-list* nil)
+	     (defvar *lobby-stream* nil)
 	     (defvar *game-stream* nil)
 
-	     (doc-ready
-	      ($post "/server-info" ()
-		     (log res)
-		     (with-slots (handlers decks public-tables) res
-		       (setf *handlers-list* handlers
-			     *decks-list* decks
-			     *tables-list* public-tables))
-		     (log *handlers-list* *decks-list* *tables-list*)
-		     (join-table (@ *tables-list* 0) ""))
-	      (show-game "body"))
+	     (doc-ready (show-lobby "body"))
 	     
 	     ;;; Client-side handler definitions
-	     (define-ajax join-table "/game/join-table" (table passphrase)
+	     (define-ajax join-table "/lobby/join-table" (table passphrase)
 			  (log "JOINING TABLE" res)
 			  (setf *current-table-id* (@ res :id))
-			  (let ((game-stream-uri (concatenate 'string "/ev/" (chain *current-table-id* (to-upper-case)))))
-			    (setf *game-stream* (new (-event-source game-stream-uri)))
-			    (setf (@ *game-stream* onopen)
-				  (lambda (e) (log "Stream OPENED!"))
-				  (@ *game-stream* onerror)
-				  (lambda (e) (log "Stream ERRORED!" e))
-				  (@ *game-stream* onmessage)
-				  (lambda (e) 
-				    (log "Stream UNLABELED MESSAGE!" e)
-				    (let ((ev (string->obj (@ e data))))
-				      ((@ *stream-handlers* (@ ev type)) ev)))))
+			  (setf *game-stream*
+				(event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
+					      (joined (log "New Player joined"))
+
+					      (moved 
+					       (with-slots (thing x y) ev
+						 ($ (+ "#" thing) (offset (create :left x :top y)))))
+					      (took-control (log "Someone took something"))
+					      (flipped (log "Someone flipped something"))
+
+					      (new-deck 
+					       (log "Plonked down a new deck" ev)
+					       (create-stack "body" (@ ev stack)))
+					      (stacked-up (log "Made a stack from cards"))
+					      (merged-stacks (log "Put some stacks together"))
+					      (added-to-stack (log "Put a card onto a stack"))
+
+					      (drew-from 
+					       (let* ((id (+ "#" (@ ev stack)))
+						      (count ($int (+ id " .card-count") 1)))
+						 ($ (+ id " .card-count") (html (+ "x" (- count 1)))))
+					       ($highlight (+ "#" (@ ev stack))))
+
+					      (peeked (log "Peeked at cards from a stack"))
+					      (revealed (log "Showed everyone cards from a stack"))
+
+					      (played-from-hand 
+					       (create-card "body" (@ ev card)))
+
+					      (played-from-stack (log "Played the top card from a stack"))
+					      (played-to-stack (log "Played to the top of a stack"))
+					      (picked-up (log "Picked up a card"))
+
+					      (rolled (log "Rolled"))
+					      (flipped-coin (log "Flipped a coin"))))
 			  (show-hand)
 			  (render-board res))
-
-	     (define-stream-handlers *stream-handlers* ()
-	       (joined (log "New Player joined"))
-
-	       (moved 
-		(with-slots (thing x y) ev
-		  ($ (+ "#" thing) (offset (create :left x :top y)))))
-	       (took-control (log "Someone took something"))
-	       (flipped (log "Someone flipped something"))
-
-	       (new-deck 
-		(log "Plonked down a new deck" ev)
-		(create-stack "body" (@ ev stack)))
-	       (stacked-up (log "Made a stack from cards"))
-	       (merged-stacks (log "Put some stacks together"))
-	       (added-to-stack (log "Put a card onto a stack"))
-
-	       (drew-from 
-		(let* ((id (+ "#" (@ ev stack)))
-		       (count ($int (+ id " .card-count") 1)))
-		  ($ (+ id " .card-count") (html (+ "x" (- count 1)))))
-		($highlight (+ "#" (@ ev stack))))
-
-	       (peeked (log "Peeked at cards from a stack"))
-	       (revealed (log "Showed everyone cards from a stack"))
-
-	       (played-from-hand 
-		(create-card "body" (@ ev card)))
-
-	       (played-from-stack (log "Played the top card from a stack"))
-	       (played-to-stack (log "Played to the top of a stack"))
-	       (picked-up (log "Picked up a card"))
-
-	       (rolled (log "Rolled"))
-	       (flipped-coin (log "Flipped a coin")))
 	     
 	     (define-ajax show-table "/show-table" ()
 			  (log "SHOWING BOARD" res)			  

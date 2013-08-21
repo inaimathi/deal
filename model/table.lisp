@@ -2,12 +2,13 @@
 
 (defclass table ()
   ((id :reader id :initform (make-id))
+   (tag :accessor tag :initform "" :initarg :tag)
    (started :reader started :initform (get-universal-time))
+   (max-players :accessor max-players :initform 12 :initarg :max-players)
    (players :accessor players :initform nil)
    (things :accessor things :initform (make-hash-table))
    (passphrase :accessor passphrase :initform nil :initarg :passphrase)
    (tablecloth :accessor tablecloth :initform nil :initarg :tablecloth)
-   (current-player :accessor current-player :initform nil)
    (history :accessor history :initform nil)
    (lock :accessor lock :initform (make-lock))))
 

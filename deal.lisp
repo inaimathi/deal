@@ -5,7 +5,9 @@
 ;;;;; Getters
 (define-handler (server-info) ()
   `((handlers . ,*handlers*)
-    (public-tables . ,(hash-keys (public-tables *server*)))
+    (public-tables . ,(hash-map (lambda (k v) 
+				  `((id . ,k) (tag . ,(tag v)) (seated . ,(length (players v))) (of . ,(max-players v))))
+				(public-tables *server*)))
     (decks . ,(mapcar #'car (decks *server*)))))
 
 (define-handler (show-table) ((table :table))
@@ -24,11 +26,14 @@
   :ok)
 
 (define-handler (lobby/tag) ((new-tag :string))
-  (let ((tg (take 255 new-tag))))
-  (aif (session-value :player)
-       (setf (tag it) tg)
-       (setf it (make-instance 'player :tag tg)))
-  :ok)
+  (let ((tg (take 255 new-tag))
+	(old))
+    (aif (session-value :player)
+	 (setf old (tag it) 
+	       (tag it) tg)
+	 (setf it (make-instance 'player :tag tg)))
+    (publish! *server* :changed-nick `((old-tag . ,old)))
+    :ok))
 
 (define-handler (lobby/new-private-table) ((passphrase :string))
   (with-lock-held ((lock *server*))

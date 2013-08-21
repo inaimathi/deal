@@ -109,12 +109,6 @@
      ($post ,uri (,@(unless (member 'table arg-list) `(:table *current-table-id*)) ,@(args->plist arg-list)) 
 	    ,@body)))
 
-(defpsmacro define-stream-handlers (name args &body type/body-list)
-  (declare (ignore args)) ;; just for indenting purposes
-  `(defvar ,name
-     (create ,@(loop for (type . fn-body) in type/body-list
-		  collect `,type collect `(lambda (ev) ,@fn-body)))))
-
 ;;;;;;;;;; Defining markup/behavior hybrids made easier
 (defun expand-self-expression (form self-elem)
   (flet ((recur (frm) (expand-self-expression frm self-elem)))
@@ -145,3 +139,16 @@
   `(defun ,(intern (format nil "show-~a" name)) (container)
      ($ container (empty) (append (who-ps-html ,markup)))
      ,@behavior))
+
+(defpsmacro event-source (uri &body name/body-list)
+  (with-gensyms (stream handlers ev)
+    `(let ((,stream (new (-event-source ,uri)))
+	   (,handlers (create ,@(loop for (name . fn-body) in name/body-list
+				  collect `,name collect `(lambda (ev) ,@fn-body)))))
+       (setf (@ ,stream onopen) (lambda (e) (log "Stream OPENED!"))
+	     (@ ,stream onerror) (lambda (e) (log "Stream ERRORED!" e))
+	     (@ ,stream onmessage)
+	     (lambda (e) 
+	       (let ((,ev (string->obj (@ e data))))
+		 ((@ ,handlers (@ ,ev type)) ,ev))))
+       ,stream)))
