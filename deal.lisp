@@ -10,7 +10,7 @@
 				(public-tables *server*)))
     (decks . ,(mapcar #'car (decks *server*)))))
 
-(define-handler (show-table) ((table :table))
+(define-handler (look-table) ((table :table))
   (redact table))
 
 (define-handler (table-history) ((table :table))

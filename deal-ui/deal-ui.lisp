@@ -33,18 +33,18 @@
 	       ("#lobby ul" :padding 0px :list-style-type none)
 	       ("#lobby ul li" :margin-top 5px)
 	       
-	       ("#open-games" :height 400px :overflow auto)
-	       ("#open-games li span" ,@css-display-line)
-	       ("#open-games li .tag" :width 150px :text-align left)
-	       ("#open-games li .id" :font-size x-small)
-	       ("#open-games li .players" :width 50px :padding-right 5px :text-align right)
-	       ("#open-games button, #new-game" :float right)
+	       ("#open-tables" :height 400px :overflow auto)
+	       ("#open-tables li span" ,@css-display-line)
+	       ("#open-tables li .tag" :width 150px :text-align left)
+	       ("#open-tables li .id" :font-size x-small)
+	       ("#open-tables li .players" :width 50px :padding-right 5px :text-align right)
+	       ("#open-tables button, #new-table" :float right)
 
 	       ("#chat-history" :height 400px :width 650px :overflow auto)
 	       ("#chat-history li span" ,@css-display-line :vertical-align text-top :clear both)
 	       ("#chat-history li .time" :font-size xx-small :text-align right :padding 5px :padding-right 10px)
 	       ("#chat-history li .poster" :font-style oblique :padding-right 10px)
-	       ("#chat-history li .message" :height auto :width 400px :word-break break-all)
+	       ("#chat-history li .message" :height auto :max-width 400px :word-break break-all)
 	       ("#chat-controls .text" :width 450px)))
 
 ;;;;; JS
@@ -58,12 +58,15 @@
 				(:li (:input :id "chat-input" :class "text" :type "text")
 				     (:button :id "send" "Send"))))
 		     (:div :class "right-pane"
-			   (:ul :id "open-games")
-			   (:ul (:li (:button :id "new-game" "New Game")))))
-
+			   (:ul :id "open-tables")
+			   (:ul (:li (:button :id "new-table" "New Table")))))
 	     ($click "#send" 
-		     ($post "/lobby/speak" (:message ($ "#chat-input" (val)))
-			    ($ "#chat-input" (val ""))))
+		     ($post "/lobby/speak" (:message ($ "#chat-input" (val))) ($ "#chat-input" (val ""))))
+	     ($ "#chat-input"
+		(keypress (lambda (event)
+			    (when (= (@ event which) 13)
+			      ($ "#send" (click))))))
+	     ($post "/lobby/tag" (:new-tag "Anonymous Coward"))
 	     ($post "/server-info" ()
 		    (with-slots (handlers decks public-tables) res
 		      (setf *handlers-list* handlers
@@ -79,17 +82,21 @@
 							   (:span :class "poster" (+ (or player "Anon") ":"))
 							   (:span :class "message" message)))))
 					  (changed-nick (log "Someone changed nicks" ev))
-					  (started-game (log "New game started" ev))
-					  (filled-game (log "Game is now full" ev))))
+					  (started-table (log "New table started" ev))
+					  (filled-table (log "Table is now full" ev))))
 		      ($map *tables-list*
 			    (with-slots (id tag seated of) elem
-			      ($prepend "#open-games"
-					(:li (:span :class "tag" tag)
+			      ($prepend "#open-tables"
+					(:li :id (+ "game-" id) 
+					     (:span :class "tag" tag)
 					     (:span :class "id" id) 
 					     (:span :class "players" seated "/" of)
-					     (:button "Join"))))))))
+					     (:button "Join")))
+			      ($click (+ "#game-" id " button") 
+				      (log "Joining!")
+				      (join-table id "")))))))
 	   
-	   (define-component game
+	   (define-component table
 	       (:div
 		(:div :id "board")
 		(:div :id "hand-container"
@@ -104,6 +111,7 @@
 		     (:li (:a :href "javascript: void(0)" "Roll"))
 		     (:li (:a :href "javascript: void(0)" "Flip Coin"))
 		     (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel"))))
+	     (log "IT KEEPS HAPPENING")
 	     ($draggable "#hand-container" (:handle "h3"))
 
 	     ;;; Menu definition (plus the markup from the HTML file)
@@ -117,9 +125,7 @@
 			    (y (@ position top)))
 		       (log :down x y 0 0)
 		       (new-deck (@ *decks-list* 0) :down x y 0 0)
-		       ($ "#board-menu" (hide))))
-;;	     (join-table (@ *tables-list* 0) "")
-	     )
+		       ($ "#board-menu" (hide)))))
 	   
 	   (defun render-board (table)
 	       (let ((board-selector "#board")
@@ -175,7 +181,7 @@
 	     (defvar *decks-list* nil)
 	     (defvar *tables-list* nil)
 	     (defvar *lobby-stream* nil)
-	     (defvar *game-stream* nil)
+	     (defvar *table-stream* nil)
 
 	     (doc-ready (show-lobby "body"))
 	     
@@ -183,7 +189,8 @@
 	     (define-ajax join-table "/lobby/join-table" (table passphrase)
 			  (log "JOINING TABLE" res)
 			  (setf *current-table-id* (@ res :id))
-			  (setf *game-stream*
+			  (show-table "body")
+			  (setf *table-stream*
 				(event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
 					      (joined (log "New Player joined"))
 
@@ -217,11 +224,11 @@
 					      (picked-up (log "Picked up a card"))
 
 					      (rolled (log "Rolled"))
-					      (flipped-coin (log "Flipped a coin"))))
+					      (flipped-coin (log "Flipped a coin"))))			  
 			  (show-hand)
 			  (render-board res))
 	     
-	     (define-ajax show-table "/show-table" ()
+	     (define-ajax look-table "/look-table" ()
 			  (log "SHOWING BOARD" res)			  
 			  (render-board res))
 	     
