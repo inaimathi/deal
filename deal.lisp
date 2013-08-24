@@ -22,7 +22,8 @@
 ;;;;; Lobby-related
 (define-handler (lobby/speak) ((message :string))
   (ensure-player)
-  (publish! *server* :said (take 255 message))
+  (when (> (length message) 0)
+    (publish! *server* :said (escape-string (take 255 message))))
   :ok)
 
 (define-handler (lobby/tag) ((new-tag :string))
@@ -57,7 +58,8 @@
 
 ;;;; Game related (once you're already at a table)
 (define-handler (play/speak) ((table :table) (message :string))
-  (publish! table :said `((message . ,(take 255 message))))
+  (when (> (length message) 0)
+    (publish! table :said `((message . ,(escape-string (take 255 message))))))
   :ok)
 
 (define-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))

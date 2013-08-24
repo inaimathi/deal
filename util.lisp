@@ -29,6 +29,15 @@
 		  collect p)))))
 
 ;;;;; Basic functions
+(defun escape-string (a-string)
+  (regex-replace-all 
+   "[<>]" a-string
+   (lambda (str a b match-start c d e)
+     (declare (ignore a b c d e))
+     (case (aref str match-start)
+       (#\< "&lt;")
+       (#\> "&gt;")))))
+
 (defun hash-keys (hash-table)
   (loop for key being the hash-keys of hash-table collect key))
 
