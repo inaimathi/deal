@@ -50,7 +50,7 @@ http {
     # broadcast
     push_stream_broadcast_channel_prefix        "broad_";
 
-    push_stream_message_template                "{\"id\":~id~,\"channel\":\"~channel~\",\"text\":\"~text~\"}";
+    push_stream_message_template                "~text~";
 
     # subscriber may create channels on demand or only authorized
     # (publisher) may do it?

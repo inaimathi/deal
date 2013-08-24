@@ -53,16 +53,17 @@
 	   (define-component lobby 
 	       (:div :id "lobby"
 		     (:div :class "left-pane"
-			   (:ul :id "chat-history"
-				(:li (:span :class "time" "22:41:13 GMT-0400 (EDT)")
-				     (:span :class "poster" "Inaimathi:")
-				     (:span :class "message" "Test test test...")))
+			   (:ul :id "chat-history")
 			   (:ul :id "chat-controls"
-				(:li (:input :class "text" :type "text")
-				     (:button "Chat"))))
+				(:li (:input :id "chat-input" :class "text" :type "text")
+				     (:button :id "send" "Send"))))
 		     (:div :class "right-pane"
 			   (:ul :id "open-games")
 			   (:ul (:li (:button :id "new-game" "New Game")))))
+
+	     ($click "#send" 
+		     ($post "/lobby/speak" (:message ($ "#chat-input" (val)))
+			    ($ "#chat-input" (val ""))))
 	     ($post "/server-info" ()
 		    (with-slots (handlers decks public-tables) res
 		      (setf *handlers-list* handlers
@@ -70,17 +71,23 @@
 			    *tables-list* public-tables)
 		      (setf *lobby-stream*
 			    (event-source "/ev/lobby"
-					  (said (log "Someone said something" ev))
+					  (said 
+					   (with-slots (player message) ev
+					     ($append "#chat-history"
+						      (:li (:span :class "time" 
+								  (new (chain (-date) (to-time-string))))
+							   (:span :class "poster" (+ (or player "Anon") ":"))
+							   (:span :class "message" message)))))
 					  (changed-nick (log "Someone changed nicks" ev))
 					  (started-game (log "New game started" ev))
 					  (filled-game (log "Game is now full" ev))))
 		      ($map *tables-list*
 			    (with-slots (id tag seated of) elem
-			      ($ "#open-games"
-				 (prepend (who-ps-html (:li (:span :class "tag" tag)
-							    (:span :class "id" id) 
-							    (:span :class "players" seated "/" of)
-							    (:button "Join"))))))))))
+			      ($prepend "#open-games"
+					(:li (:span :class "tag" tag)
+					     (:span :class "id" id) 
+					     (:span :class "players" seated "/" of)
+					     (:button "Join"))))))))
 	   
 	   (define-component game
 	       (:div
@@ -104,14 +111,13 @@
 	     ($right-click "#board" 
 			   (log "RIGHT CLICKED on #board" event ($ "#board-menu" (position)) :left (@ event client-x) :top (@ event client-y))
 			   ($ "#board-menu" (show) (css (create :left (@ event client-x) :top (@ event client-y)))))
-	     ($ "#new-deck" (click 
-			     (fn 
-			      (let* ((position ($ "#board-menu" (position)))
-				     (x (@ position left))
-				     (y (@ position top)))
-				(log :down x y 0 0)
-				(new-deck (@ *decks-list* 0) :down x y 0 0)
-				($ "#board-menu" (hide))))))
+	     ($click "#new-deck" 
+		     (let* ((position ($ "#board-menu" (position)))
+			    (x (@ position left))
+			    (y (@ position top)))
+		       (log :down x y 0 0)
+		       (new-deck (@ *decks-list* 0) :down x y 0 0)
+		       ($ "#board-menu" (hide))))
 ;;	     (join-table (@ *tables-list* 0) "")
 	     )
 	   
@@ -139,9 +145,8 @@
 		       :style (self position)
 		       (:button :class "draw" "Draw")
 		       (:div :class "card-count" (+ "x" (self card-count))))
-	       ($draggable css-id () 
-			   (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
-	       ($ (+ css-id " .draw") (click (fn (draw (self id) 1)))))
+	       ($draggable css-id () (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
+	       ($click (+ css-id " .draw") (draw (self id) 1)))
 	     
 	     (define-thing card 
 		 (:div :id (self id)
