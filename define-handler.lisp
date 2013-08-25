@@ -3,9 +3,9 @@
 (defun type-expression (arg type)
   "Given a symbol name and a type, returns the expression to read that type from a string"
   (match type
-    (:string 
+    ((or :string (cons :string _)) 
      nil)
-    (:int 
+    ((or :int (cons :int _)) 
      `(parse-integer ,arg :junk-allowed t))
     (:json 
      `(decode-json-from-string ,arg))
@@ -36,6 +36,18 @@
     (:facing `(assert (or (eq ,arg :up) (eq ,arg :down))))
     (:placeable `(assert (typep ,arg 'placeable)))
     (:flippable `(assert (typep ,arg 'flippable)))
+    ((list :string :min min) 
+     `(assert (>= (length ,arg) ,min)))
+    ((list :string :max max)
+     `(assert (>= ,max (length ,arg))))
+    ((list :string :min min :max max)
+     `(assert (>= ,max (length ,arg) ,min)))
+    ((list :int :min min)
+     `(assert (>= ,arg ,min)))
+    ((list :int :max max)
+     `(assert (>= ,arg ,max)))
+    ((list :int :min min :max max)
+     `(assert (>= ,max ,arg ,min)))
     ((list :card _) `(assert (typep ,arg 'card)))
     ((list :list lst-type)
      `(assert (every (lambda (a) (typep a ',lst-type)) ,arg)))

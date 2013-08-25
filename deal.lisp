@@ -19,19 +19,17 @@
    (hash-values (hand (session-value :player))))
 
 ;;;;; Lobby-related
-(define-handler (lobby/speak) ((message :string))
+(define-handler (lobby/speak) ((message (:string :min 2 :max 255)))
   (ensure-player)
-  (when (> (length message) 0)
-    (publish! *server* :said (escape-string (take 255 message))))
+  (publish! *server* :said (escape-string message))
   :ok)
 
-(define-handler (lobby/tag) ((new-tag :string))
-  (let ((tg (take 255 new-tag))
-	(old))
+(define-handler (lobby/tag) ((new-tag (:string :max 255)))
+  (let ((old))
     (aif (session-value :player)
 	 (setf old (tag it) 
-	       (tag it) tg)
-	 (setf (session-value :player) (make-instance 'player :tag tg)))
+	       (tag it) new-tag)
+	 (setf (session-value :player) (make-instance 'player :tag new-tag)))
     (publish! *server* :changed-nick `((old-tag . ,old)))
     :ok))
 
@@ -69,9 +67,8 @@
       (redact table))))
 
 ;;;; Game related (once you're already at a table)
-(define-player-handler (play/speak) ((table :table) (message :string))
-  (when (> (length message) 0)
-    (publish! table :said `((message . ,(escape-string (take 255 message))))))
+(define-player-handler (play/speak) ((table :table) (message (:string :min 2 :max 255)))
+  (publish! table :said `((message . ,(escape-string message))))
   :ok)
 
 (define-player-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
@@ -145,8 +142,7 @@
 
 ;;;;; Non-table handlers
 ;;; These handlers don't respond with a redacted table object because it wouldn't make sense in context
-(define-player-handler (play/roll) ((table :table) (num-dice :int) (die-size :int) (modifier :int))
-  (assert (and (> num-dice 0) (> die-size 0)))
+(define-player-handler (play/roll) ((table :table) (num-dice (:int :min 1)) (die-size (:int :min 2)) (modifier :int))
   (let ((mod (cond ((> modifier 0) (format nil "+~a" modifier))
 		   ((> 0 modifier) modifier)
 		   (t nil))))
