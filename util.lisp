@@ -63,6 +63,9 @@
 (defmethod take ((count integer) (seq string))
   (if (> (length seq) count) (subseq seq 0 count) seq))
 
+(defun trivial-range (min max)
+  (loop for i from min to max collect i))
+
 (defun drop (count a-list)
   (loop for (elem . rest) on a-list repeat (- count 1)
      finally (return rest)))

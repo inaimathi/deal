@@ -5,17 +5,26 @@
 ;;;;; CSS
 (defparameter css-card-size '(:width 50px :height 70px))
 (defun css-square (side-length) (list :width (px side-length) :height (px side-length) :border "1px solid #ddd"))
+(defun px (num) (format nil "~apx" num))
 
 (defparameter css-display-line '(:height 16px :display inline-block))
 (defparameter css-pane '(:height 500px :border "1px solid #ddd" :float left :margin "15px 0px 15px 15px" :padding 10px))
 (defparameter css-tight '(:margin 0px :padding 0px))
 (defparameter css-sub-window `(,@css-tight :overflow auto))
 
+(defun css-centered-absolute (width height)
+  `(:width ,(px width) :height ,(px height)
+	   :left 50% :top 50% :margin-left ,(px (- (/ width 2))) :margin-top ,(px (- (/ height 2)))
+	   :position absolute :z-index 10000 ))
+
 (compile-css "static/css/main.css"
 	     `((body ,@css-tight :font-family sans-serif)
 	       (.clear :clear both)
 
 	       (.floating-menu :font-size x-small :width 150px :position absolute)
+	       
+	       (.overlay ,@(css-centered-absolute 400 200) :background-color "#fff" :border-radius 5px :border "1px solid #ccc" :padding 10px :display none)
+	       (".overlay h3" ,@css-tight)
 	       
 	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc" :cursor move)
 	       (".stack .card-count" :font-size x-small :text-align right)
@@ -78,8 +87,13 @@
 		     (:div :class "right-pane"
 			   (:ul :id "open-tables")
 			   (:ul (:li (:button :id "new-table" "New Table"))))
-		     (:br :class "clear"))
+		     (:div :id "new-table-setup" :class "overlay"
+			   (:h3 "New Table")
+			   (:input :class "game-tag")
+			   (:button :class "ok" "Ok")))
 	     ($click "#send" ($post "/lobby/speak" (:message ($ "#chat-input" (val))) ($ "#chat-input" (val ""))))
+	     ($click "#new-table-setup .ok" (new-public-table ($ "#new-table-setup .game-tag" (val))))
+	     ($click "#new-table" ($ "#new-table-setup" (show)))
 	     ($ "#chat-input"
 		(keypress (lambda (event)
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
@@ -124,13 +138,11 @@
 		      (:h3 "Hand")
 		      (:div :id "hand"))
 		(:ul :id "board-menu" :class "floating-menu"
-		     (:li (:a :href "javascript: void(0)" "New Deck")
-			  (:ul (:li (:a :id "new-deck" :href "javascript: void(0)" "54-card french"))
-			       (:li (:a :href "javascript: void(0)" "Some other deck"))))
-		     (:li (:a :href "javascript: void(0)" "Add Counter"))
-		     (:li (:a :href "javascript: void(0)" "Add Mini"))
-		     (:li (:a :href "javascript: void(0)" "Roll"))
-		     (:li (:a :href "javascript: void(0)" "Flip Coin"))
+		     (:li (:a :href "javascript: void(0)":id "new-deck" "New Deck"))
+;;		     (:li (:a :href "javascript: void(0)" "Add Counter"))
+;;		     (:li (:a :href "javascript: void(0)" "Add Mini"))
+;;		     (:li (:a :href "javascript: void(0)" "Roll"))
+;;		     (:li (:a :href "javascript: void(0)" "Flip Coin"))
 		     (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel"))))
 	     (log "IT KEEPS HAPPENING")
 	     ($draggable "#hand-container" (:handle "h3"))
@@ -146,7 +158,43 @@
 			    (y (@ position top)))
 		       (log :down x y 0 0)
 		       (new-deck (@ *decks-list* 0) :down x y 0 0)
-		       ($ "#board-menu" (hide)))))
+		       ($ "#board-menu" (hide))))
+	     ($click "#cancel" ($ "#board-menu" (hide)))
+	     (setf *table-stream*
+		   (event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
+				 (joined (log "New Player joined"))
+
+				 (moved 
+				  (with-slots (thing x y) ev
+				    ($ (+ "#" thing) (offset (create :left x :top y)))))
+				 (took-control (log "Someone took something"))
+				 (flipped (log "Someone flipped something"))
+
+				 (new-deck 
+				  (log "Plonked down a new deck" ev)
+				  (create-stack "body" (@ ev stack)))
+				 (stacked-up (log "Made a stack from cards"))
+				 (merged-stacks (log "Put some stacks together"))
+				 (added-to-stack (log "Put a card onto a stack"))
+
+				 (drew-from 
+				  (let* ((id (+ "#" (@ ev stack)))
+					 (count ($int (+ id " .card-count") 1)))
+				    ($ (+ id " .card-count") (html (+ "x" (- count 1)))))
+				  ($highlight (+ "#" (@ ev stack))))
+
+				 (peeked (log "Peeked at cards from a stack"))
+				 (revealed (log "Showed everyone cards from a stack"))
+
+				 (played-from-hand 
+				  (create-card "body" (@ ev card)))
+
+				 (played-from-stack (log "Played the top card from a stack"))
+				 (played-to-stack (log "Played to the top of a stack"))
+				 (picked-up (log "Picked up a card"))
+
+				 (rolled (log "Rolled"))
+				 (flipped-coin (log "Flipped a coin")))))
 	   
 	   (defun render-board (table)
 	       (let ((board-selector "#board")
@@ -210,42 +258,14 @@
 	     (define-ajax join-table "/lobby/join-table" (table passphrase)
 			  (log "JOINING TABLE" res)
 			  (setf *current-table-id* (@ res :id))
+			  (show-table "body")		  
+			  (show-hand)
+			  (render-board res))
+
+	     (define-ajax new-public-table "/lobby/new-public-table" (tag)
+			  (log "STARTING TABLE" res)
+			  (setf *current-table-id* (@ res :id))
 			  (show-table "body")
-			  (setf *table-stream*
-				(event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
-					      (joined (log "New Player joined"))
-
-					      (moved 
-					       (with-slots (thing x y) ev
-						 ($ (+ "#" thing) (offset (create :left x :top y)))))
-					      (took-control (log "Someone took something"))
-					      (flipped (log "Someone flipped something"))
-
-					      (new-deck 
-					       (log "Plonked down a new deck" ev)
-					       (create-stack "body" (@ ev stack)))
-					      (stacked-up (log "Made a stack from cards"))
-					      (merged-stacks (log "Put some stacks together"))
-					      (added-to-stack (log "Put a card onto a stack"))
-
-					      (drew-from 
-					       (let* ((id (+ "#" (@ ev stack)))
-						      (count ($int (+ id " .card-count") 1)))
-						 ($ (+ id " .card-count") (html (+ "x" (- count 1)))))
-					       ($highlight (+ "#" (@ ev stack))))
-
-					      (peeked (log "Peeked at cards from a stack"))
-					      (revealed (log "Showed everyone cards from a stack"))
-
-					      (played-from-hand 
-					       (create-card "body" (@ ev card)))
-
-					      (played-from-stack (log "Played the top card from a stack"))
-					      (played-to-stack (log "Played to the top of a stack"))
-					      (picked-up (log "Picked up a card"))
-
-					      (rolled (log "Rolled"))
-					      (flipped-coin (log "Flipped a coin"))))			  
 			  (show-hand)
 			  (render-board res))
 	     
