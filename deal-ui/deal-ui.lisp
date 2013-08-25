@@ -4,18 +4,21 @@
 ;;;;;;;;;; File generation
 ;;;;; CSS
 (defparameter css-card-size '(:width 50px :height 70px))
-(defun css-square (side-length) (list :width (px side-length) :height (px side-length) :border "1px solid #ddd"))
 (defun px (num) (format nil "~apx" num))
 
 (defparameter css-display-line '(:height 16px :display inline-block))
 (defparameter css-pane '(:height 500px :border "1px solid #ddd" :float left :margin "15px 0px 15px 15px" :padding 10px))
 (defparameter css-tight '(:margin 0px :padding 0px))
 (defparameter css-sub-window `(,@css-tight :overflow auto))
+(defparameter css-header `(:margin 0px :padding 3px :border-radius 3px :background-color "#eee"))
 
 (defun css-centered-absolute (width height)
   `(:width ,(px width) :height ,(px height)
 	   :left 50% :top 50% :margin-left ,(px (- (/ width 2))) :margin-top ,(px (- (/ height 2)))
 	   :position absolute :z-index 10000 ))
+
+(defun css-box (&optional filled?)
+  `(:border "1px solid #ccc" :background-color ,(if filled? "#eee" "#fff") :border-radius 4px))
 
 (compile-css "static/css/main.css"
 	     `((body ,@css-tight :font-family sans-serif)
@@ -23,21 +26,21 @@
 
 	       (.floating-menu :font-size x-small :width 150px :position absolute)
 	       
-	       (.overlay ,@(css-centered-absolute 400 200) :background-color "#fff" :border-radius 5px :border "1px solid #ccc" :padding 10px :display none)
-	       (".overlay h3" ,@css-tight)
+	       (.overlay ,@(css-centered-absolute 400 200) ,@(css-box) :padding 10px :display none)
+	       (".overlay h3" ,@css-header)
 	       
 	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc" :cursor move)
 	       (".stack .card-count" :font-size x-small :text-align right)
 
-	       (.card ,@css-card-size :background-color "#fff" :border "1px solid #ccc" :position absolute :cursor move)
+	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
 	       (".card .content" :font-size small :font-weight bold)
 	       (".card .type" :font-size xx-small :text-align right)
 	       (.card-in-hand :position relative)
 	       
-	       ("#board" ,@(css-square 500))
+	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
-	       ("#hand-container" :width 400px :height 120px :top 8px :left 518px :position absolute :border "1px solid #ddd" :background-color "#fff")
-	       ("#hand-container h3" :margin 0px :padding 3px :background-color "#eee" :cursor move)
+	       ("#hand-container" ,@(css-box) :width 400px :height 120px :top 8px :left 518px :position absolute)
+	       ("#hand-container h3" ,@css-header :cursor move)
 	       ("#hand" :clear both :padding 3px)
 	       ("#hand .card" :float left)
 
@@ -47,7 +50,7 @@
 	       ("#lobby ul li" :margin-top 5px)
 	       
 	       ("#open-tables" ,@css-sub-window :height 400px)
-	       ("#open-tables li" :background-color "#eee" :padding 5px :border-radius 3px :margin-bottom 5px)
+	       ("#open-tables li" ,@(css-box :filled) :padding 5px :margin-bottom 5px)
 	       ("#open-tables li span" ,@css-display-line)
 	       ("#open-tables li .tag" :width 150px :text-align left)
 	       ("#open-tables li .id" :font-size x-small)
@@ -55,7 +58,7 @@
 	       ("#open-tables button, #new-table" :float right)
 
 	       ("#chat-history" ,@css-sub-window :height 400px :width 100%)
-	       ("#chat-history li" :background-color "#eee" :padding 3px)
+	       ("#chat-history li" ,@(css-box :filled) :padding 3px)
 	       ("#chat-history li span" ,@css-display-line :vertical-align text-top :clear both)
 	       ("#chat-history li .time" :font-size xx-small :text-align right :padding 5px :padding-right 10px)
 	       ("#chat-history li .poster" :font-style oblique :padding-right 10px)
