@@ -12,10 +12,10 @@
 (defparameter css-sub-window `(,@css-tight :overflow auto))
 (defparameter css-header `(:margin 0px :padding 3px :border-radius 3px :background-color "#eee"))
 
-(defun css-centered-absolute (width height)
+(defun css-centered-box (width height &optional (position 'absolute))
   `(:width ,(px width) :height ,(px height)
 	   :left 50% :top 50% :margin-left ,(px (- (/ width 2))) :margin-top ,(px (- (/ height 2)))
-	   :position absolute :z-index 10000 ))
+	   :position ,position :z-index 10000 ))
 
 (defun css-box (&optional filled?)
   `(:border "1px solid #ccc" :background-color ,(if filled? "#eee" "#fff") :border-radius 4px))
@@ -26,7 +26,7 @@
 
 	       (.floating-menu :font-size x-small :width 150px :position absolute)
 	       
-	       (.overlay ,@(css-centered-absolute 400 200) ,@(css-box) :padding 10px :display none)
+	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :padding 10px :display none)
 	       (".overlay h3" ,@css-header)
 	       
 	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc" :cursor move)
@@ -35,7 +35,7 @@
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
 	       (".card .content" :font-size small :font-weight bold)
 	       (".card .type" :font-size xx-small :text-align right)
-	       (.card-in-hand :position relative)
+	       (.card-in-hand :position relative :z-index 10000)
 	       
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
@@ -227,8 +227,7 @@
 		     :style (self position)
 		     (:span :class "content" (self content))
 		     (:div :class "type" (self card-type)))
-	     ($draggable css-id () 
-			 (move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
+	     ($draggable css-id () (move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
 	   (define-thing card-in-stack
 	       (:div :id (self id)

@@ -1,8 +1,5 @@
 (in-package :deal)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;; All for the custom define-handler
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun type-expression (arg type)
   "Given a symbol name and a type, returns the expression to read that type from a string"
   (match type
