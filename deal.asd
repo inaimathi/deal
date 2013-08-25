@@ -8,6 +8,7 @@
   :depends-on (#:optima #:cl-ppcre #:drakma #:hunchentoot #:cl-json #:cl-mop #:bordeaux-threads)
   :components ((:file "package")
 	       (:file "util")
+	       (:file "define-handler")
 	       (:file "model/table")
 	       (:file "model/server")
 	       (:file "deal")

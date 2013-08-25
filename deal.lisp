@@ -182,11 +182,14 @@
     (hash-values (hand (session-value :player)))))
 
 (define-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
-  (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))
-  (take (- max min) (drop (+ min 1) (cards stack))))
+  (with-table-lock
+      (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))
+    (take (- max min) (drop (+ min 1) (cards stack)))))
 
 (define-handler (stack/show) ((table :table) (stack :stack) (min :int) (max :int))
-  (publish! table :revealed `((stack . ,(id stack)) (cards ,@(take (- max min) (drop (+ min 1) (cards stack)))))))
+  (with-table-lock
+      (publish! table :revealed 
+		`((stack . ,(id stack)) (cards ,@(take (- max min) (drop (+ min 1) (cards stack))))))))
 
 ;; (define-handler (stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))
 ;;   ;; TODO
