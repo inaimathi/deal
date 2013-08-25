@@ -145,7 +145,7 @@
 
 ;;;;; Non-table handlers
 ;;; These handlers don't respond with a redacted table object because it wouldn't make sense in context
-(define-handler (play/roll) ((num-dice :int) (die-size :int) (modifier :int))
+(define-handler (play/roll) ((table :table) (num-dice :int) (die-size :int) (modifier :int))
   (assert (and (> num-dice 0) (> die-size 0)))
   (let ((mod (cond ((> modifier 0) (format nil "+~a" modifier))
 		   ((> 0 modifier) modifier)
@@ -156,7 +156,7 @@
 		  (total . ,(+ total modifier))
 		  (rolls . ,rolls))))))
 
-(define-handler (play/coin-toss) ()
+(define-handler (play/coin-toss) ((table :table))
   (publish! table :flipped-coin `((result . ,(pick (list :heads :tails))))))
 
 (define-handler (stack/draw) ((table :table) (stack :stack) (num :int))
