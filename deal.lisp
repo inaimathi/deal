@@ -19,34 +19,39 @@
    (hash-values (hand (session-value :player))))
 
 ;;;;; Lobby-related
+(define-handler (lobby/session) ()
+  (if (session-value :player)
+      (with-slots (id tag current-table hand) (session-value :player)
+	`((id . ,id) (tag . ,tag) (current-table . ,(aif current-table (redact it))) (hand ,@hand)))
+      (setf (session-value :player) (make-instance 'player :tag "Anonymous Coward"))))
+
 (define-handler (lobby/speak) ((message (:string :min 2 :max 255)))
-  (ensure-player)
+  (assert (session-value :player))
   (publish! *server* :said (escape-string message))
   :ok)
 
 (define-handler (lobby/tag) ((new-tag (:string :max 255)))
-  (let ((old))
-    (aif (session-value :player)
-	 (setf old (tag it) 
-	       (tag it) new-tag)
-	 (setf (session-value :player) (make-instance 'player :tag new-tag)))
+  (assert (session-value :player))
+  (let* ((player (session-value :player))
+	 (old (tag player)))
+    (setf (tag player) new-tag)
     (publish! *server* :changed-nick `((old-tag . ,old)))
     :ok))
 
 (define-handler (lobby/new-private-table) ((tag :string) (passphrase :string))
+  (assert (session-value :player))
   (with-lock-held ((lock *server*))
-    (let ((player (make-instance 'player))
+    (let ((player (session-value :player))
 	  (table (make-instance 'table :tag tag :passphrase passphrase)))
-      (setf (session-value :player) player)
       (insert! *server* table)
       (insert! table player)
       (redact table))))
 
 (define-handler (lobby/new-public-table) ((tag :string))
+  (assert (session-value :player))
   (with-lock-held ((lock *server*))
-    (let ((player (make-instance 'player))
+    (let ((player (session-value :player))
 	  (table (make-instance 'table :tag tag)))
-      (setf (session-value :player) player)
       (insert! *server* table)
       (insert! table player)
       (with-slots (id tag players max-players) table
@@ -54,16 +59,15 @@
       (redact table))))
 
 (define-table-handler (lobby/join-table) ((table :table) (passphrase :string))
-  (with-slots (id tag players max-players) table
-    (let ((player (make-instance 'player))
-	  (len (length players)))
-      (assert (>= max-players len))
-      (setf (session-value :player) player)
-      (insert! table player)
-      (publish! table :joined)
-      (publish! *server*
-		(if (>= (+ 1 len) max-players) :filled-table :joined)
-		`((id . ,id)))
+  (assert (and (session-value :player) (not (full? table))))
+  (with-slots (id players) table
+    (let ((player (session-value :player)))
+      (unless (member player (players table))
+	(insert! table player)
+	(publish! table :joined)
+	(publish! *server*
+		  (if (full? table) :filled-table :joined)
+		  `((id . ,id))))
       (redact table))))
 
 ;;;; Game related (once you're already at a table)

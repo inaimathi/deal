@@ -39,11 +39,12 @@
 	       
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
-	       ("#hand-container" ,@(css-box) :width 400px :height 120px :top 8px :left 518px :position absolute)
+	       ("#hand-container" ,@(css-box) :width 400px :height 120px :top 8px :left 518px :position absolute :z-index 10001)
 	       ("#hand-container h3" ,@css-header :cursor move)
 	       ("#hand" :clear both :padding 3px)
 	       ("#hand .card" :float left)
 
+	       ("#lobby" :min-width 980px)
 	       ("#lobby .left-pane" ,@css-pane :width 570px)
 	       ("#lobby .right-pane" ,@css-pane :width 300px)
 	       ("#lobby ul" :padding 0px :list-style-type none)
@@ -91,12 +92,17 @@
 		(keypress (lambda (event)
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
 			      ($ "#send" (click))))))
-	     ($post "/lobby/tag" (:new-tag "Anonymous Coward"))
+	     ($post "/lobby/session" ()
+		    (log "MY SESSION" res (@ res current-table))
+		    (when (@ res current-table)
+		      (setf *current-table-id* (@ res current-table :id))
+		      (show-table "body")		  
+		      (show-hand)
+		      (render-board (@ res current-table))))
 	     ($post "/server-info" ()
 		    (with-slots (handlers decks public-tables) res
 		      (setf *handlers-list* handlers
-			    *decks-list* decks
-			    *tables-list* public-tables)
+			    *decks-list* decks)
 		      (setf *lobby-stream*
 			    (event-source "/ev/lobby"
 					  (said 
@@ -114,7 +120,7 @@
 						  (new-count (+ 1 ($int elem))))
 					     (log elem new-count ($int (+ "game-" (@ ev message id) " .players .count")))
 					     (chain elem (text (+ 1 ($int elem))))))))
-		      ($map *tables-list* 
+		      ($map public-tables
 			    (with-slots (seated of) elem
 			      (when (< seated of) (render-table-entry elem)))))))
 	   
@@ -253,8 +259,6 @@
 	     (let ((sel ($ selector)))
 	       (chain sel (scroll-top (@ sel 0 scroll-height)))))
 
-	   (chat-message "#chat-history" player message)
-
 	   (defun chat-message (selector player message)
 	     (let ((re (new (-reg-exp #\newline :g)))
 		   (scrl? (scrolled-to-bottom? selector)))
@@ -269,7 +273,6 @@
 	 (ps (defvar *current-table-id* nil)
 	     (defvar *handlers-list* nil)
 	     (defvar *decks-list* nil)
-	     (defvar *tables-list* nil)
 	     (defvar *lobby-stream* nil)
 	     (defvar *table-stream* nil)
 

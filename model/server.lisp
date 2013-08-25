@@ -14,11 +14,8 @@
 (defclass player ()
   ((id :reader id :initform (make-id))
    (tag :accessor tag :initform nil :initarg :tag)
+   (current-table :accessor current-table :initform nil)
    (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
-
-(defun ensure-player (&optional (tag ""))
-  (unless (session-value :player)
-    (setf (session-value :player) (make-instance 'player :tag tag))))
 
 (defmethod redact ((player player))
   `((id . ,(id player))
@@ -52,6 +49,8 @@
 
 (defmethod insert! ((table table) (player player))
   "Sits a new player down at the given table"
+  (setf (current-table player) table)
+  (incf (player-count table))
   (push player (players table)))
 
 (defmethod publish! ((target server) action-type &optional message (stream-server *stream-server-uri*))
