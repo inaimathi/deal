@@ -72,9 +72,8 @@
 
 ;;;; Game related (once you're already at a table)
 (define-player-handler (play/leave) ((table :table))
-  (let ((table-players (players table))
-	(player (session-value :player)))
-    (setf table-players (remove-if (lambda (p) (eq (id player) (id p))) table-players)
+  (let ((player (session-value :player)))
+    (setf (players table) (remove player (players table))
 	  (current-table player) nil)
     :ok))
 

@@ -108,6 +108,7 @@
 	     ($ "#chat-input"
 		(keypress (lambda (event)
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
+			      (chain event (prevent-default))
 			      ($ "#send" (click))))))
 	     ($post "/lobby/session" ()
 		    (log "MY SESSION" res (@ res current-table))
@@ -177,7 +178,7 @@
 	     ($ "#chat-input"
 		(keypress (lambda (event)
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
-			      (log "Non-shift enter!")
+			      (chain event (prevent-default))
 			      ($ "#send" (click))))))
 	     ($click "#send" (table/speak ($ "#chat-input" (val))))
 	     ($click "#leave" (leave-table))
