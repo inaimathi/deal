@@ -5,9 +5,10 @@
 ;;;;; Getters
 (define-handler (server-info) ()
   `((handlers . ,*handlers*)
-    (public-tables . ,(hash-map (lambda (k v) 
-				  `((id . ,k) (tag . ,(tag v)) (seated . ,(length (players v))) (of . ,(max-players v))))
-				(public-tables *server*)))
+    (public-tables . ,(hash-map 
+		       (lambda (k v) 
+			 `((id . ,k) (tag . ,(tag v)) (seated . ,(length (players v))) (of . ,(max-players v))))
+		       (public-tables *server*)))
     (decks . ,(mapcar #'car (decks *server*)))))
 
 (define-handler (look-table) ((table :table))
@@ -52,16 +53,23 @@
       (setf (session-value :player) player)
       (insert! *server* table)
       (insert! table player)
-      (publish! *server* :started-table `((table . ,(id table))))
+      (with-slots (id tag players max-players) table
+	(publish! *server* :started-table `((id . ,id) (tag . ,tag) (seated . ,(length players)) (of . ,max-players))))
       (redact table))))
 
 (define-handler (lobby/join-table) ((table :table) (passphrase :string))
   (with-table-lock
-      (let ((player (make-instance 'player)))
-	(setf (session-value :player) player)
-	(insert! table player)
-	(publish! table :joined)
-	(redact table))))
+      (with-slots (id tag players max-players) table
+	(let ((player (make-instance 'player))
+	      (len (length players)))
+	  (assert (>= max-players len))
+	  (setf (session-value :player) player)
+	  (insert! table player)
+	  (publish! table :joined)
+	  (publish! *server*
+		    (if (>= (+ 1 len) max-players) :filled-table :joined)
+		    `((id . ,id)))
+	  (redact table)))))
 
 ;;;; Game related (once you're already at a table)
 (define-handler (play/speak) ((table :table) (message :string))

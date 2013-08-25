@@ -65,18 +65,8 @@
 	       ("#chat-controls #send" :margin 0px :padding "3px 40px")))
 
 ;;;;; JS
-(to-file "static/js/render.js"
-	 (ps 
-	   (defun scrolled-to-bottom? (selector)
-	     (let ((sel ($ selector)))
-	       (when (>= (+ (chain sel (scroll-top)) (chain sel (inner-height)))
-			 (@ sel 0 scroll-height))
-		 t)))
-
-	   (defun scroll-to-bottom (selector)
-	     (let ((sel ($ selector)))
-	       (chain sel (scroll-top (@ sel 0 scroll-height)))))
-
+(to-file "static/js/lobby.js"
+	 (ps
 	   (define-component lobby 
 	       (:div :id "lobby"
 		     (:div :class "left-pane"
@@ -108,29 +98,35 @@
 			    (event-source "/ev/lobby"
 					  (said 
 					   (with-slots (player message) ev
-					     (let ((re (new (-reg-exp #\newline :g)))
-						   (scrl? (scrolled-to-bottom? "#chat-history")))
-					       ($append "#chat-history"
-							  (:li (:span :class "time" 
-								      (new (chain (-date) (to-time-string))))
-							       (:span :class "poster" (+ (or player "Anon") ":"))
-							       (:div :class "message" (chain message (replace re "<br />")))))
-					       (when scrl?
-						 (scroll-to-bottom "#chat-history"))
-					       (log scrl?))))
-					  (changed-nick (log "Someone changed nicks" ev))
-					  (started-table (log "New table started" ev))
-					  (filled-table (log "Table is now full" ev))))
-		      ($map *tables-list*
-			    (with-slots (id tag seated of) elem
-			      ($prepend "#open-tables"
-					(:li :id (+ "game-" id) 
-					     (:span :class "tag" tag)
-					     (:span :class "id" id) 
-					     (:span :class "players" seated "/" of)
-					     (:button :class "join" "Join")))
-			      ($click (+ "#game-" id " .join") (join-table id "")))))))
+					     (chat-message "#chat-history" player message)))
+					  (changed-nick 
+					   (log "Someone changed nicks" ev))
+					  (started-table 
+					   (render-table-entry (@ ev message)))
+					  (filled-table 
+					   ($ (+ "#game-" (@ ev message id)) (remove)))
+					  (joined
+					   (log "Someone joined something" ev (@ ev message id))
+					   (let* ((elem ($ (+ "#game-" (@ ev message id) " .players .count")))
+						  (new-count (+ 1 ($int elem))))
+					     (log elem new-count ($int (+ "game-" (@ ev message id) " .players .count")))
+					     (chain elem (text (+ 1 ($int elem))))))))
+		      ($map *tables-list* 
+			    (with-slots (seated of) elem
+			      (when (< seated of) (render-table-entry elem)))))))
 	   
+	   (defun render-table-entry (tbl-entry)
+	     (with-slots (id tag seated of) tbl-entry
+	       ($prepend "#open-tables"
+			 (:li :id (+ "game-" id) 
+			      (:span :class "tag" tag)
+			      (:span :class "id" id) 
+			      (:span :class "players" (:span :class "count" seated) "/" of)
+			      (:button :class "join" "Join")))
+	       ($click (+ "#game-" id " .join") (join-table id ""))))))
+
+(to-file "static/js/table.js"
+	 (ps
 	   (define-component table
 	       (:div
 		(:div :id "board")
@@ -139,12 +135,11 @@
 		      (:div :id "hand"))
 		(:ul :id "board-menu" :class "floating-menu"
 		     (:li (:a :href "javascript: void(0)":id "new-deck" "New Deck"))
-;;		     (:li (:a :href "javascript: void(0)" "Add Counter"))
-;;		     (:li (:a :href "javascript: void(0)" "Add Mini"))
-;;		     (:li (:a :href "javascript: void(0)" "Roll"))
-;;		     (:li (:a :href "javascript: void(0)" "Flip Coin"))
+		     ;;		     (:li (:a :href "javascript: void(0)" "Add Counter"))
+		     ;;		     (:li (:a :href "javascript: void(0)" "Add Mini"))
+		     ;;		     (:li (:a :href "javascript: void(0)" "Roll"))
+		     ;;		     (:li (:a :href "javascript: void(0)" "Flip Coin"))
 		     (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel"))))
-	     (log "IT KEEPS HAPPENING")
 	     ($draggable "#hand-container" (:handle "h3"))
 
 	     ;;; Menu definition (plus the markup from the HTML file)
@@ -195,54 +190,78 @@
 
 				 (rolled (log "Rolled"))
 				 (flipped-coin (log "Flipped a coin")))))
-	   
+
 	   (defun render-board (table)
-	       (let ((board-selector "#board")
-		     (ts (@ table things)))
-		 ($ board-selector (empty))
-		 ($droppable board-selector
-		  (:card-in-hand 
-		   (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0)))
-		 (when ts ($map ts 
-				(cond ((= (@ elem type) :stack) (create-stack "body" elem))
-				      ((= (@ elem type) :card) (create-card "body" elem)))))))
-	     
-	     (defun render-hand (cards)
-	       (let ((hand-selector "#hand"))
-		 ($ hand-selector (empty))
-		 (when cards
-		   ($map cards
-			 (create-card-in-hand hand-selector elem)))))
+	     (let ((board-selector "#board")
+		   (ts (@ table things)))
+	       ($ board-selector (empty))
+	       ($droppable board-selector
+			   (:card-in-hand 
+			    (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0)))
+	       (when ts ($map ts 
+			      (cond ((= (@ elem type) :stack) (create-stack "body" elem))
+				    ((= (@ elem type) :card) (create-card "body" elem)))))))
+	   
+	   (defun render-hand (cards)
+	     (let ((hand-selector "#hand"))
+	       ($ hand-selector (empty))
+	       (when cards
+		 ($map cards
+		       (create-card-in-hand hand-selector elem)))))
 
-	     (define-thing stack
-		 (:div :id (self id) 
-		       :class (+ "stack" face-class)
-		       :style (self position)
-		       (:button :class "draw" "Draw")
-		       (:div :class "card-count" (+ "x" (self card-count))))
-	       ($draggable css-id () (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
-	       ($click (+ css-id " .draw") (draw (self id) 1)))
-	     
-	     (define-thing card 
-		 (:div :id (self id)
-		       :class (+ "card" face-class)
-		       :style (self position)
-		       (:span :class "content" (self content))
-		       (:div :class "type" (self card-type)))
-	       ($draggable css-id () 
-			   (move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
+	   (define-thing stack
+	       (:div :id (self id) 
+		     :class (+ "stack" face-class)
+		     :style (self position)
+		     (:button :class "draw" "Draw")
+		     (:div :class "card-count" (+ "x" (self card-count))))
+	     ($draggable css-id () (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
+	     ($click (+ css-id " .draw") (draw (self id) 1)))
+	   
+	   (define-thing card 
+	       (:div :id (self id)
+		     :class (+ "card" face-class)
+		     :style (self position)
+		     (:span :class "content" (self content))
+		     (:div :class "type" (self card-type)))
+	     ($draggable css-id () 
+			 (move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
-	     (define-thing card-in-stack
-		 (:div :id (self id)
-		       :class (+ "card card-in-stack" face-class)
-		       (:span :class "content" (self content))))
+	   (define-thing card-in-stack
+	       (:div :id (self id)
+		     :class (+ "card card-in-stack" face-class)
+		     (:span :class "content" (self content))))
 
-	     (define-thing card-in-hand
-		 (:div :id (self id)
-		       :class (+ "card card-in-hand" face-class)
-		       (:span :class "content" (self content))
-		       (:div :class "type" (self card-type)))
-	       ($draggable css-id (:revert t)))))
+	   (define-thing card-in-hand
+	       (:div :id (self id)
+		     :class (+ "card card-in-hand" face-class)
+		     (:span :class "content" (self content))
+		     (:div :class "type" (self card-type)))
+	     ($draggable css-id (:revert t)))))
+
+(to-file "static/js/util.js"
+	 (ps 
+	   (defun scrolled-to-bottom? (selector)
+	     (let ((sel ($ selector)))
+	       (when (>= (+ (chain sel (scroll-top)) (chain sel (inner-height)))
+			 (@ sel 0 scroll-height))
+		 t)))
+
+	   (defun scroll-to-bottom (selector)
+	     (let ((sel ($ selector)))
+	       (chain sel (scroll-top (@ sel 0 scroll-height)))))
+
+	   (chat-message "#chat-history" player message)
+
+	   (defun chat-message (selector player message)
+	     (let ((re (new (-reg-exp #\newline :g)))
+		   (scrl? (scrolled-to-bottom? selector)))
+	       ($append selector
+			(:li (:span :class "time" 
+				    (new (chain (-date) (to-time-string))))
+			     (:span :class "poster" (+ (or player "Anon") ":"))
+			     (:div :class "message" (chain message (replace re "<br />")))))
+	       (when scrl? (scroll-to-bottom selector))))))
 
 (to-file "static/js/deal.js"
 	 (ps (defvar *current-table-id* nil)
@@ -299,5 +318,5 @@
 	   (:html :xmlns "http://www.w3.org/1999/xhtml" :lang "en"
 		  (:head (:title "Tabletop Prototyping System - Deal")
 			 (styles "jquery-ui-1.10.3.custom.min.css" "main.css")
-			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "render.js" "deal.js"))
+			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "util.js" "lobby.js" "table.js" "deal.js"))
 		  (:body))))
