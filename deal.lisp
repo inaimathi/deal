@@ -32,7 +32,7 @@
     (aif (session-value :player)
 	 (setf old (tag it) 
 	       (tag it) tg)
-	 (setf it (make-instance 'player :tag tg)))
+	 (setf (session-value :player) (make-instance 'player :tag tg)))
     (publish! *server* :changed-nick `((old-tag . ,old)))
     :ok))
 
