@@ -71,81 +71,17 @@
       (redact table))))
 
 ;;;; Game related (once you're already at a table)
+(define-player-handler (play/leave) ((table :table))
+  (let ((table-players (players table))
+	(player (session-value :player)))
+    (setf table-players (remove-if (lambda (p) (eq (id player) (id p))) table-players)
+	  (current-table player) nil)
+    :ok))
+
 (define-player-handler (play/speak) ((table :table) (message (:string :min 2 :max 255)))
   (publish! table :said `((message . ,(escape-string message))))
   :ok)
 
-(define-player-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
-  (set-props thing x y z rot)
-  (publish! table :moved  `((thing . ,(id thing)) (x . ,x) (y . ,y) (z . ,z) (rot . ,rot)))
-  (redact table))
-
-(define-player-handler (play/take-control) ((table :table) (thing :placeable))
-  (setf (belongs-to thing) (id (session-value :player)))
-  (publish! table :took-control `((thing . ,(id thing))))
-  (redact table))
-
-(define-player-handler (play/flip) ((table :table) (thing :flippable))
-  (setf face (if (eq face :up) :down :up))
-  (publish! table :flipped `((thing . ,(redact thing))))
-  (redact table))
-
-(define-player-handler (play/new-stack-from-cards) ((table :table) (cards (:list card)))
-  (let* ((c ())first cards
-	 (stack (make-instance 'stack :belongs-to (session-value :player) :x (x c) :y (y c) :z (z c) :rot (rot c))))
-    (loop for card in cards 
-       do (remhash (id card) (things table))
-       do (insert! stack card))
-    (publish! table :stacked-up `((stack . ,(redact stack)) (cards . ,(mapcar #'id cards))))
-    (redact table)))
-
-(define-player-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (face :facing) (x :int) (y :int) (z :int) (rot :int))
-  (let ((stack (deck->stack (session-value :player) (cdr (assoc deck-name (decks *server*) :test #'string=)) :face face)))
-    (set-props stack x y z rot)
-    (insert! table stack)
-    (publish! table :new-deck `((name . ,deck-name) (stack . ,(redact stack))))
-    (redact table)))
-
-;;;;; Stacks
-(define-player-handler (stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
-  (let ((card (pop! stack)))
-    (set-props card x y z rot)
-    (insert! table card)
-    (publish! table :played-from-stack `((stack . ,(id stack)) (card . ,(redact card))))
-    (redact table)))
-
-(define-player-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
-  (move! card table stack)
-  (publish! table :added-to-stack `((stack . ,(id stack)) (card . ,(id card))))
-  (redact table))
-
-(define-player-handler (stack/merge) ((table :table) (stacks (:list stack)))
-  (let ((stack (first stacks)))
-    (loop for s in (rest stacks)
-       do (dolist (c (cards s)) (insert! c (cards stack)))
-       do (remhash (id s) (things table)))
-    (publish! table :merged-stacks `((stack . ,(redact stack)) (stacks ,@(mapcar #'id stacks))))
-    (redact table)))
-
-;;;;; Hand
-(define-player-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
-  (setf (face card) face (x card) x (y card) y (z card) z (rot card) rot)
-  (move! card (session-value :player) table)
-  (publish! table :played-from-hand `((card . ,(redact card))))
-  (redact table))
-
-(define-player-handler (hand/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
-  (move! card (session-value :player) stack)
-  (publish! table :played-to-stack `((stack . ,(id stack)) (card . ,(redact card))))
-  (redact table))
-
-(define-player-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
-  (move! card table (session-value :player))
-  (publish! table :picked-up `((card . ,(id card))))
-  (redact table))
-
-;;;;; Non-table handlers
-;;; These handlers don't respond with a redacted table object because it wouldn't make sense in context
 (define-player-handler (play/roll) ((table :table) (num-dice (:int :min 1)) (die-size (:int :min 2)) (modifier :int))
   (let ((mod (cond ((> modifier 0) (format nil "+~a" modifier))
 		   ((> 0 modifier) modifier)
@@ -154,16 +90,89 @@
       (publish! table :rolled
 		`((dice . ,(format nil "~ad~a~@[~a~]" num-dice die-size mod)) 
 		  (total . ,(+ total modifier))
-		  (rolls . ,rolls))))))
+		  (rolls . ,rolls)))))
+  :ok)
 
 (define-player-handler (play/coin-toss) ((table :table))
-  (publish! table :flipped-coin `((result . ,(pick (list :heads :tails))))))
+  (publish! table :flipped-coin `((result . ,(pick (list :heads :tails)))))
+  :ok)
 
+(define-player-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
+  (set-props thing x y z rot)
+  (publish! table :moved  `((thing . ,(id thing)) (x . ,x) (y . ,y) (z . ,z) (rot . ,rot)))
+  :ok)
+
+(define-player-handler (play/take-control) ((table :table) (thing :placeable))
+  (setf (belongs-to thing) (id (session-value :player)))
+  (publish! table :took-control `((thing . ,(id thing))))
+  :ok)
+
+(define-player-handler (play/flip) ((table :table) (thing :flippable))
+  (setf face (if (eq face :up) :down :up))
+  (publish! table :flipped `((thing . ,(redact thing))))
+  :ok)
+
+(define-player-handler (play/new-stack-from-cards) ((table :table) (cards (:list card)))
+  (let* ((c ())first cards
+	 (stack (make-instance 'stack :belongs-to (session-value :player) :x (x c) :y (y c) :z (z c) :rot (rot c))))
+    (loop for card in cards 
+       do (remhash (id card) (things table))
+       do (insert! stack card))
+    (publish! table :stacked-up `((stack . ,(redact stack)) (cards . ,(mapcar #'id cards))))
+    :ok))
+
+(define-player-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (face :facing) (x :int) (y :int) (z :int) (rot :int))
+  (let ((stack (deck->stack (session-value :player) (cdr (assoc deck-name (decks *server*) :test #'string=)) :face face)))
+    (set-props stack x y z rot)
+    (insert! table stack)
+    (publish! table :new-deck `((name . ,deck-name) (stack . ,(redact stack))))
+    :ok))
+
+;;;;; Stacks
+(define-player-handler (stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
+  (let ((card (pop! stack)))
+    (set-props card x y z rot)
+    (insert! table card)
+    (publish! table :played-from-stack `((stack . ,(id stack)) (card . ,(redact card))))
+    :ok))
+
+(define-player-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
+  (move! card table stack)
+  (publish! table :added-to-stack `((stack . ,(id stack)) (card . ,(id card))))
+  :ok)
+
+(define-player-handler (stack/merge) ((table :table) (stacks (:list stack)))
+  (let ((stack (first stacks)))
+    (loop for s in (rest stacks)
+       do (dolist (c (cards s)) (insert! c (cards stack)))
+       do (remhash (id s) (things table)))
+    (publish! table :merged-stacks `((stack . ,(redact stack)) (stacks ,@(mapcar #'id stacks))))
+    :ok))
+
+;;;;; Hand
+(define-player-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
+  (setf (face card) face (x card) x (y card) y (z card) z (rot card) rot)
+  (move! card (session-value :player) table)
+  (publish! table :played-from-hand `((card . ,(redact card))))
+  :ok)
+
+(define-player-handler (hand/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
+  (move! card (session-value :player) stack)
+  (publish! table :played-to-stack `((stack . ,(id stack)) (card . ,(redact card))))
+  :ok)
+
+;;;;; Non-table handlers
+;;; These handlers don't respond with a redacted table object because it wouldn't make sense in context
 (define-player-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (loop with rep = (min num (card-count stack)) repeat rep
      do (insert! (session-value :player) (pop! stack)))
   (publish! table :drew-from `((stack . ,(id stack)) (count . ,num)))
   (hash-values (hand (session-value :player))))
+
+(define-player-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
+  (move! card table (session-value :player))
+  (publish! table :picked-up `((card . ,(id card))))
+  card)
 
 (define-player-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
   (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))

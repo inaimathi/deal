@@ -3,7 +3,8 @@
 
 ;;;;;;;;;; File generation
 ;;;;; CSS
-(defparameter css-card-size '(:width 50px :height 70px))
+(defparameter css-card-height 70)
+(defparameter css-card-size `(:width 50px :height ,(px css-card-height)))
 (defun px (num) (format nil "~apx" num))
 
 (defparameter css-display-line '(:height 16px :display inline-block))
@@ -29,6 +30,11 @@
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :padding 10px :display none)
 	       (".overlay h3" ,@css-header)
 	       
+	       (.moveable ,@(css-box) :position absolute :z-index 10001)
+	       (".moveable h3" ,@css-header :cursor move :clear both)
+	       (".moveable h2" ,@css-header :font-size small :font-style oblique :clear both :margin "5px 0px 5px 0px")
+	       (".moveable .contents" :padding 5px)
+	       
 	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc" :cursor move)
 	       (".stack .card-count" :font-size x-small :text-align right)
 
@@ -39,10 +45,11 @@
 	       
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
-	       ("#hand-container" ,@(css-box) :width 400px :height 120px :top 8px :left 518px :position absolute :z-index 10001)
-	       ("#hand-container h3" ,@css-header :cursor move)
-	       ("#hand" :clear both :padding 3px)
-	       ("#hand .card" :float left)
+	       ("#player-info" :width 400px :top 8px :left 518px)
+	       ("#player-info .card" :float left)
+	       ("#player-info textarea" :width 100% :height 60px)
+
+	       ("#hand" :height ,(px (+ css-card-height 5)))
 
 	       ("#lobby" :min-width 980px)
 	       ("#lobby .left-pane" ,@css-pane :width 570px)
@@ -59,14 +66,22 @@
 	       ("#open-tables button, #new-table" :float right)
 
 	       ("#chat-history" ,@css-sub-window :height 400px :width 100%)
-	       ("#chat-history li" ,@(css-box :filled) :padding 3px)
+	       ("#chat-history li" ,@(css-box :filled) :padding 3px :margin-bottom 2px)
 	       ("#chat-history li span" ,@css-display-line :vertical-align text-top :clear both)
 	       ("#chat-history li .time" :font-size xx-small :text-align right :padding 5px :padding-right 10px)
 	       ("#chat-history li .poster" :font-style oblique :padding-right 10px)
 	       ("#chat-history li .message" :height auto :max-width 400px :word-break break-all :margin-left 5px)
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
-	       ("#chat-controls .text" :width 100% :height 60px :margin-bottom 5px)
-	       ("#chat-controls #send" :margin 0px :padding "3px 40px")))
+	       ("#chat-controls textarea" :width 100% :height 60px :margin-bottom 5px)
+
+	       ("#chat-history.short" :height 200px :font-size small)
+	       ("#chat-history.short .time" :display none)
+	       ("#chat-history.short li .poster" :font-weight bold)
+	       ("#chat-history.short li .message" :display inline)
+	       
+;;	       ("#chat-history.short")
+
+	       (".chat-button" :margin "3px 0px 0px 0px" :padding "3px 40px")))
 
 ;;;;; JS
 (to-file "static/js/lobby.js"
@@ -76,17 +91,19 @@
 		     (:div :class "left-pane"
 			   (:ul :id "chat-history")
 			   (:div :id "chat-controls"
-				 (:textarea :id "chat-input" :class "text" :type "text")
-				 (:button :id "send" "Send")))
+				 (:textarea :id "chat-input" :type "text")
+				 (:button :id "send" :class "chat-button" "Send")))
 		     (:div :class "right-pane"
 			   (:ul :id "open-tables")
 			   (:ul (:li (:button :id "new-table" "New Table"))))
 		     (:div :id "new-table-setup" :class "overlay"
 			   (:h3 "New Table")
 			   (:input :class "game-tag")
-			   (:button :class "ok" "Ok")))
-	     ($click "#send" ($post "/lobby/speak" (:message ($ "#chat-input" (val))) ($ "#chat-input" (val ""))))
+			   (:button :class "ok" "Ok")
+			   (:button :class "cancel" "Cancel")))
+	     ($click "#send" (lobby/speak ($ "#chat-input" (val))))
 	     ($click "#new-table-setup .ok" (new-public-table ($ "#new-table-setup .game-tag" (val))))
+	     ($click "#new-table-setup .cancel" ($ "#new-table-setup" (hide)))
 	     ($click "#new-table" ($ "#new-table-setup" (show)))
 	     ($ "#chat-input"
 		(keypress (lambda (event)
@@ -139,9 +156,16 @@
 	   (define-component table
 	       (:div
 		(:div :id "board")
-		(:div :id "hand-container"
-		      (:h3 "Hand")
-		      (:div :id "hand"))
+		(:div :id "player-info" :class "moveable"
+		      (:h3 "Player Info")
+		      (:div :class "contents"
+			    (:button :id "leave" "Leave Table")
+			    (:h2 "Hand")
+			    (:div :id "hand")
+			    (:h2 "Chat")
+			    (:ul :id "chat-history" :class "short")
+			    (:textarea :id "chat-input" :type "text")
+			    (:button :id "send" :class "chat-button" "Send")))
 		(:ul :id "board-menu" :class "floating-menu"
 		     (:li (:a :href "javascript: void(0)":id "new-deck" "New Deck"))
 		     ;;		     (:li (:a :href "javascript: void(0)" "Add Counter"))
@@ -149,7 +173,14 @@
 		     ;;		     (:li (:a :href "javascript: void(0)" "Roll"))
 		     ;;		     (:li (:a :href "javascript: void(0)" "Flip Coin"))
 		     (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel"))))
-	     ($draggable "#hand-container" (:handle "h3"))
+	     ($draggable ".moveable" (:handle "h3"))
+	     ($ "#chat-input"
+		(keypress (lambda (event)
+			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
+			      (log "Non-shift enter!")
+			      ($ "#send" (click))))))
+	     ($click "#send" (table/speak ($ "#chat-input" (val))))
+	     ($click "#leave" (leave-table))
 
 	     ;;; Menu definition (plus the markup from the HTML file)
 	     ($ "#board-menu" (menu) (hide))
@@ -167,6 +198,10 @@
 	     (setf *table-stream*
 		   (event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
 				 (joined (log "New Player joined"))
+				 
+				 (said 
+				  (with-slots (player message) ev
+				    (chat-message "#chat-history" player message)))
 
 				 (moved 
 				  (with-slots (thing x y) ev
@@ -279,6 +314,13 @@
 	     (doc-ready (show-lobby "body"))
 	     
 	     ;;; Client-side handler definitions
+	     (define-ajax new-public-table "/lobby/new-public-table" (tag)
+			  (log "STARTING TABLE" res)
+			  (setf *current-table-id* (@ res :id))
+			  (show-table "body")
+			  (show-hand)
+			  (render-board res))
+
 	     (define-ajax join-table "/lobby/join-table" (table passphrase)
 			  (log "JOINING TABLE" res)
 			  (setf *current-table-id* (@ res :id))
@@ -286,12 +328,15 @@
 			  (show-hand)
 			  (render-board res))
 
-	     (define-ajax new-public-table "/lobby/new-public-table" (tag)
-			  (log "STARTING TABLE" res)
-			  (setf *current-table-id* (@ res :id))
-			  (show-table "body")
-			  (show-hand)
-			  (render-board res))
+	     (define-ajax leave-table "/play/leave" ()
+			  (log "LEAVING TABLE")
+			  (show-lobby "body"))
+
+	     (define-ajax table/speak "/play/speak" (message)
+			  ($ "#chat-input" (val "")))
+
+	     (define-ajax lobby/speak "/lobby/speak" (message)
+			  ($ "#chat-input" (val "")))
 	     
 	     (define-ajax look-table "/look-table" ()
 			  (log "SHOWING BOARD" res)			  
@@ -307,8 +352,7 @@
 			  (log "DREW" res "FROM" stack)
 			  (render-hand res))
 	     
-	     (define-ajax move "/play/move" (thing x y z rot)
-			  (log "MOVED" res))
+	     (define-ajax move "/play/move" (thing x y z rot))
 	     
 	     (define-ajax play "/hand/play" (card face x y z rot)
 			  ($ (+ "#" card) (remove)))
