@@ -131,6 +131,9 @@ http {
             # you will be sorry.
             client_max_body_size                    64k;
             client_body_buffer_size                 64k;
+
+	    allow 127.0.0.1;
+	    deny all;
         }
 
         location ~ /ev/(.*) {
