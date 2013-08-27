@@ -15,6 +15,10 @@
 
 (defpsmacro fn (&body body) `(lambda () ,@body))
 
+(defpsmacro aif (test-form true-form &optional else-form)
+  `(let ((it ,test-form))
+     (if it ,true-form ,else-form)))
+
 ;;;;;;;;;; jQuery Basics
 (defpsmacro $ (selector &body chains)
   `(chain (j-query ,selector) ,@chains))

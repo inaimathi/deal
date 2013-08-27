@@ -85,11 +85,7 @@
 			    (:textarea :id "chat-input" :type "text")
 			    (:button :id "send" :class "chat-button" "Send")))
 		(:ul :id "board-menu" :class "floating-menu"
-		     (:li (:a :href "javascript: void(0)":id "new-deck" "New Deck"))
-		     ;;		     (:li (:a :href "javascript: void(0)" "Add Counter"))
-		     ;;		     (:li (:a :href "javascript: void(0)" "Add Mini"))
-		     ;;		     (:li (:a :href "javascript: void(0)" "Roll"))
-		     ;;		     (:li (:a :href "javascript: void(0)" "Flip Coin"))
+		     (:li (:a :href "javascript: void(0)" :id "new-deck" "New Deck"))
 		     (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel"))))
 	     ($draggable ".moveable" (:handle "h3"))
 	     ($ "#chat-input"
@@ -97,14 +93,17 @@
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
 			      (chain event (prevent-default))
 			      ($ "#send" (click))))))
-	     ($click "#send" (table/speak ($ "#chat-input" (val))))
+	     ($click "#send" 
+		     (let ((txt ($ "#chat-input" (val))))
+		       (or (chat-command txt)
+			   (table/speak txt))))
 	     ($click "#leave" (leave-table))
 
 	     ;;; Menu definition (plus the markup from the HTML file)
 	     ($ "#board-menu" (menu) (hide))
 	     ($right-click "#board" 
-			   (log "RIGHT CLICKED on #board" event ($ "#board-menu" (position)) :left (@ event client-x) :top (@ event client-y))
 			   ($ "#board-menu" (show) (css (create :left (@ event client-x) :top (@ event client-y)))))
+
 	     ($click "#new-deck" 
 		     (let* ((position ($ "#board-menu" (position)))
 			    (x (@ position left))
@@ -196,6 +195,30 @@
 
 (to-file "static/js/util.js"
 	 (ps 
+	   (defun chat-command (txt)
+	     (aif (parse-die-roll txt)
+		  (progn 
+		    (destructuring-bind (num-dice die-size modifier) it
+		      (roll-dice num-dice die-size modifier)
+		      ($ "#chat-input" (val "")))
+		    t)
+		  (if (parse-coin-toss txt)
+		      (progn (flip-coin)
+			     ($ "#chat-input" (val ""))
+			     t)
+		      nil)))
+
+	   (defun parse-coin-toss (txt)
+	     (chain txt (match "@(flip|toss)")))
+
+	   (defun parse-die-roll (txt)
+	     (let* ((re (new (-reg-exp "@roll *(\\d*)d(\\d+)([-+]\\d+)?")))
+		    (match (chain txt (match re))))
+	       (when match
+		 (list (or (parse-int (@ match 1)) 1)
+		       (parse-int (@ match 2))
+		       (or (parse-int (@ match 3)) 0)))))
+
 	   (defun scrolled-to-bottom? (selector)
 	     (let ((sel ($ selector)))
 	       (when (>= (+ (chain sel (scroll-top)) (chain sel (inner-height)))
@@ -259,7 +282,7 @@
 					 ("pickedUp"
 					  (+ "picked up card " (@ msg card)))
 					 ("rolled"
-					  (+ "rolled " (@ msg total) " on " (@ msg dice) "; " (obj->string rolls)))
+					  (+ "rolled " (@ msg total) " on " (@ msg dice) "; " (obj->string (@ msg rolls))))
 					 ("flippedCoin"
 					  (+ "flipped a coin; it landed on " (@ msg result)))
 					 (t "did something")))))))
@@ -312,6 +335,10 @@
 			  (log "SHOWING HAND" res)
 			  (render-hand res))
 	     
+	     (define-ajax flip-coin "/play/coin-toss" ())
+
+	     (define-ajax roll-dice "/play/roll" (num-dice die-size modifier))
+
 	     (define-ajax new-deck "/play/new-stack-from-deck" (deck-name face x y z rot))
 	     
 	     (define-ajax draw "/stack/draw" (stack num)
