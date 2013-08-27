@@ -88,7 +88,7 @@
   (publish! table :said `((message . ,(escape-string message))))
   :ok)
 
-(define-player-handler (play/roll) ((table :table) (num-dice (:int :min 1)) (die-size (:int :min 2)) (modifier :int))
+(define-player-handler (play/roll) ((table :table) (num-dice (:int :min 1 :max 4096)) (die-size (:int :min 2 :max 4096)) (modifier (:int :min -4096 :max 4096)))
   (let ((mod (cond ((> modifier 0) (format nil "+~a" modifier))
 		   ((> 0 modifier) modifier)
 		   (t nil))))
