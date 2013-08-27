@@ -19,6 +19,9 @@
 (defpsmacro $ (selector &body chains)
   `(chain (j-query ,selector) ,@chains))
 
+(defpsmacro $exists? (selector)
+    `(> (@ ($ ,selector) length) 0))
+
 (defpsmacro $int (selector &optional (start 0))
   `(parse-int (chain ($ ,selector (text)) (substring ,start))))
 
@@ -116,7 +119,10 @@
   (with-gensyms (stream handlers ev)
     `(let ((,stream (new (-event-source ,uri)))
 	   (,handlers (create ,@(loop for (name . fn-body) in name/body-list
-				  collect `,name collect `(lambda (ev) ,@fn-body)))))
+				   collect `,name 
+				   collect `(lambda (ev) 
+					      (update-chat "#chat-history" (chat-message ev))
+					      ,@fn-body)))))
        (setf (@ ,stream onopen) (lambda (e) (log "Stream OPENED!"))
 	     (@ ,stream onerror) (lambda (e) (log "Stream ERRORED!" e))
 	     (@ ,stream onmessage)

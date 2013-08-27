@@ -1,88 +1,6 @@
 ;;;; deal-ui.lisp
 (in-package #:deal-ui)
 
-;;;;;;;;;; File generation
-;;;;; CSS
-(defparameter css-card-height 70)
-(defparameter css-card-size `(:width 50px :height ,(px css-card-height)))
-(defun px (num) (format nil "~apx" num))
-
-(defparameter css-display-line '(:height 16px :display inline-block))
-(defparameter css-pane '(:height 500px :border "1px solid #ddd" :float left :margin "15px 0px 15px 15px" :padding 10px))
-(defparameter css-tight '(:margin 0px :padding 0px))
-(defparameter css-sub-window `(,@css-tight :overflow auto))
-(defparameter css-header `(:margin 0px :padding 3px :border-radius 3px :background-color "#eee"))
-
-(defun css-centered-box (width height &optional (position 'absolute))
-  `(:width ,(px width) :height ,(px height)
-	   :left 50% :top 50% :margin-left ,(px (- (/ width 2))) :margin-top ,(px (- (/ height 2)))
-	   :position ,position :z-index 10000 ))
-
-(defun css-box (&optional filled?)
-  `(:border "1px solid #ccc" :background-color ,(if filled? "#eee" "#fff") :border-radius 4px))
-
-(compile-css "static/css/main.css"
-	     `((body ,@css-tight :font-family sans-serif)
-	       (.clear :clear both)
-
-	       (.floating-menu :font-size x-small :width 150px :position absolute)
-	       
-	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :padding 10px :display none)
-	       (".overlay h3" ,@css-header)
-	       
-	       (.moveable ,@(css-box) :position absolute :z-index 10001)
-	       (".moveable h3" ,@css-header :cursor move :clear both)
-	       (".moveable h2" ,@css-header :font-size small :font-style oblique :clear both :margin "5px 0px 5px 0px")
-	       (".moveable .contents" :padding 5px)
-	       
-	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc" :cursor move)
-	       (".stack .card-count" :font-size x-small :text-align right)
-
-	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
-	       (".card .content" :font-size small :font-weight bold)
-	       (".card .type" :font-size xx-small :text-align right)
-	       (.card-in-hand :position relative :z-index 10000)
-	       
-	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
-	       
-	       ("#player-info" :width 400px :top 8px :left 518px)
-	       ("#player-info .card" :float left)
-	       ("#player-info textarea" :width 100% :height 60px)
-
-	       ("#hand" :height ,(px (+ css-card-height 5)))
-
-	       ("#lobby" :min-width 980px)
-	       ("#lobby .left-pane" ,@css-pane :width 570px)
-	       ("#lobby .right-pane" ,@css-pane :width 300px)
-	       ("#lobby ul" :padding 0px :list-style-type none)
-	       ("#lobby ul li" :margin-top 5px)
-	       
-	       ("#open-tables" ,@css-sub-window :height 400px)
-	       ("#open-tables li" ,@(css-box :filled) :padding 5px :margin-bottom 5px)
-	       ("#open-tables li span" ,@css-display-line)
-	       ("#open-tables li .tag" :width 150px :text-align left)
-	       ("#open-tables li .id" :font-size x-small)
-	       ("#open-tables li .players" :width 50px :padding-right 5px :text-align right)
-	       ("#open-tables button, #new-table" :float right)
-
-	       ("#chat-history" ,@css-sub-window :height 400px :width 100%)
-	       ("#chat-history li" ,@(css-box :filled) :padding 3px :margin-bottom 2px)
-	       ("#chat-history li span" ,@css-display-line :vertical-align text-top :clear both)
-	       ("#chat-history li .time" :font-size xx-small :text-align right :padding 5px :padding-right 10px)
-	       ("#chat-history li .poster" :font-style oblique :padding-right 10px)
-	       ("#chat-history li .message" :height auto :max-width 400px :word-break break-all :margin-left 5px)
-	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
-	       ("#chat-controls textarea" :width 100% :height 60px :margin-bottom 5px)
-
-	       ("#chat-history.short" :height 200px :font-size small)
-	       ("#chat-history.short .time" :display none)
-	       ("#chat-history.short li .poster" :font-weight bold)
-	       ("#chat-history.short li .message" :display inline)
-	       
-;;	       ("#chat-history.short")
-
-	       (".chat-button" :margin "3px 0px 0px 0px" :padding "3px 40px")))
-
 ;;;;; JS
 (to-file "static/js/lobby.js"
 	 (ps
@@ -111,7 +29,6 @@
 			      (chain event (prevent-default))
 			      ($ "#send" (click))))))
 	     ($post "/lobby/session" ()
-		    (log "MY SESSION" res (@ res current-table))
 		    (when (@ res current-table)
 		      (setf *current-table-id* (@ res current-table :id))
 		      (show-table "body")		  
@@ -123,21 +40,21 @@
 			    *decks-list* decks)
 		      (setf *lobby-stream*
 			    (event-source "/ev/lobby"
-					  (said 
-					   (with-slots (player message) ev
-					     (chat-message "#chat-history" player message)))
-					  (changed-nick 
-					   (log "Someone changed nicks" ev))
-					  (started-table 
+					  (said)
+					  (changed-nick)
+					  (started-table
 					   (render-table-entry (@ ev message)))
-					  (filled-table 
+					  (filled-table
 					   ($ (+ "#game-" (@ ev message id)) (remove)))
 					  (joined
-					   (log "Someone joined something" ev (@ ev message id))
 					   (let* ((elem ($ (+ "#game-" (@ ev message id) " .players .count")))
 						  (new-count (+ 1 ($int elem))))
-					     (log elem new-count ($int (+ "game-" (@ ev message id) " .players .count")))
-					     (chain elem (text (+ 1 ($int elem))))))))
+					     (chain elem (text (+ 1 ($int elem))))))
+					  (left
+					   (let ((sel (+ "#game-" (@ ev message id))))
+					     (if ($exists? sel)
+						 ($ sel (replace (render-table-entry (@ ev message))))
+						 (render-table-entry (@ ev message)))))))
 		      ($map public-tables
 			    (with-slots (seated of) elem
 			      (when (< seated of) (render-table-entry elem)))))))
@@ -198,25 +115,18 @@
 	     ($click "#cancel" ($ "#board-menu" (hide)))
 	     (setf *table-stream*
 		   (event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
-				 (joined (log "New Player joined"))
-				 
-				 (said 
-				  (with-slots (player message) ev
-				    (chat-message "#chat-history" player message)))
-
+				 (joined)
+				 (said)
 				 (moved 
 				  (with-slots (thing x y) ev
 				    ($ (+ "#" thing) (offset (create :left x :top y)))))
 				 (took-control (log "Someone took something"))
 				 (flipped (log "Someone flipped something"))
-
 				 (new-deck 
-				  (log "Plonked down a new deck" ev)
 				  (create-stack "body" (@ ev stack)))
 				 (stacked-up (log "Made a stack from cards"))
 				 (merged-stacks (log "Put some stacks together"))
 				 (added-to-stack (log "Put a card onto a stack"))
-
 				 (drew-from 
 				  (let* ((id (+ "#" (@ ev stack)))
 					 (count ($int (+ id " .card-count") 1)))
@@ -238,11 +148,17 @@
 
 	   (defun render-board (table)
 	     (let ((board-selector "#board")
+		   (chat-selector "#chat-history")
 		   (ts (@ table things)))
 	       ($ board-selector (empty))
 	       ($droppable board-selector
 			   (:card-in-hand 
 			    (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0)))
+	       ($ chat-selector 
+		  (empty) 
+		  (append ($map (@ table history)
+				($ chat-selector (prepend (chat-message elem))))))
+	       (scroll-to-bottom chat-selector)
 	       (when ts ($map ts 
 			      (cond ((= (@ elem type) :stack) (create-stack "body" elem))
 				    ((= (@ elem type) :card) (create-card "body" elem)))))))
@@ -262,7 +178,7 @@
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($draggable css-id () (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
 	     ($click (+ css-id " .draw") (draw (self id) 1)))
-	   
+
 	   (define-thing card 
 	       (:div :id (self id)
 		     :class (+ "card" face-class)
@@ -270,11 +186,6 @@
 		     (:span :class "content" (self content))
 		     (:div :class "type" (self card-type)))
 	     ($draggable css-id () (move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
-
-	   (define-thing card-in-stack
-	       (:div :id (self id)
-		     :class (+ "card card-in-stack" face-class)
-		     (:span :class "content" (self content))))
 
 	   (define-thing card-in-hand
 	       (:div :id (self id)
@@ -295,14 +206,68 @@
 	     (let ((sel ($ selector)))
 	       (chain sel (scroll-top (@ sel 0 scroll-height)))))
 
-	   (defun chat-message (selector player message)
-	     (let ((re (new (-reg-exp #\newline :g)))
-		   (scrl? (scrolled-to-bottom? selector)))
-	       ($append selector
-			(:li (:span :class "time" 
-				    (new (chain (-date) (to-time-string))))
-			     (:span :class "poster" (+ (or player "Anon") ":"))
-			     (:div :class "message" (chain message (replace re "<br />")))))
+	   (defun newline->break (message)
+	     (let ((re (new (-reg-exp #\newline :g))))
+	       (chain message (replace re "<br />"))))
+
+	   (defun chat-card (card)
+	     (who-ps-html
+	      (who-ps-html (:div :class (+ "card in-chat" 
+					   (if (= (@ card face) "down") 
+					       "face-down" ""))
+				 (:span :class "content" (@ card content))
+				 (:div :class "type" (@ card card-type))))))
+
+	   (defun chat-message (msg)
+	     (with-slots (player player-tag time type message) msg
+	       (who-ps-html (:li :class (if (= type "said") "said" "did")
+				 (:span :class "time" (new (chain (-date time) (to-time-string))))
+				 (:span :class "player" player)
+				 (:span :class "player-tag" player-tag)
+				 (:div :class "message"
+				       (case type
+					 ("joined" 
+					  "joined the table")
+					 ("left" 
+					  "left the table")
+					 ("said" 
+					  (newline->break message))
+					 ("moved"
+					  (+ "moved " (@ msg thing)))
+					 ("changedNick"
+					  (+ "changed their tag from " (@ msg old-tag)))
+					 ("startedTable"
+					  (+ "started table " (@ msg id) (if (@ msg tag) (+ ", '" (@ msg tag) "'") "")))
+					 ("filledTable"
+					  "filled up table " (@ msg id) (if (@ msg tag) (+ ", '" (@ msg tag) "'") ""))
+					 ("newDeck" 
+					  (+ "put down a '" (@ msg name) "' deck"))
+					 ("drewFrom" 
+					  (+ "drew " (@ msg count) " from " (@ msg stack)))
+					 ("peeked"
+					  (+ "peeked at " (@ msg count) " cards from " (@ msg stack)))
+					 ("revealed"
+					  ;;; TODO actually render the cards here. 
+					  ;;; In fact TODO anywhere there's a card being sent, it should be rendered in-line
+					  (+ "revealed some cards"))
+					 ("playedFromHand"
+					  (+ "played " (chat-card (@ msg card)) " from hand"))
+					 ("playedFromStack"
+					  (+ "played " (chat-card (@ msg card)) " from " (@ msg stack)))
+					 ("playedToStack"
+					  (+ "played " (chat-card (@ msg card)) " to stack " (@ msg stack)))
+					 ("pickedUp"
+					  (+ "picked up card " (@ msg card)))
+					 ("rolled"
+					  (+ "rolled " (@ msg total) " on " (@ msg dice) "; " (obj->string rolls)))
+					 ("flippedCoin"
+					  (+ "flipped a coin; it landed on " (@ msg result)))
+					 (t "did something")))))))
+
+	   
+	   (defun update-chat (selector msg-html)
+	     (let ((scrl? (scrolled-to-bottom? selector)))
+	       ($ selector (append msg-html))
 	       (when scrl? (scroll-to-bottom selector))))))
 
 (to-file "static/js/deal.js"

@@ -7,7 +7,7 @@
   `((handlers . ,*handlers*)
     (public-tables . ,(hash-map 
 		       (lambda (k v) 
-			 `((id . ,k) (tag . ,(tag v)) (seated . ,(length (players v))) (of . ,(max-players v))))
+			 `((id . ,k) (tag . ,(tag v)) (seated . ,(player-count v)) (of . ,(max-players v))))
 		       (public-tables *server*)))
     (decks . ,(mapcar #'car (decks *server*)))))
 
@@ -19,11 +19,14 @@
    (hash-values (hand (session-value :player))))
 
 ;;;;; Lobby-related
-(define-handler (lobby/session) ()
+(define-handler (lobby/session json:encode-json-alist-to-string) ()
   (if (session-value :player)
       (with-slots (id tag current-table hand) (session-value :player)
 	`((id . ,id) (tag . ,tag) (current-table . ,(aif current-table (redact it))) (hand ,@hand)))
-      (setf (session-value :player) (make-instance 'player :tag "Anonymous Coward"))))
+      (let ((player (make-instance 'player :tag "Anonymous Coward")))
+	(setf (session-value :player) player)
+	(with-slots (id tag) player
+	  `((id . ,id) (tag . ,tag) (current-table) (hand))))))
 
 (define-handler (lobby/speak) ((message (:string :min 2 :max 255)))
   (assert (session-value :player))
@@ -54,8 +57,8 @@
 	  (table (make-instance 'table :tag tag)))
       (insert! *server* table)
       (insert! table player)
-      (with-slots (id tag players max-players) table
-	(publish! *server* :started-table `((id . ,id) (tag . ,tag) (seated . ,(length players)) (of . ,max-players))))
+      (with-slots (id tag player-count max-players) table
+	(publish! *server* :started-table `((id . ,id) (tag . ,tag) (seated . ,player-count) (of . ,max-players))))
       (redact table))))
 
 (define-table-handler (lobby/join-table) ((table :table) (passphrase :string))
@@ -75,6 +78,10 @@
   (let ((player (session-value :player)))
     (setf (players table) (remove player (players table))
 	  (current-table player) nil)
+    (unless (passphrase table)
+      (publish! table :left)
+      (publish! *server* :left 
+		`((id . ,(id table)) (tag . ,(tag table)) (seated . ,(player-count table)) (of . ,(max-players table)))))
     :ok))
 
 (define-player-handler (play/speak) ((table :table) (message (:string :min 2 :max 255)))
@@ -178,8 +185,8 @@
   (take (- max min) (drop (+ min 1) (cards stack))))
 
 (define-player-handler (stack/show) ((table :table) (stack :stack) (min :int) (max :int))
-  (publish! table :revealed 
-	    `((stack . ,(id stack)) (cards ,@(take (- max min) (drop (+ min 1) (cards stack)))))))
+  (publish! table :revealed `((stack . ,(id stack)) (cards ,@(take (- max min) (drop (+ min 1) (cards stack))))))
+  :ok)
 
 ;; (define-handler (stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))
 ;;   ;; TODO

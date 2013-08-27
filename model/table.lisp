@@ -57,13 +57,15 @@
 					     :card-type (first a-deck) :belongs-to (id player))))))
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
-  (let ((full-move (cons `(type . ,action-type)
-			 (cons `(player . ,(id (session-value :player)))
-			       move))))
+  (let* ((player (session-value :player))
+	 (full-move `((type . ,action-type) 
+		      (time . ,(get-universal-time)) 
+		      (player . ,(id player))
+		      (player-tag . ,(tag player))
+		      ,@move)))
     (push full-move (history table))
-    (http-request
-     (format nil "~apub?id=~a" stream-server (id table))
-     :method :post :content (encode-json-to-string full-move))))
+    (http-request (format nil "~apub?id=~a" stream-server (id table))
+		  :method :post :content (encode-json-to-string full-move))))
 
 ;;;;;;;;;; delete/insert methods (more in model/server.lisp)
 (defmethod delete! ((table table) (thing placeable))
@@ -103,7 +105,8 @@ so it made sense to formalize this."
     (id . ,(id table))
     (tablecloth . ,(tablecloth table)) 
     (things . ,(redact (things table)))
-    (players . ,(mapcar #'redact (players table)))))
+    (players . ,(mapcar #'redact (players table)))
+    (history . ,(take 100 (history table)))))
 
 (defmethod redact ((hash-table hash-table))
   (let ((res (make-hash-table)))

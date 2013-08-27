@@ -8,6 +8,8 @@
   :depends-on (#:deal #:parenscript #:cl-who #:cl-css)
   :components ((:file "deal-ui/package")
 	       (:file "deal-ui/util")
+	       (:file "deal-ui/css")
+
 	       (:file "deal-ui/pQuery")
                (:file "deal-ui/deal-ui")))
 

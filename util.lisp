@@ -66,8 +66,8 @@
 (defun trivial-range (min max)
   (loop for i from min to max collect i))
 
-(defun drop (count a-list)
-  (loop for (elem . rest) on a-list repeat (- count 1)
+(defmethod drop ((count integer) (seq list))
+  (loop for (elem . rest) on seq repeat (- count 1)
      finally (return rest)))
 
 (defun make-id () (sym->keyword (gensym)))

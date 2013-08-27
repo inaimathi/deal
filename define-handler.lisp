@@ -83,16 +83,16 @@ also need to be treated specially by some of the handler-definition macros."
 	   (type-pieces args)
 	 ,@body))))
 
-(defmacro define-handler ((name) (&rest args) &body body)
+(defmacro define-handler ((name &optional (encoder 'encode-json-to-string)) (&rest args) &body body)
   "Defines standard handlers (those with no need for complex table interactions, and those with no arguments)"
   (with-handler-prelude
     `(define-easy-handler ,opts ,final-args
        ,@(if (not args)
-	     `((encode-json-to-string (progn ,@body)))
+	     `((,encoder (progn ,@body)))
 	     `((assert (and ,@final-args))
 	       (let* ,(append table-lookups type-conversions)
 		 ,@(append table-assertions lookup-assertions)
-		 (encode-json-to-string (progn ,@body))))))))
+		 (,encoder (progn ,@body))))))))
 
 (defmacro define-table-handler ((name) (&rest args) &body body)
   "Defines table-specific handlers. These need to establish a lock on the named table BEFORE doing the rest of their assertions/lookups."
