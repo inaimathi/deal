@@ -28,12 +28,6 @@
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
 			      (chain event (prevent-default))
 			      ($ "#send" (click))))))
-	     ($post "/lobby/session" ()
-		    (when (@ res current-table)
-		      (setf *current-table-id* (@ res current-table :id))
-		      (show-table "body")		  
-		      (show-hand)
-		      (render-board (@ res current-table))))
 	     ($post "/server-info" ()
 		    (with-slots (handlers decks public-tables) res
 		      (setf *handlers-list* handlers
@@ -57,7 +51,14 @@
 						 (render-table-entry (@ ev message)))))))
 		      ($map public-tables
 			    (with-slots (seated of) elem
-			      (when (< seated of) (render-table-entry elem)))))))
+			      (when (< seated of) (render-table-entry elem)))))
+		    ($post "/lobby/session" ()
+			   (setf *session* res)
+			   (when (@ res current-table)
+			     (setf *current-table-id* (@ res current-table :id))
+			     (show-table "body")		  
+			     (show-hand)
+			     (render-board (@ res current-table))))))
 	   
 	   (defun render-table-entry (tbl-entry)
 	     (with-slots (id tag seated of) tbl-entry
@@ -83,11 +84,23 @@
 			    (:h2 "Chat")
 			    (:ul :id "chat-history" :class "short")
 			    (:textarea :id "chat-input" :type "text")
-			    (:button :id "send" :class "chat-button" "Send")))
-		(:ul :id "board-menu" :class "floating-menu"
-		     (:li (:a :href "javascript: void(0)" :id "new-deck" "New Deck"))
-		     (:li (:a :href "javascript: void(0)" :id "cancel" "Cancel"))))
+			    (:button :id "send" :class "chat-button" "Send")
+			    (:div :id "backpack"
+				  (:ul
+				   (:li (:a :href "#decks-tab" "Decks"))
+				   ;; (:li (:a :href "#minis-tab" "Minis"))
+				   ;; (:li (:a :href "#dice-tab" "Dice"))
+				   )
+				  (:div :id "decks-tab" (:br :class "clear"))
+				  ;; (:div :id "minis-tab" (:br :class "clear"))
+				  ;; (:div :id "dice-tab" (:br :class "clear"))
+				  ))))
 	     ($draggable ".moveable" (:handle "h3"))
+	     ($ "#player-info h3" (html (+ (who-ps-html (:span :class "player-id" (@ *session* id))) (@ *session* tag))))
+	     ($ "#backpack" (tabs))
+	     ($map *decks-list* ($prepend "#decks-tab" (:div :class "new-deck" elem)))
+	     ($draggable ".new-deck" (:revert t))
+
 	     ($ "#chat-input"
 		(keypress (lambda (event)
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
@@ -98,20 +111,7 @@
 		       (or (chat-command txt)
 			   (table/speak txt))))
 	     ($click "#leave" (leave-table))
-
-	     ;;; Menu definition (plus the markup from the HTML file)
-	     ($ "#board-menu" (menu) (hide))
-	     ($right-click "#board" 
-			   ($ "#board-menu" (show) (css (create :left (@ event client-x) :top (@ event client-y)))))
-
-	     ($click "#new-deck" 
-		     (let* ((position ($ "#board-menu" (position)))
-			    (x (@ position left))
-			    (y (@ position top)))
-		       (log :down x y 0 0)
-		       (new-deck (@ *decks-list* 0) :down x y 0 0)
-		       ($ "#board-menu" (hide))))
-	     ($click "#cancel" ($ "#board-menu" (hide)))
+	     
 	     (setf *table-stream*
 		   (event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
 				 (joined)
@@ -129,7 +129,9 @@
 				 (drew-from 
 				  (let* ((id (+ "#" (@ ev stack)))
 					 (count ($int (+ id " .card-count") 1)))
-				    ($ (+ id " .card-count") (html (+ "x" (- count 1)))))
+				    (if (= 1 count)
+					($ id (remove))
+					($ (+ id " .card-count") (html (+ "x" (- count 1))))))
 				  ($highlight (+ "#" (@ ev stack))))
 
 				 (peeked (log "Peeked at cards from a stack"))
@@ -152,7 +154,9 @@
 	       ($ board-selector (empty))
 	       ($droppable board-selector
 			   (:card-in-hand 
-			    (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0)))
+			    (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0))
+			   (:new-deck
+			    (new-deck ($ dropped (text)) :up (@ event client-x) (@ event client-y) 0 0)))
 	       ($ chat-selector 
 		  (empty) 
 		  (append ($map (@ table history)
@@ -209,10 +213,10 @@
 		      nil)))
 
 	   (defun parse-coin-toss (txt)
-	     (chain txt (match "@(flip|toss)")))
+	     (chain txt (match "^@(flip|toss)")))
 
 	   (defun parse-die-roll (txt)
-	     (let* ((re (new (-reg-exp "@roll *(\\d*)d(\\d+)([-+]\\d+)?")))
+	     (let* ((re (new (-reg-exp "^@roll *(\\d*)d(\\d+)([-+]\\d+)?")))
 		    (match (chain txt (match re))))
 	       (when match
 		 (list (or (parse-int (@ match 1)) 1)
@@ -299,6 +303,7 @@
 	     (defvar *decks-list* nil)
 	     (defvar *lobby-stream* nil)
 	     (defvar *table-stream* nil)
+	     (defvar *session* nil)
 
 	     (doc-ready (show-lobby "body"))
 	     
@@ -359,6 +364,6 @@
 	 (html-str
 	   (:html :xmlns "http://www.w3.org/1999/xhtml" :lang "en"
 		  (:head (:title "Tabletop Prototyping System - Deal")
-			 (styles "jquery-ui-1.10.3.custom.min.css" "main.css")
+			 (styles "jquery-ui.css" "main.css")
 			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "util.js" "lobby.js" "table.js" "deal.js"))
 		  (:body))))

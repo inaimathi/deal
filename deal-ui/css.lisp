@@ -43,6 +43,7 @@
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
 	       ("#player-info" :width 400px :top 8px :left 518px)
+	       ("#player-info h3 .player-id" :font-size small :vertical-align top)
 	       ("#player-info .card" :float left)
 	       ("#player-info .card.in-chat" :position relative :display inline-block :float none :cursor auto)
 	       ("#player-info .card.in-chat .type" :margin-top 20px)
@@ -83,4 +84,9 @@
 	       ("#chat-history li.did" ,@(css-box nil) :border none :padding 3px :margin-bottom 2px)
 	       ("#chat-history li.did" :font-style oblique :color "#33f")
 	       
-	       (".chat-button" :margin "3px 0px 0px 0px" :padding "3px 40px")))
+	       (".chat-button" :margin "3px 0px 0px 0px" :padding "3px 40px")
+
+	       (".ui-tabs" :margin-top 10px)
+	       (".ui-tabs .ui-tabs-nav li a" :font-size small)
+	       (".ui-tabs .ui-tabs-panel" :padding 5px)
+	       (".new-deck" ,@(css-box :filled) ,@css-card-size :font-size small :float left :margin-right 2px)))

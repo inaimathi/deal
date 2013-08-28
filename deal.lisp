@@ -172,6 +172,8 @@
 (define-player-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (loop with rep = (min num (card-count stack)) repeat rep
      do (insert! (session-value :player) (pop! stack)))
+  (when (zerop (card-count stack))
+    (delete! table stack))
   (publish! table :drew-from `((stack . ,(id stack)) (count . ,num)))
   (hash-values (hand (session-value :player))))
 

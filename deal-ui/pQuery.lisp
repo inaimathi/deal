@@ -60,19 +60,6 @@
 				 ,@(when handle `(:handle ,handle))
 				 ,@(when cancel `(:cancel ,cancel))))))
 
-(defpsmacro $right-click (target &rest body)
-  (with-gensyms (fn)
-    `(let ((,fn (lambda (event) ,@body)))
-       ($ ,target
-	  (bind :contextmenu
-		(lambda (event)
-		  (,fn event)
-		  (chain event (prevent-default))))
-	  (bind :oncontextmenu
-		(lambda (event)
-		  (,fn event)
-		  (setf (@ window event return-value) false)))))))
-
 (defpsmacro $click (target &rest body)
   `($ ,target (click (lambda (event) ,@body))))
 

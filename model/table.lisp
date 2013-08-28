@@ -70,7 +70,7 @@
 ;;;;;;;;;; delete/insert methods (more in model/server.lisp)
 (defmethod delete! ((table table) (thing placeable))
   "Removes a thing from the given table"
-  (remhash (id thing) things))
+  (remhash (id thing) (things table)))
 
 (defmethod insert! ((table table) (card card))
   "Place a new card on the given table. Re-assigns (id card) to maintain secrecy about card properties."
