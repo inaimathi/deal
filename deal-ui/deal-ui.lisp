@@ -19,10 +19,10 @@
 			   (:input :class "game-tag")
 			   (:button :class "ok" "Ok")
 			   (:button :class "cancel" "Cancel")))
-	     ($click "#send" (lobby/speak ($ "#chat-input" (val))))
-	     ($click "#new-table-setup .ok" (new-public-table ($ "#new-table-setup .game-tag" (val))))
-	     ($click "#new-table-setup .cancel" ($ "#new-table-setup" (hide)))
-	     ($click "#new-table" ($ "#new-table-setup" (show)))
+	     ($click "#send" (lobby/speak ($ "#chat-input" (val)))
+		     "#new-table-setup .ok" (new-public-table ($ "#new-table-setup .game-tag" (val)))
+		     "#new-table-setup .cancel" ($ "#new-table-setup" (hide))
+		     "#new-table" ($ "#new-table-setup" (show)))
 	     ($ "#chat-input"
 		(keypress (lambda (event)
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
@@ -66,10 +66,11 @@
 				  ;; (:div :id "dice-tab" (:br :class "clear"))
 				  ))))
 	     ($draggable ".moveable" (:handle "h3"))
+	     ($draggable ".new-deck" (:revert t))
 	     ($ "#player-info h3" (html (+ (who-ps-html (:span :class "player-id" (@ *session* id))) (@ *session* tag))))
 	     ($ "#backpack" (tabs))
 	     ($map *decks-list* ($prepend "#decks-tab" (:div :class "new-deck" elem)))
-	     ($draggable ".new-deck" (:revert t))
+	     
 
 	     ($ "#chat-input"
 		(keypress (lambda (event)
@@ -79,8 +80,8 @@
 	     ($click "#send" 
 		     (let ((txt ($ "#chat-input" (val))))
 		       (or (chat-command txt)
-			   (table/speak txt))))
-	     ($click "#leave" (leave-table))
+			   (table/speak txt)))
+		     "#leave" (leave-table))
 	     
 	     (setf *table-stream*
 		   (event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
@@ -132,16 +133,14 @@
 		  (append ($map (@ table history)
 				($ chat-selector (prepend (chat-message elem))))))
 	       (scroll-to-bottom chat-selector)
-	       (when ts ($map ts 
-			      (cond ((= (@ elem type) :stack) (create-stack "body" elem))
-				    ((= (@ elem type) :card) (create-card "body" elem)))))))
+	       ($map ts 
+		     (cond ((= (@ elem type) :stack) (create-stack "body" elem))
+			   ((= (@ elem type) :card) (create-card "body" elem))))))
 	   
 	   (defun render-hand (cards)
 	     (let ((hand-selector "#hand"))
 	       ($ hand-selector (empty))
-	       (when cards
-		 ($map cards
-		       (create-card-in-hand hand-selector elem)))))
+	       ($map cards (create-card-in-hand hand-selector elem))))
 
 	   (define-thing stack
 	       (:div :id (self id) 
@@ -307,10 +306,9 @@
 						   (if ($exists? sel)
 						       ($ sel (replace (render-table-entry (@ ev message))))
 						       (render-table-entry (@ ev message)))))))
-			    (when public-tables
-			      ($map public-tables
-				    (with-slots (seated of) elem
-				      (when (< seated of) (render-table-entry elem))))))
+			    ($map public-tables
+				  (with-slots (seated of) elem
+				    (when (< seated of) (render-table-entry elem)))))
 			  (get-session))
 
 	     (define-ajax new-public-table "/lobby/new-public-table" (tag)

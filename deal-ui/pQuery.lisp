@@ -33,7 +33,9 @@
   `($ document (ready (fn ,@body))))
 
 (defpsmacro $map (lst &body body)
-  `(chain j-query (map ,lst (lambda (elem i) ,@body))))
+  (with-ps-gensyms (list)
+    `(let ((,list ,lst))
+       (when ,list (chain j-query (map ,list (lambda (elem i) ,@body)))))))
 
 (defpsmacro $post (uri arg-plist &body body)
   `(chain j-query 
@@ -60,8 +62,9 @@
 				 ,@(when handle `(:handle ,handle))
 				 ,@(when cancel `(:cancel ,cancel))))))
 
-(defpsmacro $click (target &rest body)
-  `($ ,target (click (lambda (event) ,@body))))
+(defpsmacro $click (&rest target/body-list)
+  `(progn ,@(loop for (target body) on target/body-list by #'cddr
+	       collect `($ ,target (click (lambda (event) ,body))))))
 
 (defpsmacro $append (target &rest html)
   `($ ,target (append (who-ps-html ,@html))))
@@ -91,7 +94,7 @@
 		 (recur (cdr form)))))))
 
 (defpsmacro define-thing (name markup &body behavior)
-  (with-gensyms (thing container)
+  (with-ps-gensyms (thing container)
     `(defun ,(intern (format nil "create-~a" name)) (container thing)
        (let* ((,thing thing)
 	      (,container container)
@@ -107,7 +110,7 @@
      ,@behavior))
 
 (defpsmacro event-source (uri &body name/body-list)
-  (with-gensyms (stream handlers ev)
+  (with-ps-gensyms (stream handlers ev)
     `(let ((,stream (new (-event-source ,uri)))
 	   (,handlers (create ,@(loop for (name . fn-body) in name/body-list
 				   collect `,name 
