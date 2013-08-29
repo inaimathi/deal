@@ -28,37 +28,7 @@
 			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
 			      (chain event (prevent-default))
 			      ($ "#send" (click))))))
-	     ($post "/server-info" ()
-		    (with-slots (handlers decks public-tables) res
-		      (setf *handlers-list* handlers
-			    *decks-list* decks)
-		      (setf *lobby-stream*
-			    (event-source "/ev/lobby"
-					  (said)
-					  (changed-nick)
-					  (started-table
-					   (render-table-entry (@ ev message)))
-					  (filled-table
-					   ($ (+ "#game-" (@ ev message id)) (remove)))
-					  (joined
-					   (let* ((elem ($ (+ "#game-" (@ ev message id) " .players .count")))
-						  (new-count (+ 1 ($int elem))))
-					     (chain elem (text (+ 1 ($int elem))))))
-					  (left
-					   (let ((sel (+ "#game-" (@ ev message id))))
-					     (if ($exists? sel)
-						 ($ sel (replace (render-table-entry (@ ev message))))
-						 (render-table-entry (@ ev message)))))))
-		      ($map public-tables
-			    (with-slots (seated of) elem
-			      (when (< seated of) (render-table-entry elem)))))
-		    ($post "/lobby/session" ()
-			   (setf *session* res)
-			   (when (@ res current-table)
-			     (setf *current-table-id* (@ res current-table :id))
-			     (show-table "body")		  
-			     (show-hand)
-			     (render-board (@ res current-table))))))
+	     (server-info))
 	   
 	   (defun render-table-entry (tbl-entry)
 	     (with-slots (id tag seated of) tbl-entry
@@ -308,6 +278,41 @@
 	     (doc-ready (show-lobby "body"))
 	     
 	     ;;; Client-side handler definitions
+	     (define-ajax get-session "/lobby/session" ()
+			  (setf *session* res)
+			  (when (@ res current-table)
+			    (setf *current-table-id* (@ res current-table :id))
+			    (show-table "body")		  
+			    (show-hand)
+			    (render-board (@ res current-table))))
+
+	     (define-ajax server-info "/server-info" ()
+			  (with-slots (handlers decks public-tables) res
+			    (setf *handlers-list* handlers
+				  *decks-list* decks
+				  *lobby-stream*
+				  (event-source "/ev/lobby"
+						(said)
+						(changed-nick)
+						(started-table
+						 (render-table-entry (@ ev message)))
+						(filled-table
+						 ($ (+ "#game-" (@ ev message id)) (remove)))
+						(joined
+						 (let* ((elem ($ (+ "#game-" (@ ev message id) " .players .count")))
+							(new-count (+ 1 ($int elem))))
+						   (chain elem (text (+ 1 ($int elem))))))
+						(left
+						 (let ((sel (+ "#game-" (@ ev message id))))
+						   (if ($exists? sel)
+						       ($ sel (replace (render-table-entry (@ ev message))))
+						       (render-table-entry (@ ev message)))))))
+			    (when public-tables
+			      ($map public-tables
+				    (with-slots (seated of) elem
+				      (when (< seated of) (render-table-entry elem))))))
+			  (get-session))
+
 	     (define-ajax new-public-table "/lobby/new-public-table" (tag)
 			  (log "STARTING TABLE" res)
 			  (setf *current-table-id* (@ res :id))
