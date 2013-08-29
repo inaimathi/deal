@@ -37,6 +37,11 @@
     `(let ((,list ,lst))
        (when ,list (chain j-query (map ,list (lambda (elem i) ,@body)))))))
 
+(defpsmacro map-markup (lst &body elem-markup)
+  `(chain (loop for elem in ,lst
+	     collect (who-ps-html ,@elem-markup))
+	  (join "")))
+
 (defpsmacro $post (uri arg-plist &body body)
   `(chain j-query 
 	  (post ,uri (create ,@arg-plist)

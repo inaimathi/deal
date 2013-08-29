@@ -15,6 +15,9 @@
 			   (:input :class "game-tag")
 			   (:button :class "ok" "Ok")
 			   (:button :class "cancel" "Cancel")))
+	     (when *table-stream* 
+	       (chain *table-stream* (close))
+	       (setf *table-stream* nil))
 	     (show-chat "#left-pane")
 	     ($click "#new-table-setup .ok" (new-public-table ($ "#new-table-setup .game-tag" (val)))
 		     "#new-table-setup .cancel" ($ "#new-table-setup" (hide))
@@ -67,17 +70,37 @@
 				  (:ul
 				   (:li (:a :href "#decks-tab" "Decks"))
 				   ;; (:li (:a :href "#minis-tab" "Minis"))
-				   ;; (:li (:a :href "#dice-tab" "Dice"))
-				   )
-				  (:div :id "decks-tab" (:br :class "clear"))
+				   (:li (:a :href "#dice-tab" "Dice/Coin")))
+				  (:div :id "decks-tab" 
+					(map-markup *decks-list*
+						    (:div :class "new-deck" elem))
+					(:br :class "clear"))
 				  ;; (:div :id "minis-tab" (:br :class "clear"))
-				  ;; (:div :id "dice-tab" (:br :class "clear"))
-				  ))))
+				  (:div :id "dice-tab" 
+					(map-markup (list "d3" "d4" "d6" "d8" "d10" "d20" "d100")
+						    (:div :class "die-roll-icon" (:span :class "num-dice" "1")
+							  elem
+							  (:button :class "increment")
+							  (:button :class "decrement")))
+					(:div :class "coin-flip-icon" "Flip")
+					(:br :class "clear"))))))
+	     (when *lobby-stream* 
+	       (chain *lobby-stream* (close))
+	       (setf *lobby-stream* nil))
 	     (show-chat "#game-chat")
-	     ($map *decks-list* ($prepend "#decks-tab" (:div :class "new-deck" elem)))
+	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
+	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))
+	     
+	     ($click ".die-roll-icon .increment"
+		     (let ((trg ($ this (siblings ".num-dice"))))
+		       ($ trg (text (min 4096 (+ 1 ($int trg))))))
+		     ".die-roll-icon .decrement"
+		     (let ((trg ($ this (siblings ".num-dice"))))
+		       ($ trg (text (max 1 (- ($int trg) 1))))))
 	     
 	     ($draggable ".moveable" (:handle "h3"))
 	     ($draggable ".new-deck" (:revert t))
+	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
 	     ($ "#player-info h3" (html (+ (who-ps-html (:span :class "player-id" (@ *session* id))) (@ *session* tag))))
 	     ($ "#backpack" (tabs))
 
@@ -128,7 +151,12 @@
 			   (:card-in-hand 
 			    (play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0))
 			   (:new-deck
-			    (new-deck ($ dropped (text)) :up (@ event client-x) (@ event client-y) 0 0)))
+			    (new-deck ($ dropped (text)) :up (@ event client-x) (@ event client-y) 0 0))
+			   (:die-roll-icon
+			    (destructuring-bind (num-dice die-size mod) (parse-die-roll ($ dropped (text)))
+			      (roll-dice num-dice die-size mod)))
+			   (:coin-flip-icon
+			    (flip-coin)))
 	       ($ chat-selector 
 		  (empty) 
 		  (append ($map (@ table history)
@@ -170,7 +198,7 @@
 (to-file "static/js/util.js"
 	 (ps 
 	   (defun chat-command (txt)
-	     (aif (parse-die-roll txt)
+	     (aif (parse-die-command txt)
 		  (progn 
 		    (destructuring-bind (num-dice die-size modifier) it
 		      (roll-dice num-dice die-size modifier)
@@ -184,9 +212,17 @@
 
 	   (defun parse-coin-toss (txt)
 	     (chain txt (match "^@(flip|toss)")))
+	   
+	   (defun parse-die-command (txt)
+	     (let* ((re (new (-reg-exp "^@roll *(\\d*)d(\\d+)([-+]\\d+)?")))
+		    (match (chain txt (match re))))
+	       (when match
+		 (list (or (parse-int (@ match 1)) 1)
+		       (parse-int (@ match 2))
+		       (or (parse-int (@ match 3)) 0)))))
 
 	   (defun parse-die-roll (txt)
-	     (let* ((re (new (-reg-exp "^@roll *(\\d*)d(\\d+)([-+]\\d+)?")))
+	     (let* ((re (new (-reg-exp "(\\d*)d(\\d+)([-+]\\d+)?")))
 		    (match (chain txt (match re))))
 	       (when match
 		 (list (or (parse-int (@ match 1)) 1)

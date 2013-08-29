@@ -89,4 +89,7 @@
 	       (".ui-tabs" :margin-top 10px)
 	       (".ui-tabs .ui-tabs-nav li a" :font-size small)
 	       (".ui-tabs .ui-tabs-panel" :padding 5px)
-	       (".new-deck" ,@(css-box :filled) ,@css-card-size :font-size small :float left :margin-right 2px)))
+	       (".new-deck" ,@(css-box :filled) ,@css-card-size :font-size small :float left :margin-right 2px)
+
+	       (".ui-tabs #dice-tab .die-roll-icon, .coin-flip-icon" :width 55px :height 55px :border "1px solid #ccc" :float left :margin 3px :cursor move :text-align center :border-radius 4px :background-color "#fff" :padding-top 6px)
+	       (".ui-tabs #dice-tab .die-roll-icon button" :width 22px :height 22px :margin-left 2px)))
