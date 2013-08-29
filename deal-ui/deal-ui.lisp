@@ -6,12 +6,8 @@
 	 (ps
 	   (define-component lobby 
 	       (:div :id "lobby"
-		     (:div :class "left-pane"
-			   (:ul :id "chat-history")
-			   (:div :id "chat-controls"
-				 (:textarea :id "chat-input" :type "text")
-				 (:button :id "send" :class "chat-button" "Send")))
-		     (:div :class "right-pane"
+		     (:div :id "left-pane")
+		     (:div :id "right-pane"
 			   (:ul :id "open-tables")
 			   (:ul (:li (:button :id "new-table" "New Table"))))
 		     (:div :id "new-table-setup" :class "overlay"
@@ -19,15 +15,10 @@
 			   (:input :class "game-tag")
 			   (:button :class "ok" "Ok")
 			   (:button :class "cancel" "Cancel")))
-	     ($click "#send" (lobby/speak ($ "#chat-input" (val)))
-		     "#new-table-setup .ok" (new-public-table ($ "#new-table-setup .game-tag" (val)))
+	     (show-chat "#left-pane")
+	     ($click "#new-table-setup .ok" (new-public-table ($ "#new-table-setup .game-tag" (val)))
 		     "#new-table-setup .cancel" ($ "#new-table-setup" (hide))
 		     "#new-table" ($ "#new-table-setup" (show)))
-	     ($ "#chat-input"
-		(keypress (lambda (event)
-			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
-			      (chain event (prevent-default))
-			      ($ "#send" (click))))))
 	     (server-info))
 	   
 	   (defun render-table-entry (tbl-entry)
@@ -38,7 +29,26 @@
 			      (:span :class "id" id) 
 			      (:span :class "players" (:span :class "count" seated) "/" of)
 			      (:button :class "join" "Join")))
-	       ($click (+ "#game-" id " .join") (join-table id ""))))))
+	       ($click (+ "#game-" id " .join") (join-table id ""))))
+
+	   (define-component chat
+	       (:div :class "chat"
+		     (:ul :id "chat-history")
+		     (:div :id "chat-controls"
+			   (:textarea :id "chat-input" :type "text")
+			   (:button :id "send" :class "chat-button" "Send")))
+	     ($ "#chat-input"
+		(keypress (lambda (event)
+			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
+			      (chain event (prevent-default))
+			      ($ "#send" (click))))))
+	     ($click "#lobby .chat #send"
+		     (lobby/speak ($ "#chat-input" (val)))
+		     "#player-info #send" 
+		     (let ((txt ($ "#chat-input" (val))))
+		       (if (chain txt (match "^@"))
+			   (chat-command txt)
+			   (table/speak txt)))))))
 
 (to-file "static/js/table.js"
 	 (ps
@@ -52,9 +62,7 @@
 			    (:h2 "Hand")
 			    (:div :id "hand")
 			    (:h2 "Chat")
-			    (:ul :id "chat-history" :class "short")
-			    (:textarea :id "chat-input" :type "text")
-			    (:button :id "send" :class "chat-button" "Send")
+			    (:div :id "game-chat")
 			    (:div :id "backpack"
 				  (:ul
 				   (:li (:a :href "#decks-tab" "Decks"))
@@ -65,27 +73,20 @@
 				  ;; (:div :id "minis-tab" (:br :class "clear"))
 				  ;; (:div :id "dice-tab" (:br :class "clear"))
 				  ))))
+	     (show-chat "#game-chat")
+	     ($map *decks-list* ($prepend "#decks-tab" (:div :class "new-deck" elem)))
+	     
 	     ($draggable ".moveable" (:handle "h3"))
 	     ($draggable ".new-deck" (:revert t))
 	     ($ "#player-info h3" (html (+ (who-ps-html (:span :class "player-id" (@ *session* id))) (@ *session* tag))))
 	     ($ "#backpack" (tabs))
-	     ($map *decks-list* ($prepend "#decks-tab" (:div :class "new-deck" elem)))
-	     
 
-	     ($ "#chat-input"
-		(keypress (lambda (event)
-			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
-			      (chain event (prevent-default))
-			      ($ "#send" (click))))))
-	     ($click "#send" 
-		     (let ((txt ($ "#chat-input" (val))))
-		       (or (chat-command txt)
-			   (table/speak txt)))
-		     "#leave" (leave-table))
+	     ($click "#leave" (leave-table))
 	     
 	     (setf *table-stream*
 		   (event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
 				 (joined)
+				 (left)
 				 (said)
 				 (moved 
 				  (with-slots (thing x y) ev

@@ -76,8 +76,8 @@
 ;;;; Game related (once you're already at a table)
 (define-player-handler (play/leave) ((table :table))
   (let ((player (session-value :player)))
-    (setf (players table) (remove player (players table))
-	  (current-table player) nil)
+    (delete! table player)
+    (setf (current-table player) nil)
     (unless (passphrase table)
       (publish! table :left)
       (publish! *server* :left 

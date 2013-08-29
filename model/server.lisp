@@ -25,6 +25,10 @@
   "Removes the given card from the given players' hand"
   (remhash (id card) (hand player)))
 
+(defmethod delete! ((table table) (player player))
+  (setf (players table) (remove player (players table)))
+  (decf (player-count table)))
+
 (defmethod insert! ((player player) (card card))
   "Adds the given card to the given players' hand"
   (setf (id card) (make-id)

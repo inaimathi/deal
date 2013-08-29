@@ -52,8 +52,8 @@
 	       ("#hand" :height ,(px (+ css-card-height 5)))
 
 	       ("#lobby" :min-width 980px)
-	       ("#lobby .left-pane" ,@css-pane :width 570px)
-	       ("#lobby .right-pane" ,@css-pane :width 300px)
+	       ("#lobby #left-pane" ,@css-pane :width 570px)
+	       ("#lobby #right-pane" ,@css-pane :width 300px)
 	       ("#lobby ul" :padding 0px :list-style-type none)
 	       ("#lobby ul li" :margin-top 5px)
 	       
@@ -75,11 +75,11 @@
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
 	       ("#chat-controls textarea" :width 100% :height 60px :margin-bottom 5px)
 
-	       ("#chat-history.short" :height 200px :font-size small)
-	       ("#chat-history.short .time" :display none)
-	       ("#chat-history.short li .player" :font-size xx-small)
-	       ("#chat-history.short li .player-tag" :font-weight bold)
-	       ("#chat-history.short li .message" :display inline)
+	       ("#player-info #chat-history" :height 200px :font-size small)
+	       ("#player-info #chat-history .time" :display none)
+	       ("#player-info #chat-history li .player" :font-size xx-small)
+	       ("#player-info #chat-history li .player-tag" :font-weight bold)
+	       ("#player-info #chat-history li .message" :display inline)
 
 	       ("#chat-history li.did" ,@(css-box nil) :border none :padding 3px :margin-bottom 2px)
 	       ("#chat-history li.did" :font-style oblique :color "#33f")
