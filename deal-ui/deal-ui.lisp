@@ -287,7 +287,7 @@
 	     (who-ps-html
 	      (who-ps-html (:div :class (+ "card in-chat" 
 					   (if (= (@ card face) "down") 
-					       "face-down" ""))
+					       " face-down" ""))
 				 (:span :class "content" (@ card content))
 				 (:div :class "type" (@ card card-type))))))
 
