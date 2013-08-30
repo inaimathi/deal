@@ -91,10 +91,9 @@
 		      collect `((= (@ event which) ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body))))))))
 
 ;;;;;;;;;; Define client-side handlers
-(defpsmacro define-ajax (name uri arg-list &body body)
+(defpsmacro define-ajax (name arg-list &body body)
   `(defun ,name ,arg-list
-     (log ,(format nil "~a" name) (list ,@arg-list))
-     ($post ,uri (,@(unless (member 'table arg-list) `(:table *current-table-id*)) ,@(args->plist arg-list)) 
+     ($post ,(format nil "/~(~a~)" name) (,@(unless (member 'table arg-list) `(:table *current-table-id*)) ,@(args->plist arg-list)) 
 	    ,@body)))
 
 ;;;;;;;;;; Defining markup/behavior hybrids made easier

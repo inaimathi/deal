@@ -74,7 +74,7 @@
       (redact table))))
 
 ;;;; Game related (once you're already at a table)
-(define-player-handler (play/leave) ((table :table))
+(define-player-handler (play/leave-table) ((table :table))
   (let ((player (session-value :player)))
     (delete! table player)
     (setf (current-table player) nil)
