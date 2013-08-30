@@ -114,7 +114,7 @@
   :ok)
 
 (define-player-handler (play/flip) ((table :table) (thing :flippable))
-  (setf face (if (eq face :up) :down :up))
+  (setf (face thing) (if (eq (face thing) :up) :down :up))
   (publish! table :flipped `((thing . ,(redact thing))))
   :ok)
 

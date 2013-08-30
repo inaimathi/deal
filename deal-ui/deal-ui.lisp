@@ -124,7 +124,12 @@
 				  (with-slots (thing x y) ev
 				    ($ (+ "#" thing) (offset (create :left x :top y)))))
 				 (took-control (log "Someone took something"))
-				 (flipped (log "Someone flipped something"))
+				 (flipped 
+				  ($ (+ "#" (@ ev thing id)) (remove))
+				  (case (@ ev thing type)
+				    ("card" (create-card "body" (@ ev thing)))
+				    ("stack" (create-stack "body" (@ ev thing))))
+				  (log "Someone flipped something" ev))
 				 (new-deck 
 				  (create-stack "body" (@ ev stack)))
 				 (stacked-up (log "Made a stack from cards"))
@@ -162,7 +167,8 @@
 	       ($ board-selector (empty))
 	       ($droppable board-selector ()
 			   (:card-in-hand 
-			    (hand/play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0))
+			    (hand/play ($ dropped (attr :id))
+				       (if shift? :down :up) (@ event client-x) (@ event client-y) 0 0))
 			   (:new-deck
 			    (play/new-stack-from-deck ($ dropped (text)) :up (@ event client-x) (@ event client-y) 0 0))
 			   (:die-roll-icon
@@ -204,7 +210,10 @@
 		     :style (self position)
 		     (:span :class "content" (self content))
 		     (:div :class "type" (self card-type)))
-	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
+	     ($draggable css-id () 
+			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
+			 (when shift? (play/flip (self id)))
+))
 
 	   (define-thing card-in-hand
 	       (:div :id (self id)
@@ -309,6 +318,8 @@
 					  ;;; TODO actually render the cards here. 
 					  ;;; In fact TODO anywhere there's a card being sent, it should be rendered in-line
 					  (+ "revealed some cards"))
+					 ("flipped"
+					  (+ "flipped over " (chat-card (@ msg thing))))
 					 ("playedFromHand"
 					  (+ "played " (chat-card (@ msg card)) " from hand"))
 					 ("playedFromStack"
@@ -413,7 +424,7 @@
 	       (render-hand res))
 	     (define-ajax play/coin-toss ())
 	     (define-ajax play/roll (num-dice die-size modifier))
-	     
+	     (define-ajax play/flip (thing))
 	     (define-ajax play/new-stack-from-deck (deck-name face x y z rot))
 	     (define-ajax play/new-stack-from-cards (cards)
 	       (log "NEW STACK" cards)

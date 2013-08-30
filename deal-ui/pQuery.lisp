@@ -57,7 +57,8 @@
       (droppable 
        (create 
 	:drop (lambda (event ui)
-		(let ((dropped (@ ui helper context)))
+		(let ((dropped (@ ui helper context))
+		      (shift? (@ event shift-key)))
 		  (cond ,@(loop for (class action) in class/action-list
 			     collect `(($ dropped (has-class ,class)) ,action)))))
 	,@(when overlapping
@@ -65,7 +66,9 @@
 		  :out (fn ($ ,overlapping (droppable "enable")))))))))
 
 (defpsmacro $draggable (target (&key revert handle cancel) &body body)
-  `($ ,target (draggable (create :stop (lambda (event ui) ,@body)
+  `($ ,target (draggable (create :stop (lambda (event ui) 
+					 (let ((shift? (@ event shift-key)))
+					   ,@body))
 				 ,@(when revert `(:revert ,revert))
 				 ,@(when handle `(:handle ,handle))
 				 ,@(when cancel `(:cancel ,cancel))))))
