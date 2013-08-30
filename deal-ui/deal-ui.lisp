@@ -133,7 +133,10 @@
 				 (new-deck 
 				  (create-stack "body" (@ ev stack)))
 				 (stacked-up (log "Made a stack from cards"))
-				 (merged-stacks (log "Put some stacks together"))
+				 (merged-stacks 
+				  ($ (+ "#" (@ ev merged)) (remove))
+				  ($ (+ "#" (@ ev stack id)) (remove))
+				  (create-stack "body" (@ ev stack)))
 				 (added-to-stack 
 				  ($ (+ "#" (@ ev card)) (remove))
 				  (change-stack-count (@ ev stack) +1)
@@ -201,7 +204,9 @@
 			 (:card-in-hand
 			  (hand/play-to ($ dropped (attr :id)) (self id)))
 			 (:card
-			  (stack/add-to (self id) ($ dropped (attr :id)))))
+			  (stack/add-to (self id) ($ dropped (attr :id))))
+			 (:stack
+			  (stack/merge (self id) ($ dropped (attr :id)))))
 	     ($click (+ css-id " .draw") (stack/draw (self id) 1)))
 
 	   (define-thing card 
@@ -328,6 +333,8 @@
 					  (+ "played " (chat-card (@ msg card)) " to stack " (@ msg stack)))
 					 ("addedToStack"
 					  (+ "put " (@ msg card) " on top of " (@ msg stack)))
+					 ("mergedStacks"
+					  (+ "merged " (@ msg merged) " into " (@ msg stack id)))
 					 ("pickedUp"
 					  (+ "picked up card " (@ msg card)))
 					 ("rolled"
@@ -418,7 +425,7 @@
 	     (define-ajax my-hand ()
 	       (log "SHOWING HAND" res)
 	       (render-hand res))
-
+	     (define-ajax stack/merge (stack stack-two))
 	     (define-ajax hand/pick-up (card)
 	       ($ (+ "#" card) (remove))
 	       (render-hand res))

@@ -147,13 +147,11 @@
   (move! card table stack)
   :ok)
 
-(define-player-handler (stack/merge) ((table :table) (stacks (:list stack)))
-  (let ((stack (first stacks)))
-    (loop for s in (rest stacks)
-       do (dolist (c (cards s)) (insert! c (cards stack)))
-       do (remhash (id s) (things table)))
-    (publish! table :merged-stacks `((stack . ,(redact stack)) (stacks ,@(mapcar #'id stacks))))
-    :ok))
+(define-player-handler (stack/merge) ((table :table) (stack :stack) (stack-two :stack))
+  (dolist (c (cards stack-two)) (insert! stack c))
+  (delete! table stack-two)
+  (publish! table :merged-stacks `((stack . ,(redact stack)) (merged ,(id stack-two))))
+  :ok)
 
 ;;;;; Hand
 (define-player-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
