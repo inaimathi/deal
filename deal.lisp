@@ -143,8 +143,8 @@
     :ok))
 
 (define-player-handler (stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
-  (move! card table stack)
   (publish! table :added-to-stack `((stack . ,(id stack)) (card . ,(id card))))
+  (move! card table stack)
   :ok)
 
 (define-player-handler (stack/merge) ((table :table) (stacks (:list stack)))
@@ -181,7 +181,7 @@
   (move! card table (session-value :player))
   (publish! table :picked-up `((card . ,(id card))))
   card)
-
+ 
 (define-player-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
   (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))
   (take (- max min) (drop (+ min 1) (cards stack))))

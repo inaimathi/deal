@@ -12,16 +12,21 @@
 			   (:ul (:li (:button :id "new-table" "New Table"))))
 		     (:div :id "new-table-setup" :class "overlay"
 			   (:h3 "New Table")
-			   (:input :class "game-tag")
-			   (:button :class "ok" "Ok")
-			   (:button :class "cancel" "Cancel")))
+			   (:div :class "body"
+				 (:input :class "game-tag")
+				 (:button :class "ok" "Ok")
+				 (:button :class "cancel" "Cancel"))))
 	     (when *table-stream* 
 	       (chain *table-stream* (close))
 	       (setf *table-stream* nil))
 	     (show-chat "#left-pane")
 	     ($click "#new-table-setup .ok" (new-public-table ($ "#new-table-setup .game-tag" (val)))
 		     "#new-table-setup .cancel" ($ "#new-table-setup" (hide))
-		     "#new-table" ($ "#new-table-setup" (show)))
+		     "#new-table" (progn ($ "#new-table-setup" (show))
+					 ($ "#new-table-setup .game-tag" (focus))))
+	     ($keypress "#new-table-setup .game-tag" 
+			<ret> ($ "#new-table-setup .ok" (click))
+			<esc> ($ "#new-table-setup .cancel" (click)))
 	     (server-info))
 	   
 	   (defun render-table-entry (tbl-entry)
@@ -40,11 +45,11 @@
 		     (:div :id "chat-controls"
 			   (:textarea :id "chat-input" :type "text")
 			   (:button :id "send" :class "chat-button" "Send")))
-	     ($ "#chat-input"
-		(keypress (lambda (event)
-			    (when (and (= (@ event which) 13) (not (@ event shift-key)))
-			      (chain event (prevent-default))
-			      ($ "#send" (click))))))
+	     ($keypress "#chat-input"
+			<ret> (unless shift?
+				(chain event (prevent-default))
+				($ "#send" (click)))
+			<esc> ($ "#chat-input" (val "")))
 	     ($click "#lobby .chat #send"
 		     (lobby/speak ($ "#chat-input" (val)))
 		     "#player-info #send" 
@@ -120,13 +125,13 @@
 				  (create-stack "body" (@ ev stack)))
 				 (stacked-up (log "Made a stack from cards"))
 				 (merged-stacks (log "Put some stacks together"))
-				 (added-to-stack (log "Put a card onto a stack"))
+				 (added-to-stack 
+				  ($ (+ "#" (@ ev card)) (remove))
+				  (change-stack-count (@ ev stack) +1)
+				  ($ (+ "#" (@ ev stack)) (highlight))
+				  (log "Put a card onto a stack"))
 				 (drew-from 
-				  (let* ((id (+ "#" (@ ev stack)))
-					 (count ($int (+ id " .card-count") 1)))
-				    (if (= 1 count)
-					($ id (remove))
-					($ (+ id " .card-count") (html (+ "x" (- count 1))))))
+				  (change-stack-count (@ ev stack) -1)
 				  ($highlight (+ "#" (@ ev stack))))
 
 				 (peeked (log "Peeked at cards from a stack"))
@@ -136,7 +141,9 @@
 				  (create-card "body" (@ ev card)))
 
 				 (played-from-stack (log "Played the top card from a stack"))
-				 (played-to-stack (log "Played to the top of a stack"))
+				 (played-to-stack
+				  (change-stack-count (@ ev stack) +1)
+				  (log "Played to the top of a stack"))
 				 (picked-up (log "Picked up a card"))
 
 				 (rolled (log "Rolled"))
@@ -178,6 +185,11 @@
 		     (:button :class "draw" "Draw")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($draggable css-id () (move (self id) (@ ui offset left) (@ ui offset top) 0 0))
+	     ($droppable css-id 
+			 (:card-in-hand
+			  (play-to ($ dropped (attr :id)) (self id)))
+			 (:card
+			  (stack/add-to (self id) ($ dropped (attr :id)))))
 	     ($click (+ css-id " .draw") (draw (self id) 1)))
 
 	   (define-thing card 
@@ -197,6 +209,14 @@
 
 (to-file "static/js/util.js"
 	 (ps 
+	   (defun change-stack-count (stack-id by)
+	     (let* ((id (+ "#" stack-id))
+		    (ct-class (+ id " .card-count"))
+		    (count ($int ct-class 1)))
+	       (if (= count (- by))
+		   ($ id (remove))
+		   ($ ct-class (html (+ "x" (+ count by)))))))
+	   
 	   (defun chat-command (txt)
 	     (aif (parse-die-command txt)
 		  (progn 
@@ -289,6 +309,8 @@
 					  (+ "played " (chat-card (@ msg card)) " from " (@ msg stack)))
 					 ("playedToStack"
 					  (+ "played " (chat-card (@ msg card)) " to stack " (@ msg stack)))
+					 ("addedToStack"
+					  (+ "put " (@ msg card) " on top of " (@ msg stack)))
 					 ("pickedUp"
 					  (+ "picked up card " (@ msg card)))
 					 ("rolled"
@@ -379,25 +401,22 @@
 	     (define-ajax show-hand "/my-hand" ()
 			  (log "SHOWING HAND" res)
 			  (render-hand res))
+
 	     
 	     (define-ajax flip-coin "/play/coin-toss" ())
-
 	     (define-ajax roll-dice "/play/roll" (num-dice die-size modifier))
-
 	     (define-ajax new-deck "/play/new-stack-from-deck" (deck-name face x y z rot))
-	     
-	     (define-ajax draw "/stack/draw" (stack num)
-			  (log "DREW" res "FROM" stack)
-			  (render-hand res))
-	     
-	     (define-ajax move "/play/move" (thing x y z rot))
-	     
-	     (define-ajax play "/hand/play" (card face x y z rot)
-			  ($ (+ "#" card) (remove)))
-	     
 	     (define-ajax new-stack-from-cards "/play/new-stack-from-cards" (cards)
 			  (log "NEW STACK" cards)
-			  (render-board res))))
+			  (render-board res))
+	     (define-ajax stack/add-to "/stack/add-to" (stack card))
+	     (define-ajax draw "/stack/draw" (stack num)
+			  (render-hand res))
+	     (define-ajax move "/play/move" (thing x y z rot))
+	     (define-ajax play "/hand/play" (card face x y z rot)
+			  ($ (+ "#" card) (remove)))
+	     (define-ajax play-to "/hand/play-to" (card stack)
+			  ($ (+ "#" card) (remove)))))
 
 ;;;;; HTML
 (to-file "static/index.html"

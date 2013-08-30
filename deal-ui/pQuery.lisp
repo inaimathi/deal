@@ -77,9 +77,23 @@
 (defpsmacro $prepend (target &rest html)
   `($ ,target (prepend (who-ps-html ,@html))))
 
+(defpsmacro $keypress (target &rest key/body-pairs)
+  `($ ,target
+      (keypress
+       (lambda (event)
+	 (let ((shift? (@ event shift-key))
+	       (alt? (@ event alt-key))
+	       (ctrl? (@ event ctrl-key))
+	       (meta? (@ event meta-key))
+	       (<ret> 13) (<esc> 27) (<space> 32) 
+	       (<up> 38) (<down> 40) (<left> 37) (<right> 39))
+	   (cond ,@(loop for (key body) on key/body-pairs by #'cddr
+		      collect `((= (@ event which) ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body))))))))
+
 ;;;;;;;;;; Define client-side handlers
 (defpsmacro define-ajax (name uri arg-list &body body)
   `(defun ,name ,arg-list
+     (log ,(format nil "~a" name) (list ,@arg-list))
      ($post ,uri (,@(unless (member 'table arg-list) `(:table *current-table-id*)) ,@(args->plist arg-list)) 
 	    ,@body)))
 

@@ -16,7 +16,7 @@
 (defparameter css-pane '(:height 500px :border "1px solid #ddd" :float left :margin "15px 0px 15px 15px" :padding 10px))
 (defparameter css-tight '(:margin 0px :padding 0px))
 (defparameter css-sub-window `(,@css-tight :overflow auto))
-(defparameter css-header `(:margin 0px :padding 3px :border-radius 3px :background-color "#eee"))
+(defparameter css-header `(:margin 0px :padding 5px :border-radius 3px :background-color "#eee"))
 
 (compile-css "static/css/main.css"
 	     `((body ,@css-tight :font-family sans-serif)
@@ -24,8 +24,9 @@
 
 	       (.floating-menu :font-size x-small :width 150px :position absolute)
 	       
-	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :padding 10px :display none)
+	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
+	       (".overlay .body" :padding 10px)
 	       
 	       (.moveable ,@(css-box) :position absolute :z-index 10001)
 	       (".moveable h3" ,@css-header :cursor move :clear both)
