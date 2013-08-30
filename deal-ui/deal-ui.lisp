@@ -103,7 +103,7 @@
 		     (let ((trg ($ this (siblings ".num-dice"))))
 		       ($ trg (text (max 1 (- ($int trg) 1))))))
 
-	     ($droppable "#hand"
+	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
 				  (hand/pick-up ($ dropped (attr :id))))))
 	     
@@ -160,7 +160,7 @@
 		   (chat-selector "#chat-history")
 		   (ts (@ table things)))
 	       ($ board-selector (empty))
-	       ($droppable board-selector
+	       ($droppable board-selector ()
 			   (:card-in-hand 
 			    (hand/play ($ dropped (attr :id)) :up (@ event client-x) (@ event client-y) 0 0))
 			   (:new-deck
@@ -191,7 +191,7 @@
 		     (:button :class "draw" "Draw")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
-	     ($droppable css-id 
+	     ($droppable css-id (:overlapping "#board")
 			 (:card-in-hand
 			  (hand/play-to ($ dropped (attr :id)) (self id)))
 			 (:card

@@ -52,14 +52,17 @@
 (defpsmacro $highlight (target)
   `($ ,target (stop t t) (effect :highlight nil 500)))
 
-(defpsmacro $droppable (target &rest class/action-list)
-  `($ ,target (droppable 
-	       (create 
-		:drop (lambda (event ui)
-			(let ((dropped (@ ui helper context)))
-			  ;; not sure if this should be a cond or a list of independent whens
-			  (cond ,@(loop for (class action) in class/action-list
-				     collect `(($ dropped (has-class ,class)) ,action)))))))))
+(defpsmacro $droppable (target (&key overlapping) &rest class/action-list)
+  `($ ,target
+      (droppable 
+       (create 
+	:drop (lambda (event ui)
+		(let ((dropped (@ ui helper context)))
+		  (cond ,@(loop for (class action) in class/action-list
+			     collect `(($ dropped (has-class ,class)) ,action)))))
+	,@(when overlapping
+		`(:over (fn ($ ,overlapping (droppable "disable")))
+		  :out (fn ($ ,overlapping (droppable "enable")))))))))
 
 (defpsmacro $draggable (target (&key revert handle cancel) &body body)
   `($ ,target (draggable (create :stop (lambda (event ui) ,@body)
