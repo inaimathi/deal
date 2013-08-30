@@ -12,10 +12,10 @@
       (list (make-deck "54-Card Standard" :french
 		       (list "Joker" "Joker")
 		       (list :hearts :clubs :spades :diamonds)
-		       (list 1 2 3 4 5 6 7 8 9 10 :jack :queen :king))
+		       (list :ace 2 3 4 5 6 7 8 9 10 :jack :queen :king))
 	    (make-deck "Northern Italian" :n-italian nil
 		       (list :denari :spade :coppe :bastoni)
-		       (list 1 2 3 4 5 6 7 :fante :cavallo :re)
+		       (list :as 2 3 4 5 6 7 :fante :cavallo :re)
 		       "~a di ~a")
 	    (make-deck "Occult Tarot" :occult-tarot 
 		       (list "The Magician" "The High Priestess" "The Empress" 
@@ -25,7 +25,7 @@
 			     "The Tower" "The Star" "The Moon" "The Sun" "Judgement" 
 			     "The World" "The Fool")
 		       (list :swords :wands :coins :cups)
-		       (list 1 2 3 4 5 6 7 8 9 10 :page :knight :queen :king))))
+		       (list :ace 2 3 4 5 6 7 8 9 10 :page :knight :queen :king))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
