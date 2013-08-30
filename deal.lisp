@@ -180,7 +180,7 @@
 (define-player-handler (hand/pick-up) ((table :table) (card (:card :from-table)))
   (move! card table (session-value :player))
   (publish! table :picked-up `((card . ,(id card))))
-  card)
+  (hash-values (hand (session-value :player))))
  
 (define-player-handler (stack/peek-cards) ((table :table) (stack :stack) (min :int) (max :int))
   (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))

@@ -102,6 +102,10 @@
 		     ".die-roll-icon .decrement"
 		     (let ((trg ($ this (siblings ".num-dice"))))
 		       ($ trg (text (max 1 (- ($int trg) 1))))))
+
+	     ($droppable "#hand"
+			 (:card (unless ($ dropped (has-class :card-in-hand))
+				  (hand/pick-up ($ dropped (attr :id))))))
 	     
 	     ($draggable ".moveable" (:handle "h3"))
 	     ($draggable ".new-deck" (:revert t))
@@ -144,7 +148,9 @@
 				 (played-to-stack
 				  (change-stack-count (@ ev stack) +1)
 				  (log "Played to the top of a stack"))
-				 (picked-up (log "Picked up a card"))
+				 (picked-up 
+				  ($ (+ "#" (@ ev card)) (remove))
+				  (log "Picked up a card"))
 
 				 (rolled (log "Rolled"))
 				 (flipped-coin (log "Flipped a coin")))))
@@ -337,87 +343,89 @@
 	     
 	     ;;; Client-side handler definitions
 	     (define-ajax lobby/session ()
-			  (setf *session* res)
-			  (when (@ res current-table)
-			    (setf *current-table-id* (@ res current-table :id))
-			    (show-table "body")		  
-			    (my-hand)
-			    (render-board (@ res current-table))))
+	       (setf *session* res)
+	       (when (@ res current-table)
+		 (setf *current-table-id* (@ res current-table :id))
+		 (show-table "body")		  
+		 (my-hand)
+		 (render-board (@ res current-table))))
 
 	     (define-ajax server-info ()
-			  (with-slots (handlers decks public-tables) res
-			    (setf *handlers-list* handlers
-				  *decks-list* decks
-				  *lobby-stream*
-				  (event-source "/ev/lobby"
-						(said)
-						(changed-nick)
-						(started-table
-						 (render-table-entry (@ ev message)))
-						(filled-table
-						 ($ (+ "#game-" (@ ev message id)) (remove)))
-						(joined
-						 (let* ((elem ($ (+ "#game-" (@ ev message id) " .players .count")))
-							(new-count (+ 1 ($int elem))))
-						   (chain elem (text (+ 1 ($int elem))))))
-						(left
-						 (let ((sel (+ "#game-" (@ ev message id))))
-						   (if ($exists? sel)
-						       ($ sel (replace (render-table-entry (@ ev message))))
-						       (render-table-entry (@ ev message)))))))
-			    ($map public-tables
-				  (with-slots (seated of) elem
-				    (when (< seated of) (render-table-entry elem)))))
-			  (lobby/session))
+	       (with-slots (handlers decks public-tables) res
+		 (setf *handlers-list* handlers
+		       *decks-list* decks
+		       *lobby-stream*
+		       (event-source "/ev/lobby"
+				     (said)
+				     (changed-nick)
+				     (started-table
+				      (render-table-entry (@ ev message)))
+				     (filled-table
+				      ($ (+ "#game-" (@ ev message id)) (remove)))
+				     (joined
+				      (let* ((elem ($ (+ "#game-" (@ ev message id) " .players .count")))
+					     (new-count (+ 1 ($int elem))))
+					(chain elem (text (+ 1 ($int elem))))))
+				     (left
+				      (let ((sel (+ "#game-" (@ ev message id))))
+					(if ($exists? sel)
+					    ($ sel (replace (render-table-entry (@ ev message))))
+					    (render-table-entry (@ ev message)))))))
+		 ($map public-tables
+		       (with-slots (seated of) elem
+			 (when (< seated of) (render-table-entry elem)))))
+	       (lobby/session))
 	     
 	     (define-ajax lobby/new-public-table (tag)
-			  (log "STARTING TABLE" res)
-			  (setf *current-table-id* (@ res :id))
-			  (show-table "body")
-			  (my-hand)
-			  (render-board res))
+	       (log "STARTING TABLE" res)
+	       (setf *current-table-id* (@ res :id))
+	       (show-table "body")
+	       (my-hand)
+	       (render-board res))
 
 	     (define-ajax lobby/join-table (table passphrase)
-			  (log "JOINING TABLE" res)
-			  (setf *current-table-id* (@ res :id))
-			  (show-table "body")		  
-			  (my-hand)
-			  (render-board res))
+	       (log "JOINING TABLE" res)
+	       (setf *current-table-id* (@ res :id))
+	       (show-table "body")		  
+	       (my-hand)
+	       (render-board res))
 
 	     (define-ajax play/leave-table ()
-			  (log "LEAVING TABLE")
-			  (show-lobby "body"))
+	       (log "LEAVING TABLE")
+	       (show-lobby "body"))
 
 	     (define-ajax play/speak (message)
-			  ($ "#chat-input" (val "")))
+	       ($ "#chat-input" (val "")))
 
 	     (define-ajax lobby/speak (message)
-			  ($ "#chat-input" (val "")))
+	       ($ "#chat-input" (val "")))
 	     
 	     (define-ajax look-table ()
-			  (log "SHOWING BOARD" res)			  
-			  (render-board res))
+	       (log "SHOWING BOARD" res)			  
+	       (render-board res))
 	     
 	     (define-ajax my-hand ()
-			  (log "SHOWING HAND" res)
-			  (render-hand res))
+	       (log "SHOWING HAND" res)
+	       (render-hand res))
 
-	     
+	     (define-ajax hand/pick-up (card)
+	       ($ (+ "#" card) (remove))
+	       (render-hand res))
 	     (define-ajax play/coin-toss ())
 	     (define-ajax play/roll (num-dice die-size modifier))
 	     
 	     (define-ajax play/new-stack-from-deck (deck-name face x y z rot))
 	     (define-ajax play/new-stack-from-cards (cards)
-			  (log "NEW STACK" cards)
-			  (render-board res))
+	       (log "NEW STACK" cards)
+	       (render-board res))
 	     (define-ajax stack/add-to (stack card))
 	     (define-ajax stack/draw (stack num)
-			  (render-hand res))
+	       (render-hand res))
 	     (define-ajax play/move (thing x y z rot))
 	     (define-ajax hand/play (card face x y z rot)
-			  ($ (+ "#" card) (remove)))
+	       ($ (+ "#" card) (remove)))
 	     (define-ajax hand/play-to (card stack)
-			  ($ (+ "#" card) (remove)))))
+	       ($ (+ "#" card) (remove)))))
 
 ;;;;; HTML
 (to-file "static/index.html"
