@@ -113,22 +113,22 @@
   (publish! table :took-control `((thing . ,(id thing))))
   :ok)
 
-(define-player-handler (play/flip) ((table :table) (thing :flippable))
-  (setf (face thing) (if (eq (face thing) :up) :down :up))
-  (publish! table :flipped `((thing . ,(redact thing))))
+(define-player-handler (play/flip) ((table :table) (card (:card :from-table)))
+  (setf (face card) (if (eq (face card) :up) :down :up))
+  (publish! table :flipped `((card . ,(redact card))))
   :ok)
 
 (define-player-handler (play/new-stack-from-cards) ((table :table) (cards (:list card)))
-  (let* ((c ())first cards
-	 (stack (make-instance 'stack :belongs-to (session-value :player) :x (x c) :y (y c) :z (z c) :rot (rot c))))
+  (let* ((c (first cards))
+	 (stack (make-instance 'stack :belongs-to (id (session-value :player)) :x (x c) :y (y c) :z (z c) :rot (rot c))))
     (loop for card in cards 
        do (remhash (id card) (things table))
        do (insert! stack card))
     (publish! table :stacked-up `((stack . ,(redact stack)) (cards . ,(mapcar #'id cards))))
     :ok))
 
-(define-player-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (face :facing) (x :int) (y :int) (z :int) (rot :int))
-  (let ((stack (deck->stack (session-value :player) (cdr (assoc deck-name (decks *server*) :test #'string=)) :face face)))
+(define-player-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (x :int) (y :int) (z :int) (rot :int))
+  (let ((stack (deck->stack (session-value :player) (cdr (assoc deck-name (decks *server*) :test #'string=)))))
     (set-props stack x y z rot)
     (insert! table stack)
     (publish! table :new-deck `((name . ,deck-name) (stack . ,(redact stack))))
@@ -153,9 +153,13 @@
   (publish! table :merged-stacks `((stack . ,(redact stack)) (merged ,(id stack-two))))
   :ok)
 
+(define-player-handler (stack/shuffle) ((table :table) (stack :stack))
+  (setf (cards stack) (shuffle (cards stack)))
+  :ok)
+
 ;;;;; Hand
 (define-player-handler (hand/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
-  (setf (face card) face (x card) x (y card) y (z card) z (rot card) rot)
+  (set-props card face x y z rot)
   (move! card (session-value :player) table)
   (publish! table :played-from-hand `((card . ,(redact card))))
   :ok)

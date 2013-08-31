@@ -26,18 +26,15 @@
    (rot :accessor rot :initform 0 :initarg :rot)
    (belongs-to :accessor belongs-to :initarg :belongs-to)))
 
-(defclass flippable (placeable)
-  ((face :accessor face :initform :up :initarg :face)))
-
-(defclass card (flippable)
+(defclass card (placeable)
   ((content :accessor content :initarg :content)
+   (face :accessor face :initform :up :initarg :face)
    (card-type :accessor card-type :initarg :card-type)))
 
-(defclass stack (flippable)
+(defclass stack (placeable)
   ((cards :accessor cards :initform nil :initarg :cards)
    (card-count :accessor card-count :initform 0 :initarg :card-count)
-   (card-type :accessor card-type :initarg :card-type)
-   (face :initform :down)))
+   (card-type :accessor card-type :initarg :card-type)))
 
 (defclass counter (placeable)
   ((counter-value :accessor counter-value :initarg :counter-value)))
@@ -45,15 +42,14 @@
 (defclass mini (placeable)
   ((sprite :accessor sprite :initarg :sprite)))
 
-(defun deck->stack (player a-deck &key (face :down))
+(defun deck->stack (player a-deck)
   "Takes a deck (a list of card texts) and creates a stack (a pile of cards suitable for placing on a table)"
   (make-instance 'stack
-		 :face face
 		 :belongs-to (id player) :card-type (first a-deck)
 		 :card-count (length (rest a-deck))
 		 :cards (shuffle (loop for c in (rest a-deck)
 				    collect (make-instance 
-					     'card :content c :face face 
+					     'card :content c :face :down
 					     :card-type (first a-deck) :belongs-to (id player))))))
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))

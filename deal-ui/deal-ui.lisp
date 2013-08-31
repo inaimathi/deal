@@ -125,10 +125,10 @@
 				    ($ (+ "#" thing) (offset (create :left x :top y)))))
 				 (took-control (log "Someone took something"))
 				 (flipped 
-				  ($ (+ "#" (@ ev thing id)) (remove))
-				  (case (@ ev thing type)
-				    ("card" (create-card "body" (@ ev thing)))
-				    ("stack" (create-stack "body" (@ ev thing))))
+				  ($ (+ "#" (@ ev card id)) (remove))
+				  (case (@ ev card type)
+				    ("card" (create-card "body" (@ ev card)))
+				    ("stack" (create-stack "body" (@ ev card))))
 				  (log "Someone flipped something" ev))
 				 (new-deck 
 				  (create-stack "body" (@ ev stack)))
@@ -173,7 +173,7 @@
 			    (hand/play ($ dropped (attr :id))
 				       (if shift? :down :up) (@ event client-x) (@ event client-y) 0 0))
 			   (:new-deck
-			    (play/new-stack-from-deck ($ dropped (text)) :up (@ event client-x) (@ event client-y) 0 0))
+			    (play/new-stack-from-deck ($ dropped (text)) (@ event client-x) (@ event client-y) 0 0))
 			   (:die-roll-icon
 			    (destructuring-bind (num-dice die-size mod) (parse-die-roll ($ dropped (text)))
 			      (play/roll num-dice die-size mod)))
@@ -284,6 +284,7 @@
 	       (chain message (replace re "<br />"))))
 
 	   (defun chat-card (card)
+	     (log "CARD" card)
 	     (who-ps-html
 	      (who-ps-html (:div :class (+ "card in-chat" 
 					   (if (= (@ card face) "down") 
@@ -324,7 +325,7 @@
 					  ;;; In fact TODO anywhere there's a card being sent, it should be rendered in-line
 					  (+ "revealed some cards"))
 					 ("flipped"
-					  (+ "flipped over " (chat-card (@ msg thing))))
+					  (+ "flipped over " (chat-card (@ msg card))))
 					 ("playedFromHand"
 					  (+ "played " (chat-card (@ msg card)) " from hand"))
 					 ("playedFromStack"
@@ -431,14 +432,15 @@
 	       (render-hand res))
 	     (define-ajax play/coin-toss ())
 	     (define-ajax play/roll (num-dice die-size modifier))
-	     (define-ajax play/flip (thing))
-	     (define-ajax play/new-stack-from-deck (deck-name face x y z rot))
+	     (define-ajax play/flip (card))
+	     (define-ajax play/new-stack-from-deck (deck-name x y z rot))
 	     (define-ajax play/new-stack-from-cards (cards)
 	       (log "NEW STACK" cards)
 	       (render-board res))
 	     (define-ajax stack/add-to (stack card))
 	     (define-ajax stack/draw (stack num)
 	       (render-hand res))
+	     (define-ajax stack/shuffle (stack))
 	     (define-ajax play/move (thing x y z rot))
 	     (define-ajax hand/play (card face x y z rot)
 	       ($ (+ "#" card) (remove)))

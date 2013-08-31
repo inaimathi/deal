@@ -33,7 +33,7 @@
   (match type
     (:table `(assert (typep ,arg 'table)))
     (:stack `(assert (typep ,arg 'stack)))
-    (:facing `(assert (or (eq ,arg :up) (eq ,arg :down))))
+    (:facing `(assert (member ,arg (list :up :down))))
     (:placeable `(assert (typep ,arg 'placeable)))
     (:flippable `(assert (typep ,arg 'flippable)))
     ((list :string :min min) 
