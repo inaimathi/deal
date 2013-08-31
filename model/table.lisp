@@ -17,6 +17,8 @@
   (with-slots (player-count max-players) table
     (>= player-count max-players)))
 
+(defmethod last-action ((table table)) (cdaar history))
+
 ;;;;;;;;;; Game elements
 (defclass placeable ()
   ((id :accessor id :initform (make-id))
@@ -54,8 +56,8 @@
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
   (let* ((player (session-value :player))
-	 (full-move `((type . ,action-type) 
-		      (time . ,(get-universal-time)) 
+	 (full-move `((time . ,(get-universal-time))
+		      (type . ,action-type) 
 		      (player . ,(id player))
 		      (player-tag . ,(tag player))
 		      ,@move)))

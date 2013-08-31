@@ -121,4 +121,5 @@ needs to establish a lock on the named table, AND must deal with players who are
 	 (with-lock-held ((lock ,(caar table-lookups)))
 	   (let* ,type-conversions
 	     ,@lookup-assertions
+	     (setf (last-seen (session-value :player)) (get-universal-time))
 	     (encode-json-to-string (progn ,@body))))))))

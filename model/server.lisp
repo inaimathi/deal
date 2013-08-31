@@ -15,6 +15,7 @@
   ((id :reader id :initform (make-id))
    (tag :accessor tag :initform nil :initarg :tag)
    (current-table :accessor current-table :initform nil)
+   (last-seen :accessor last-seen :initform (get-universal-time))
    (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
 
 (defmethod redact ((player player))
