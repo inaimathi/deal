@@ -145,6 +145,8 @@
 				 (drew-from 
 				  (change-stack-count (@ ev stack) -1)
 				  ($highlight (+ "#" (@ ev stack))))
+				 (shuffled
+				  ($highlight (+ "#" (@ ev stack))))
 
 				 (peeked (log "Peeked at cards from a stack"))
 				 (revealed (log "Showed everyone cards from a stack"))
@@ -198,6 +200,7 @@
 		     :class (+ "stack" face-class)
 		     :style (self position)
 		     (:button :class "draw" "Draw")
+		     (:button :class "shuffle" "Shuffle")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
 	     ($droppable css-id (:overlapping "#board")
@@ -207,7 +210,8 @@
 			  (stack/add-to (self id) ($ dropped (attr :id))))
 			 (:stack
 			  (stack/merge (self id) ($ dropped (attr :id)))))
-	     ($click (+ css-id " .draw") (stack/draw (self id) 1)))
+	     ($click (+ css-id " .draw") (stack/draw (self id) 1)
+		     (+ css-id " .shuffle") (stack/shuffle (self id))))
 
 	   (define-thing card 
 	       (:div :id (self id)
@@ -217,8 +221,7 @@
 		     (:div :class "type" (self card-type)))
 	     ($draggable css-id () 
 			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
-			 (when shift? (play/flip (self id)))
-))
+			 (when shift? (play/flip (self id)))))
 
 	   (define-thing card-in-hand
 	       (:div :id (self id)
@@ -301,7 +304,7 @@
 				 (:div :class "message"
 				       (case type
 					 ("joined" 
-					  "joined the table")
+					  (+ "joined table " (@ msg table)))
 					 ("left" 
 					  "left the table")
 					 ("said" 
@@ -336,6 +339,8 @@
 					  (+ "put " (@ msg card) " on top of " (@ msg stack)))
 					 ("mergedStacks"
 					  (+ "merged " (@ msg merged) " into " (@ msg stack id)))
+					 ("shuffled"
+					  (+ "shuffled " (@ msg stack)))
 					 ("pickedUp"
 					  (+ "picked up card " (@ msg card)))
 					 ("rolled"

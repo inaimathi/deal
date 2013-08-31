@@ -67,7 +67,7 @@
     (let ((player (session-value :player)))
       (unless (member player (players table))
 	(insert! table player)
-	(publish! table :joined)
+	(publish! table :joined `((table . ,(id table))))
 	(publish! *server*
 		  (if (full? table) :filled-table :joined)
 		  `((id . ,id))))
@@ -155,6 +155,7 @@
 
 (define-player-handler (stack/shuffle) ((table :table) (stack :stack))
   (setf (cards stack) (shuffle (cards stack)))
+  (publish! table :shuffled `((stack . ,(id stack))))
   :ok)
 
 ;;;;; Hand
