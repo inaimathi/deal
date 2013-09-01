@@ -23,3 +23,6 @@
 
 (defgeneric redact (thing)
   (:documentation "Returns a copy of its argument with private information removed. Notably, doesn't show card text for face-down cards or stacks."))
+
+(defgeneric serialize (thing)
+  (:documentation "Returns a copy of its argument with private information intact, but table-specific data (such as `id` and `belongs-to`) removed. Used to save table states for later reloading."))

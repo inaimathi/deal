@@ -20,6 +20,11 @@
 (defmethod last-action ((table table)) (cdaar history))
 
 ;;;;;;;;;; Game elements
+(defclass deck ()
+  ((deck-name :reader deck-name :initarg :deck-name)
+   (card-type :reader card-type :initarg :card-type)
+   (cards :reader cards :initarg :cards)))
+
 (defclass placeable ()
   ((id :accessor id :initform (make-id))
    (x :accessor x :initform 0 :initarg :x)
@@ -44,15 +49,16 @@
 (defclass mini (placeable)
   ((sprite :accessor sprite :initarg :sprite)))
 
-(defun deck->stack (player a-deck)
+(defmethod deck->stack (player (deck deck))
   "Takes a deck (a list of card texts) and creates a stack (a pile of cards suitable for placing on a table)"
-  (make-instance 'stack
-		 :belongs-to (id player) :card-type (first a-deck)
-		 :card-count (length (rest a-deck))
-		 :cards (shuffle (loop for c in (rest a-deck)
-				    collect (make-instance 
-					     'card :content c :face :down
-					     :card-type (first a-deck) :belongs-to (id player))))))
+  (with-slots (cards card-count card-type) deck
+    (make-instance 
+     'stack :belongs-to (id player) :card-type card-type :card-count (length cards)
+     :cards (shuffle 
+	     (mapcar 
+	      (lambda (c)
+		(make-instance 'card :content c :face :down :card-type card-type :belongs-to (id player)))
+	      cards)))))
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
   (let* ((player (session-value :player))
@@ -122,3 +128,36 @@ so it made sense to formalize this."
 	(if-up card (to-alist card)
 	       (remove-if (lambda (pair) (eq (first pair) 'content))
 			  (to-alist card)))))
+
+;;;;;;;;;; Serialize methods
+;;; More or less like redact, but always shows all information (this one's meant for game saving)
+(defmethod serialize ((card card))
+  (with-slots (content face card-type x y z rot) card
+    `((type . :card)
+      (content . ,content)
+      (face . ,face)
+      (card-type . ,card-type)
+      (x . ,x)
+      (y . ,y)
+      (z . ,z)
+      (rot . ,rot))))
+
+(defmethod serialize-stacked ((card card))
+  (with-slots (content) card
+    `((type . :card) (content . ,content))))
+
+(defmethod serialize ((stack stack))
+  (with-slots (cards face card-type x y z rot)
+      `((type . :stack)
+	(cards ,@(mapcar #'serialize (cards stack)))
+	(face . ,face)
+	(card-type . ,card-type)
+	(x . ,x)
+	(y . ,y)
+	(z . ,z)
+	(rot . ,rot))))
+
+(defmethod serialize ((table table))
+  (with-slots (tag things tablecloth) table
+    `((tag . ,tag) (tablecloth . ,tablecloth) 
+      (things . ,(hash-map (lambda (k v) (cons k (serialize v))) things)))))

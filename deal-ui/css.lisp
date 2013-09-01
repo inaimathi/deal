@@ -44,7 +44,9 @@
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
 	       ("#player-info" :width 400px :top 8px :left 518px)
-	       ("#player-info h3 .player-id" :font-size small :vertical-align top)
+	       ("#player-info h3 span" :font-size small :vertical-align top)
+	       ("#player-info h3 .game-id" :font-size x-small :float right)
+
 	       ("#player-info .card" :float left)
 	       ("#player-info .card.in-chat" :position relative :display inline-block :float none :cursor auto)
 	       ("#player-info .card.in-chat .type" :margin-top 20px)

@@ -18,6 +18,9 @@
    (last-seen :accessor last-seen :initform (get-universal-time))
    (hand :accessor hand :initform (make-hash-table) :initarg :hand)))
 
+(defun find-deck (deck-name &optional (decks-list (decks *server*)) )
+  (find deck-name decks-list :key #'deck-name :test #'string=))
+
 (defmethod redact ((player player))
   `((id . ,(id player))
     (hand . ,(hash-table-count (hand player)))))

@@ -64,7 +64,9 @@
 	       (:div
 		(:div :id "board")
 		(:div :id "player-info" :class "moveable"
-		      (:h3 "Player Info")
+		      (:h3 (who-ps-html (:span :class "player-id" (@ *session* id)))
+			   (@ *session* tag)
+			   (who-ps-html (:span :class "game-id" *current-table-id*)))
 		      (:div :class "contents"
 			    (:button :id "leave" "Leave Table")
 			    (:h2 "Hand")
@@ -110,7 +112,6 @@
 	     ($draggable ".moveable" (:handle "h3"))
 	     ($draggable ".new-deck" (:revert t))
 	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
-	     ($ "#player-info h3" (html (+ (who-ps-html (:span :class "player-id" (@ *session* id))) (@ *session* tag))))
 	     ($ "#backpack" (tabs))
 
 	     ($click "#leave" (play/leave-table))

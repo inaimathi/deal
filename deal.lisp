@@ -9,7 +9,7 @@
 		       (lambda (k v) 
 			 `((id . ,k) (tag . ,(tag v)) (seated . ,(player-count v)) (of . ,(max-players v))))
 		       (public-tables *server*)))
-    (decks . ,(mapcar #'car (decks *server*)))))
+    (decks . ,(mapcar #'deck-name (decks *server*)))))
 
 (define-handler (look-table) ((table :table)) (redact table))
 
@@ -128,11 +128,15 @@
     :ok))
 
 (define-player-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (x :int) (y :int) (z :int) (rot :int))
-  (let ((stack (deck->stack (session-value :player) (cdr (assoc deck-name (decks *server*) :test #'string=)))))
+  (let ((stack (deck->stack (session-value :player) (find-deck deck-name))))
     (set-props stack x y z rot)
     (insert! table stack)
     (publish! table :new-deck `((name . ,deck-name) (stack . ,(redact stack))))
     :ok))
+
+(define-player-handler (play/new-stack-from-json) ((table :table) (deck :json) (x :int) (y :int) (z :int) (rot :int))
+  :creating-deck-from-incoming-json
+  :ok)
 
 ;;;;; Stacks
 (define-player-handler (stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
