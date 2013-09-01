@@ -113,12 +113,11 @@ so it made sense to formalize this."
 
 ;;;;;;;;;; Redact methods
 (defmethod redact ((table table))
-  `((type . :table)
-    (id . ,(id table))
-    (tablecloth . ,(tablecloth table)) 
-    (things . ,(redact (things table)))
-    (players . ,(mapcar #'redact (players table)))
-    (history . ,(take 100 (history table)))))
+  (with-slots (id tablecloth things players history) table
+    (hash :type :table :id id
+	  :tablecloth tablecloth :things (redact things)
+	  :players (mapcar #'redact players)
+	  :history (take 100 history))))
 
 (defmethod redact ((hash-table hash-table))
   (let ((res (make-hash-table)))
@@ -127,45 +126,40 @@ so it made sense to formalize this."
     res))
 
 (defmethod redact ((stack stack))
-  (cons '(type . :stack)
-	(remove-if  (lambda (pair) (eq (first pair) 'cards)) 
-		    (to-alist stack))))
+  (with-slots (id x y z rot belongs-to card-count card-type) stack
+    (hash :type :stack
+	  :id id :x x :y y :z z :rot rot
+	  :belongs-to belongs-to
+	  :card-count card-count
+	  :card-type card-type)))
 
 (defmethod redact ((card card))
-  (cons '(type . :card)
-	(if-up card (to-alist card)
-	       (remove-if (lambda (pair) (eq (first pair) 'content))
-			  (to-alist card)))))
+  (with-slots (id x y z rot belongs-to face content card-type) card
+    (hash :type :cards
+	  :x x :y y :z z :rot rot :belongs-to belongs-to
+	  :face face :card-type card-type
+	  :content (when (eq :up face) content))))
 
 ;;;;;;;;;; Serialize methods
 ;;; More or less like redact, but always shows all information (this one's meant for game saving)
 (defmethod serialize ((card card))
   (with-slots (content face card-type x y z rot) card
-    `((type . :card)
-      (content . ,content)
-      (face . ,face)
-      (card-type . ,card-type)
-      (x . ,x)
-      (y . ,y)
-      (z . ,z)
-      (rot . ,rot))))
+    (hash :type :card
+	  :x x :y y :z z :rot rot
+	  :content content
+	  :face face
+	  :card-type card-type)))
 
 (defmethod serialize-stacked ((card card))
-  (with-slots (content) card
-    `((type . :card) (content . ,content))))
+  (hash :type :card :content (content card)))
 
 (defmethod serialize ((stack stack))
   (with-slots (cards face card-type x y z rot)
-      `((type . :stack)
-	(cards ,@(mapcar #'serialize (cards stack)))
-	(face . ,face)
-	(card-type . ,card-type)
-	(x . ,x)
-	(y . ,y)
-	(z . ,z)
-	(rot . ,rot))))
+      (hash :type :stack :x x :y y :z z :rot rot
+	    :face face :card-type card-type
+	    :cards (mapcar #'serialize (cards stack)))))
 
 (defmethod serialize ((table table))
   (with-slots (tag things tablecloth) table
-    `((tag . ,tag) (tablecloth . ,tablecloth) 
-      (things . ,(hash-map (lambda (k v) (cons k (serialize v))) things)))))
+    (hash :tab tag :tablecloth tablecloth
+	  :things (hash-map (lambda (k v) (cons k (serialize v))) things))))

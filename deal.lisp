@@ -4,29 +4,31 @@
 ;;;;;;;;;; Handlers
 ;;;;; Getters
 (define-handler (server-info) ()
-  `((handlers . ,*handlers*)
-    (public-tables . ,(hash-map 
-		       (lambda (k v) 
-			 `((id . ,k) (tag . ,(tag v)) (seated . ,(player-count v)) (of . ,(max-players v))))
-		       (public-tables *server*)))
-    (decks . ,(mapcar #'deck-name (decks *server*)))))
+  (hash :handlers *handlers*
+	:public-tables (hash-map 
+			(lambda (k v)
+			  (hash :id k :tag (tag v) 
+				:seated (player-count v)
+				:of (max-players v)))
+			(public-tables *server*))
+	:decks (mapcar #'deck-name (decks *server*))))
 
 (define-handler (look-table) ((table :table)) (redact table))
 
 (define-handler (table-history) ((table :table)) (history table))
 
 (define-handler (my-hand) ()
-   (hash-values (hand (session-value :player))))
+  (hash-values (hand (session-value :player))))
 
 ;;;;; Lobby-related
-(define-handler (lobby/session json:encode-json-alist-to-string) ()
+(define-handler (lobby/session) ()
   (if (session-value :player)
       (with-slots (id tag current-table hand) (session-value :player)
-	`((id . ,id) (tag . ,tag) (current-table . ,(aif current-table (redact it))) (hand ,@hand)))
+	(hash :id id :tag tag :current-table (aif current-table (redact it)) :hand hand))
       (let ((player (make-instance 'player :tag "Anonymous Coward")))
 	(setf (session-value :player) player)
 	(with-slots (id tag) player
-	  `((id . ,id) (tag . ,tag) (current-table) (hand))))))
+	  (hash :id id :tag tag :current-table nil :hand nil)))))
 
 (define-handler (lobby/speak) ((message (:string :min 2 :max 255)))
   (assert (session-value :player))

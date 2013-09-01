@@ -28,6 +28,13 @@
 		  collect `(,p ,tgt)
 		  collect p)))))
 
+(defmacro hash (&rest k/v-pairs)
+  (with-gensyms (hash-table)
+    `(let ((,hash-table (make-hash-table)))
+       ,@(loop for (k v) on k/v-pairs by #'cddr
+	    collect `(setf (gethash ,k ,hash-table) ,v))
+       ,hash-table)))
+
 ;;;;; Basic functions
 (defun escape-string (a-string)
   (regex-replace-all 
