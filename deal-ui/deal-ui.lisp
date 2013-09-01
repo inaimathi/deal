@@ -81,6 +81,7 @@
 				  (:div :id "decks-tab" 
 					(map-markup *decks-list*
 						    (:div :class "new-deck" elem))
+					(:button :id "custom-deck" "Custom Deck")
 					(:br :class "clear"))
 				  ;; (:div :id "minis-tab" (:br :class "clear"))
 				  (:div :id "dice-tab" 
@@ -90,7 +91,25 @@
 							  (:button :class "increment")
 							  (:button :class "decrement")))
 					(:div :class "coin-flip-icon" "Flip")
-					(:br :class "clear"))))))
+					(:br :class "clear")))))
+		(:div :id "new-deck-setup" :class "overlay"
+		      (:h3 "New Deck")
+		      (:div :class "body"
+			    (:div :class "row"
+				  (:span :class "label" "Deck Name: ")
+				  (:input :class "deck-name"))
+			    (:div :class "row"
+				  (:span :class "label" "Card Type: ")
+				  (:input :class "card-type"))
+			    (:div :class "row"
+				  (:ul :class "cards"))
+			    (:div :class "row"
+				  (:textarea :class "new-card"))
+			    (:div :class "row"
+				  (:button :class "add-card" "Add Card"))
+			    (:div :class "row"
+				  (:button :class "ok" "Ok")
+				  (:button :class "cancel" "Cancel")))))
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
@@ -103,7 +122,38 @@
 		       ($ trg (text (min 4096 (+ 1 ($int trg))))))
 		     ".die-roll-icon .decrement"
 		     (let ((trg ($ this (siblings ".num-dice"))))
-		       ($ trg (text (max 1 (- ($int trg) 1))))))
+		       ($ trg (text (max 1 (- ($int trg) 1)))))
+		     "#custom-deck"
+		     ($ "#new-deck-setup" (show))
+		     "#new-deck-setup button.add-card"
+		     ($append "#new-deck-setup .cards"
+			      (:li (:button :class "remove") 
+				   (:span :class "content" ($ "#new-deck-setup textarea.new-card" (val))) 
+				   (:button :class "add")))
+		     "#new-deck-setup button.cancel"
+		     ($ "#new-deck-setup" (hide))
+		     "#new-deck-setup button.ok"
+		     (let ((deck-name ($ "#new-deck-setup .deck-name" (val)))
+			   (card-type ($ "#new-deck-setup .card-type" (val))))
+		       (setf (aref *local-decks* deck-name)
+			     (create 'deck-name deck-name 
+				     'card-type card-type 
+				     'cards (loop for card-elem in ($ "#new-deck-setup .cards .content")
+					       collect (string->obj ($ card-elem (text))))))
+		       (unless ($exists? (+ ".new-deck.new-custom-deck[title=" deck-name "]"))
+			 ($prepend "#decks-tab" (:div :class "new-deck new-custom-deck" 
+						      :title deck-name deck-name))
+			 ($draggable "#decks-tab .new-custom-deck:first" (:revert t)))
+		       ($ "#new-deck-setup" (hide))))
+	     
+	     ($ "#new-deck-setup"
+		(on :click "button.remove"
+		    (lambda (event) 
+		      ($ this (parent) (remove))))
+		(on :click "button.add"
+		    (lambda (event)
+		      (log ($ this (parent) (clone)))
+		      ($ "#new-deck-setup .cards" (append ($ this (parent) (clone)))))))
 
 	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
@@ -175,8 +225,16 @@
 			   (:card-in-hand 
 			    (hand/play ($ dropped (attr :id))
 				       (if shift? :down :up) (@ event client-x) (@ event client-y) 0 0))
+			   
+			   (:new-custom-deck
+			    ;; play/new-stack-from-json
+			    (play/new-stack-from-json
+			     (obj->string (aref *local-decks* ($ dropped (text))))
+			     (@ event client-x) (@ event client-y) 0 0))
+
 			   (:new-deck
 			    (play/new-stack-from-deck ($ dropped (text)) (@ event client-x) (@ event client-y) 0 0))
+
 			   (:die-roll-icon
 			    (destructuring-bind (num-dice die-size mod) (parse-die-roll ($ dropped (text)))
 			      (play/roll num-dice die-size mod)))
@@ -218,7 +276,7 @@
 	       (:div :id (self id)
 		     :class (+ "card" face-class)
 		     :style (self position)
-		     (:span :class "content" (self content))
+		     (:span :class "content" (card-html (self card-type) (self content)))
 		     (:div :class "type" (self card-type)))
 	     ($draggable css-id () 
 			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
@@ -227,7 +285,7 @@
 	   (define-thing card-in-hand
 	       (:div :id (self id)
 		     :class (+ "card card-in-hand" face-class)
-		     (:span :class "content" (self content))
+		     (:span :class "content" (card-html (self card-type) (self content)))
 		     (:div :class "type" (self card-type)))
 	     ($draggable css-id (:revert t)))))
 
@@ -293,8 +351,29 @@
 	      (who-ps-html (:div :class (+ "card in-chat" 
 					   (if (= (@ card face) "down") 
 					       " face-down" ""))
-				 (:span :class "content" (@ card content))
+				 (:span :class "content" (card-html (@ card card-type) (@ card content)))
 				 (:div :class "type" (@ card card-type))))))
+
+	   (defun card-html (type content)
+	     (log type content)
+	     (case type
+	       ("french" 
+		(if (stringp content)
+		    (who-ps-html (:div content))
+		    (who-ps-html (:div (@ content rank)
+				       (case (@ content suit)
+					 ("hearts" (who-ps-html (:span :style "color: red;" "&#9829;")))
+					 ("spades" (who-ps-html (:span :style "color: black;" "&#9824;")))
+					 ("diamonds" (who-ps-html (:span :style "color: red;" "&#9830;")))
+					 ("clubs" (who-ps-html (:span :style "color: black;" "&#9827;"))))))))
+	       ("nItalian"
+		(if (stringp content)
+		    (who-ps-html (:div content))
+		    (who-ps-html (:div (@ content rank) " - " (@ content suit)))))
+	       ("occultTarot"
+		(if (stringp content)
+		    (who-ps-html (:div content))
+		    (who-ps-html (:div (@ content rank) " - " (@ content suit)))))))
 
 	   (defun chat-message (msg)
 	     (with-slots (player player-tag time type message) msg
@@ -358,8 +437,11 @@
 
 (to-file "static/js/deal.js"
 	 (ps (defvar *current-table-id* nil)
+	     
 	     (defvar *handlers-list* nil)
 	     (defvar *decks-list* nil)
+	     (defvar *local-decks* (create))
+	     
 	     (defvar *lobby-stream* nil)
 	     (defvar *table-stream* nil)
 	     (defvar *session* nil)
@@ -432,22 +514,24 @@
 	     (define-ajax my-hand ()
 	       (log "SHOWING HAND" res)
 	       (render-hand res))
-	     (define-ajax stack/merge (stack stack-two))
 	     (define-ajax hand/pick-up (card)
 	       ($ (+ "#" card) (remove))
 	       (render-hand res))
+	     (define-ajax stack/draw (stack num)
+	       (render-hand res))
+
 	     (define-ajax play/coin-toss ())
 	     (define-ajax play/roll (num-dice die-size modifier))
 	     (define-ajax play/flip (card))
+
 	     (define-ajax play/new-stack-from-deck (deck-name x y z rot))
-	     (define-ajax play/new-stack-from-cards (cards)
-	       (log "NEW STACK" cards)
-	       (render-board res))
+	     (define-ajax play/new-stack-from-cards (cards))
+	     (define-ajax play/new-stack-from-json (deck x y z rot))
+	     (define-ajax stack/merge (stack stack-two))
 	     (define-ajax stack/add-to (stack card))
-	     (define-ajax stack/draw (stack num)
-	       (render-hand res))
 	     (define-ajax stack/shuffle (stack))
 	     (define-ajax play/move (thing x y z rot))
+
 	     (define-ajax hand/play (card face x y z rot)
 	       ($ (+ "#" card) (remove)))
 	     (define-ajax hand/play-to (card stack)

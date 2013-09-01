@@ -75,6 +75,9 @@
 (defun sym->keyword (symbol)
   (intern (symbol-name symbol) :keyword))
 
+(defun getj (item json-assoc-list)
+  (cdr (assoc item json-assoc-list)))
+
 ;;;;;;;;;; Game-related utility
 (defun roll (num-dice die-size)
   (loop for d = (+ 1 (random die-size)) repeat num-dice

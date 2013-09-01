@@ -49,16 +49,24 @@
 (defclass mini (placeable)
   ((sprite :accessor sprite :initarg :sprite)))
 
-(defmethod deck->stack (player (deck deck))
-  "Takes a deck (a list of card texts) and creates a stack (a pile of cards suitable for placing on a table)"
+(defun make-card (content card-type belongs-to)
+  (make-instance 'card :content content :face :down :card-type card-type :belongs-to belongs-to))
+
+(defmethod stack<-deck (player (deck deck))
+  "Takes a deck and creates a stack (a bag of cards suitable for placing on a table)"
   (with-slots (cards card-count card-type) deck
     (make-instance 
      'stack :belongs-to (id player) :card-type card-type :card-count (length cards)
-     :cards (shuffle 
-	     (mapcar 
-	      (lambda (c)
-		(make-instance 'card :content c :face :down :card-type card-type :belongs-to (id player)))
-	      cards)))))
+     :cards (mapcar (lambda (c) (make-card c card-type (id player))) cards))))
+
+(defun stack<-json (player json)
+  "Takes a JSON representation of a deck and creates a stack (a bag of cards suitable for placing on a table)"
+  (let ((cards (getj :cards json))
+	(card-type (getj :card-type json))
+	(id (id player)))
+    (make-instance
+     'stack :belongs-to id :card-type card-type :card-count (length cards)
+     :cards (mapcar (lambda (c) (make-card c card-type id)) cards))))
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
   (let* ((player (session-value :player))

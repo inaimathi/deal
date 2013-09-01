@@ -17,6 +17,8 @@
 (defparameter css-tight '(:margin 0px :padding 0px))
 (defparameter css-sub-window `(,@css-tight :overflow auto))
 (defparameter css-header `(:margin 0px :padding 5px :border-radius 3px :background-color "#eee"))
+(defparameter css-text-block `(:width 100% :height 60px :margin-bottom 5px))
+
 
 (compile-css "static/css/main.css"
 	     `((body ,@css-tight :font-family sans-serif)
@@ -27,6 +29,7 @@
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
 	       (".overlay .body" :padding 10px)
+	       (".overlay .body .row" :margin-bottom 5px)
 	       
 	       (.moveable ,@(css-box) :position absolute :z-index 10001)
 	       (".moveable h3" ,@css-header :cursor move :clear both)
@@ -43,14 +46,14 @@
 	       
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
-	       ("#player-info" :width 400px :top 8px :left 518px)
+	       ("#player-info" :width 400px :top 8px :left 518px :left 1230px :top 20px)
 	       ("#player-info h3 span" :font-size small :vertical-align top)
 	       ("#player-info h3 .game-id" :font-size x-small :float right)
 
 	       ("#player-info .card" :float left)
 	       ("#player-info .card.in-chat" :position relative :display inline-block :float none :cursor auto)
 	       ("#player-info .card.in-chat .type" :margin-top 20px)
-	       ("#player-info textarea" :width 100% :height 60px)
+	       ("#player-info textarea" ,@css-text-block)
 
 	       ("#hand" :height ,(px (+ css-card-height 5)))
 
@@ -76,7 +79,11 @@
 	       ("#chat-history li .player-tag" :font-style oblique :padding-right 5px)
 	       ("#chat-history li .message" :height auto :max-width 400px :word-break break-all :margin-left 5px)
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
-	       ("#chat-controls textarea" :width 100% :height 60px :margin-bottom 5px)
+	       ("#chat-controls textarea" ,@css-text-block)
+
+	       ("#new-deck-setup" ,@(css-centered-box 400 365 'fixed))
+	       ("#new-deck-setup textarea" ,@css-text-block)
+	       ("#new-deck-setup .cards" :height 100px :overflow auto)
 
 	       ("#player-info #chat-history" :height 200px :font-size small)
 	       ("#player-info #chat-history .time" :display none)
@@ -97,3 +104,5 @@
 	       (".ui-tabs #dice-tab .die-roll-icon, .coin-flip-icon" :width 55px :height 55px :border "1px solid #ccc" :float left :margin 3px :cursor move :text-align center :border-radius 4px :background-color "#fff" :padding-top 6px)
 	       (".ui-tabs #dice-tab .die-roll-icon button" :width 22px :height 22px :margin-left 2px)
 	       (".ui-draggable-dragging" :z-index 10001)))
+
+;; { "rank": "ace", "suit": "hearts" }

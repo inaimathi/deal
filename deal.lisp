@@ -122,21 +122,23 @@
   (let* ((c (first cards))
 	 (stack (make-instance 'stack :belongs-to (id (session-value :player)) :x (x c) :y (y c) :z (z c) :rot (rot c))))
     (loop for card in cards 
-       do (remhash (id card) (things table))
-       do (insert! stack card))
+       do (delete! table card) do (insert! stack card))
     (publish! table :stacked-up `((stack . ,(redact stack)) (cards . ,(mapcar #'id cards))))
     :ok))
 
 (define-player-handler (play/new-stack-from-deck) ((table :table) (deck-name :string) (x :int) (y :int) (z :int) (rot :int))
-  (let ((stack (deck->stack (session-value :player) (find-deck deck-name))))
+  (let ((stack (stack<-deck (session-value :player) (find-deck deck-name))))
     (set-props stack x y z rot)
     (insert! table stack)
     (publish! table :new-deck `((name . ,deck-name) (stack . ,(redact stack))))
     :ok))
 
 (define-player-handler (play/new-stack-from-json) ((table :table) (deck :json) (x :int) (y :int) (z :int) (rot :int))
-  :creating-deck-from-incoming-json
-  :ok)
+  (let ((stack (stack<-json (session-value :player) deck)))
+    (set-props stack x y z rot)
+    (insert! table stack)
+    (publish! table :new-deck `((name . ,(getj :deck-name deck)) (stack . ,(redact stack))))
+    :ok))
 
 ;;;;; Stacks
 (define-player-handler (stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
