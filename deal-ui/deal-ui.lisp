@@ -255,9 +255,7 @@
 	       ($map cards (create-card-in-hand hand-selector elem))))
 
 	   (define-thing stack
-	       (:div :id (self id) 
-		     :class (+ "stack" face-class)
-		     :style (self position)
+	       (:div :id (self id) :class "stack" :style (self position)
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle" "Shuffle")
 		     (:div :class "card-count" (+ "x" (self card-count))))
@@ -273,20 +271,15 @@
 		     (+ css-id " .shuffle") (stack/shuffle (self id))))
 
 	   (define-thing card 
-	       (:div :id (self id)
-		     :class (+ "card" face-class)
-		     :style (self position)
-		     (:span :class "content" (card-html (self card-type) (self content)))
-		     (:div :class "type" (self card-type)))
+	       (:div :id (self id) :class "card" :style (self position)
+		     (:span :class "content" (card-html self)))
 	     ($draggable css-id () 
 			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
 			 (when shift? (play/flip (self id)))))
 
 	   (define-thing card-in-hand
-	       (:div :id (self id)
-		     :class (+ "card card-in-hand" face-class)
-		     (:span :class "content" (card-html (self card-type) (self content)))
-		     (:div :class "type" (self card-type)))
+	       (:div :id (self id) :class "card card-in-hand"
+		     (:span :class "content" (card-html self)))
 	     ($draggable css-id (:revert t)))))
 
 (to-file "static/js/util.js"
@@ -348,32 +341,26 @@
 	   (defun chat-card (card)
 	     (log "CARD" card)
 	     (who-ps-html
-	      (who-ps-html (:div :class (+ "card in-chat" 
-					   (if (= (@ card face) "down") 
-					       " face-down" ""))
-				 (:span :class "content" (card-html (@ card card-type) (@ card content)))
-				 (:div :class "type" (@ card card-type))))))
+	      (who-ps-html (:div :class "card in-chat" 
+				 (:span :class "content" (card-html card))))))
 
-	   (defun card-html (type content)
-	     (log type content)
-	     (case type
-	       ("french" 
-		(if (stringp content)
-		    (who-ps-html (:div content))
-		    (who-ps-html (:div (@ content rank)
-				       (case (@ content suit)
-					 ("hearts" (who-ps-html (:span :style "color: red;" "&#9829;")))
-					 ("spades" (who-ps-html (:span :style "color: black;" "&#9824;")))
-					 ("diamonds" (who-ps-html (:span :style "color: red;" "&#9830;")))
-					 ("clubs" (who-ps-html (:span :style "color: black;" "&#9827;"))))))))
-	       ("nItalian"
-		(if (stringp content)
-		    (who-ps-html (:div content))
-		    (who-ps-html (:div (@ content rank) " - " (@ content suit)))))
-	       ("occultTarot"
-		(if (stringp content)
-		    (who-ps-html (:div content))
-		    (who-ps-html (:div (@ content rank) " - " (@ content suit)))))))
+	   (defun card-html (card)
+	     (log card)
+	     (markup-by-card-type card
+	      ("french"
+	       (:div (@ content rank)
+	     	     (case (@ content suit)
+	     	       ("hearts" (who-ps-html (:span :style "color: red;" "&#9829;")))
+	     	       ("spades" (who-ps-html (:span :style "color: black;" "&#9824;")))
+	     	       ("diamonds" (who-ps-html (:span :style "color: red;" "&#9830;")))
+	     	       ("clubs" (who-ps-html (:span :style "color: black;" "&#9827;")))))
+	       (:div "Face-Down French"))
+	      ("nItalian"
+	       (:div (@ content rank) " - " (@ content suit))
+	       (:div "Face-Down Italian"))
+	      ("occultTarot"
+	       (:div (@ content rank) " T " (@ content suit))
+	       (:div "Face-Down Tarot"))))
 
 	   (defun chat-message (msg)
 	     (with-slots (player player-tag time type message) msg

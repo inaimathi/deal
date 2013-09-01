@@ -120,8 +120,10 @@
 	  ((and (eq 'self (car form)) (eq (second form) 'position))
 	   (recur '(+ "top:" (self y) "px;" "left:" (self x) "px;" ;; "z-index:" (self z)
 		    ";" "transform:rotate(" (self rot) "deg)")))
-	  ((eq 'self (car form)) 
+	  ((and (eq 'self (car form)) (cdr form))
 	   `(@ ,self-elem ,@(cdr form)))
+	  ((eq 'self (car form))
+	   `(,self-elem))
 	  ((atom (car form)) 
 	   (cons (car form) (recur (cdr form))))
 	  ((listp (car form)) 
@@ -133,7 +135,6 @@
     `(defun ,(intern (format nil "create-~a" name)) (container thing)
        (let* ((,thing thing)
 	      (,container container)
-	      (face-class (if (= (@ ,thing face) "down") " face-down" ""))
 	      (css-id (+ "#" (@ ,thing id))))
 	 ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
 	 ,@(loop for clause in behavior
@@ -143,6 +144,27 @@
   `(defun ,(intern (format nil "show-~a" name)) (container)
      ($ container (empty) (append (who-ps-html ,markup)))
      ,@behavior))
+
+(defpsmacro markup-by-card-type (card &rest card-type/face-up/face-down-list)
+  (destructuring-bind (f-up f-down) 
+      (loop for (card-type face-up face-down) in card-type/face-up/face-down-list
+	 collect `(,card-type (who-ps-html ,face-up)) into up
+	 collect `(,card-type (who-ps-html ,face-down)) into down
+	 finally (return (list up down)))
+    (with-ps-gensyms (crd)
+      `(let* ((,crd ,card)
+	      (face (@ ,crd face))
+	      (type (@ ,crd card-type)))
+	 (if (= face "down")
+	     (case type
+	       ,@f-down
+	       (t (who-ps-html (:div (:p "Face Down") (:span :class "type" type)))))
+	     (let ((content (@ ,crd content)))
+	       (if (stringp content)
+		   (who-ps-html (:div :class (+ type " " content) content))
+		   (case type
+		     ,@f-up
+		     (t (who-ps-html (:div :class type (obj->string content))))))))))))
 
 (defpsmacro event-source (uri &body name/body-list)
   (with-ps-gensyms (stream handlers ev)

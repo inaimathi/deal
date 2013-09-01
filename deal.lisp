@@ -180,7 +180,9 @@
 ;;; These handlers don't respond with a redacted table object because it wouldn't make sense in context
 (define-player-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (loop with rep = (min num (card-count stack)) repeat rep
-     do (insert! (session-value :player) (pop! stack)))
+     do (let ((card (pop! stack)))
+	  (setf (face card) :up)
+	  (insert! (session-value :player) card)))
   (when (zerop (card-count stack))
     (delete! table stack))
   (publish! table :drew-from `((stack . ,(id stack)) (count . ,num)))
