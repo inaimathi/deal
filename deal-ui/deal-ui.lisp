@@ -24,7 +24,7 @@
 		     "#new-table-setup .cancel" ($ "#new-table-setup" (hide))
 		     "#new-table" (progn ($ "#new-table-setup" (show))
 					 ($ "#new-table-setup .game-tag" (focus))))
-	     ($keypress "#new-table-setup .game-tag" 
+	     ($keydown "#new-table-setup .game-tag" 
 			<ret> ($ "#new-table-setup .ok" (click))
 			<esc> ($ "#new-table-setup .cancel" (click)))
 	     (server-info))
@@ -45,15 +45,26 @@
 		     (:div :id "chat-controls"
 			   (:textarea :id "chat-input" :type "text")
 			   (:button :id "send" :class "chat-button" "Send")))
-	     ($keypress "#chat-input"
+	     ($keydown "#chat-input"
 			<ret> (unless shift?
 				(chain event (prevent-default))
 				($ "#send" (click)))
+			<up> (when ctrl?
+			       (with-slots (messages current-message) *chat-history*
+				 (setf current-message (max 0 (- current-message 1)))
+				 ($ "#chat-input" (val (aref messages current-message)))))
+			<down> (when ctrl?
+				 (with-slots (messages current-message) *chat-history*
+				   (setf current-message (min (length messages) (+ current-message 1)))
+				   ($ "#chat-input" (val (aref messages current-message)))))
 			<esc> ($ "#chat-input" (val "")))
 	     ($click "#lobby .chat #send"
-		     (lobby/speak ($ "#chat-input" (val)))
+		     (let ((txt ($ "#chat-input" (val))))
+		       (push-chat-message txt)
+		       (lobby/speak txt))
 		     "#player-info #send" 
 		     (let ((txt ($ "#chat-input" (val))))
+		       (push-chat-message txt)
 		       (if (chain txt (match "^@"))
 			   (chat-command txt)
 			   (play/speak txt)))))))
@@ -308,6 +319,15 @@
 
 (to-file "static/js/util.js"
 	 (ps 
+	   (defun push-chat-message (msg)
+	     (with-slots (messages current-message) *chat-history*
+	       (setf current-message (length messages))
+	       (unless (= msg (aref messages current-message))
+		 (chain messages (push msg))
+		 (if (> (length messages) 50)
+		     (chain messages (splice 0 1))
+		     (incf current-message)))))
+
 	   (defun change-stack-count (stack-id by)
 	     (let* ((id (+ "#" stack-id))
 		    (ct-class (+ id " .card-count"))
@@ -454,6 +474,10 @@
 	     (defvar *handlers-list* nil)
 	     (defvar *decks-list* nil)
 	     (defvar *local-decks* (create))
+
+	     (defvar *chat-history* 
+	       (create messages (new (-array))
+		       current-message 0))
 	     
 	     (defvar *lobby-stream* nil)
 	     (defvar *table-stream* nil)

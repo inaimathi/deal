@@ -86,24 +86,25 @@
 (defpsmacro $replace (target &rest html)
   `($ ,target (append (who-ps-html ,@html))))
 
-(defpsmacro $keypress (target &rest key/body-pairs)
+(defpsmacro $keydown (target &rest key/body-pairs)
   `($ ,target
-      (keypress
+      (keydown
        (lambda (event)
 	 (let ((shift? (@ event shift-key))
 	       (alt? (@ event alt-key))
 	       (ctrl? (@ event ctrl-key))
 	       (meta? (@ event meta-key))
 	       (<ret> 13) (<esc> 27) (<space> 32) 
-	       (<up> 38) (<down> 40) (<left> 37) (<right> 39))
+	       (<up> 38) (<down> 40) (<left> 37) (<right> 39)
+	       (key-code (or (@ event key-code) (@ event which))))
 	   (cond ,@(loop for (key body) on key/body-pairs by #'cddr
-		      collect `((= (@ event which) ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body))))))))
+		      collect `((= key-code ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body))))))))
 
 (defpsmacro $change (target &rest body)
   (with-ps-gensyms (tgt fn)
     `(let ((,tgt ,target)
 	   (,fn (lambda (value) ,@body)))
-       ($ ,tgt (keypress (lambda (event) (,fn ($ ,tgt (val))))))
+       ($ ,tgt (keydown (lambda (event) (,fn ($ ,tgt (val))))))
        ($ ,tgt (change (lambda (event) (,fn ($ ,tgt (val)))))))))
 
 ;;;;;;;;;; Define client-side handlers
