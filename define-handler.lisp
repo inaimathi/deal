@@ -9,6 +9,8 @@
      `(parse-integer ,arg :junk-allowed t))
     (:json 
      `(decode-json-from-string ,arg))
+    (:json-file
+     `(decode-json-from-source (first ,arg)))
     ((or :keyword :facing)
      `(intern (string-upcase ,arg) :keyword))
     (:table 

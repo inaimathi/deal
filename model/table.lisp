@@ -49,24 +49,40 @@
 (defclass mini (placeable)
   ((sprite :accessor sprite :initarg :sprite)))
 
-(defun make-card (content card-type belongs-to)
-  (make-instance 'card :content content :face :down :card-type card-type :belongs-to belongs-to))
+(defun make-card (content card-type belongs-to &optional (x 0) (y 0) (z 0) (rot 0))
+  (make-instance 'card :content content :face :down 
+		 :card-type card-type :belongs-to belongs-to
+		 :x x :y y :z z :rot rot))
+
+(defun card<-json (player json)
+  (macrolet ((gets (k) `(getj ,k json))
+	     (get0 (k) `(or (getj ,k json) 0)))
+    (let ((face (intern (string-upcase (getj :face json)) :keyword)))
+      (assert (member face (list :up :down)))
+      (make-instance 
+       'card :belongs-to (id player) 
+       :content (gets :content) :face (intern (string-upcase (getj :face json)) :keyword)
+       :x (get0 :x) :y (get0 :y) :z (get0 :z) :rot (get0 :rot)))))
 
 (defmethod stack<-deck (player (deck deck))
   "Takes a deck and creates a stack (a bag of cards suitable for placing on a table)"
   (with-slots (cards card-count card-type) deck
-    (make-instance 
-     'stack :belongs-to (id player) :card-type card-type :card-count (length cards)
-     :cards (mapcar (lambda (c) (make-card c card-type (id player))) cards))))
+    (let ((id (id player)))
+      (make-instance 
+       'stack :belongs-to id :card-type card-type :card-count (length cards)
+       :cards (mapcar (lambda (c) (make-card c card-type id)) cards)))))
 
 (defun stack<-json (player json)
   "Takes a JSON representation of a deck and creates a stack (a bag of cards suitable for placing on a table)"
-  (let ((cards (getj :cards json))
-	(card-type (getj :card-type json))
-	(id (id player)))
-    (make-instance
-     'stack :belongs-to id :card-type card-type :card-count (length cards)
-     :cards (mapcar (lambda (c) (make-card c card-type id)) cards))))
+  (macrolet ((gets (k) `(getj ,k json))
+	     (get0 (k) `(or (getj ,k json) 0)))
+    (let ((cards (gets :cards))
+	  (card-type (gets :card-type))
+	  (id (id player)))
+      (make-instance
+       'stack :belongs-to id :card-type card-type :card-count (length cards)
+       :x (get0 :x) :y (gets :y) :z (gets :z) :rot (gets :rot)
+       :cards (mapcar (lambda (c) (make-card c card-type id)) cards)))))
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
   (let* ((player (session-value :player))
@@ -142,5 +158,5 @@ so it made sense to formalize this."
 	     cards card-type x y z rot))
 
 (defmethod serialize ((table table))
-  (obj->hash table (:things (hash-map (lambda (v) (serialize v)) things))
-	     tag things tablecloth))
+  (obj->hash table (:things (mapcar #'serialize (hash-values things)))
+	     things tablecloth))

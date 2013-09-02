@@ -20,7 +20,7 @@
 	       (chain *table-stream* (close))
 	       (setf *table-stream* nil))
 	     (show-chat "#left-pane")
-	     ($click "#new-table-setup .ok" (lobby/new-public-table ($ "#new-table-setup .game-tag" (val)))
+	     ($click "#new-table-setup .ok" (lobby/new-table ($ "#new-table-setup .game-tag" (val)) "")
 		     "#new-table-setup .cancel" ($ "#new-table-setup" (hide))
 		     "#new-table" (progn ($ "#new-table-setup" (show))
 					 ($ "#new-table-setup .game-tag" (focus))))
@@ -66,7 +66,12 @@
 		(:div :id "player-info" :class "moveable"
 		      (:h3 (who-ps-html (:span :class "player-id" (@ *session* id)))
 			   (@ *session* tag)
-			   (who-ps-html (:span :class "game-id" *current-table-id*)))
+			   (who-ps-html 
+			    (:a :href (+ "/table/save?table=" *current-table-id*)
+				(:span :class "game-id" *current-table-id*))))
+		      (:form :id "load-form" :enctype "multipart/form-data"
+			     (:input :name "file" :type "file"))
+		      (:button :id "upload-game-file" "Test")
 		      (:div :class "contents"
 			    (:button :id "leave" "Leave Table")
 			    (:h2 "Hand")
@@ -113,6 +118,22 @@
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
+	     
+	     ($ "#upload-game-file" 
+		(click (fn
+			(let ((form-data (new (-form-data (aref ($ "#load-form") 0)))))
+			  (chain j-query
+				 (ajax (create :url (+ "/table/load?table=" *current-table-id*)
+					       :type "POST"
+					       :success (lambda (a b c)
+							  (log "UPLOADED" a b c))
+					       :error (lambda (a b c)
+							(log "NOPE" a b c))
+					       :data form-data
+					       :cache false
+					       "contentType" false
+					       "processData" false)))))))
+
 	     (show-chat "#game-chat")
 	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
 	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))
@@ -139,7 +160,9 @@
 			     (create 'deck-name deck-name 
 				     'card-type card-type 
 				     'cards (loop for card-elem in ($ "#new-deck-setup .cards .content")
-					       collect (string->obj ($ card-elem (text))))))
+					       collect (let ((txt ($ card-elem (text))))
+							 (try (string->obj txt)
+							      (:catch (error) txt))))))
 		       (unless ($exists? (+ ".new-deck.new-custom-deck[title=" deck-name "]"))
 			 ($prepend "#decks-tab" (:div :class "new-deck new-custom-deck" 
 						      :title deck-name deck-name))
@@ -171,6 +194,7 @@
 				 (joined)
 				 (left)
 				 (said)
+				 (loaded (look-table))
 				 (moved 
 				  (with-slots (thing x y) ev
 				    ($ (+ "#" thing) (offset (create :left x :top y)))))
@@ -376,6 +400,8 @@
 					  "left the table")
 					 ("said" 
 					  (newline->break message))
+					 ("loaded"
+					  (+ "loaded a saved table. Added " (@ msg things) " things."))
 					 ("moved"
 					  (+ "moved " (@ msg thing)))
 					 ("changedNick"
@@ -470,7 +496,7 @@
 			 (when (< player-count max-players) (render-table-entry elem)))))
 	       (lobby/session))
 	     
-	     (define-ajax lobby/new-public-table (tag)
+	     (define-ajax lobby/new-table (tag passphrase)
 	       (log "STARTING TABLE" res)
 	       (setf *current-table-id* (@ res :id))
 	       (show-table "body")

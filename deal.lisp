@@ -65,11 +65,23 @@
       (redact table))))
 
 ;;;; Game related (once you're already at a table)
-(define-player-handler (table/save) ((table :table) )
+(define-player-handler (table/save) ((table :table))
   (assert (= (player-count table) 1) nil "You can't save a table once the game has started.")
   (setf (header-out :content-type) "application/json"
 	(header-out :content-disposition) "attachment; filename=\"game.json\"")
   (serialize table))
+
+(define-player-handler (table/load) ((table :table) (file :json-file))
+  (assert (= (player-count table) 1) nil "You can't load a table once the game has started.")
+  (loop with player = (session-value :player)
+     for thing in (getj :things file)
+     do (case (intern (string-upcase (getj :type thing)) :keyword)
+	  (:stack 
+	   (insert! table (stack<-json player thing)))
+	  (:card
+	   (insert! table (card<-json player thing)))))
+  (publish! table :loaded `((things . ,(length (getj :things file)))))
+  :ok)
 
 (define-player-handler (play/leave-table) ((table :table))
   (let ((player (session-value :player)))
