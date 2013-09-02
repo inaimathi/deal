@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:deal 
-  (:use #:cl #:optima #:json #:cl-mop #:hunchentoot)
+  (:use #:cl #:optima #:json #:hunchentoot)
   (:import-from #:cl-ppcre #:regex-replace-all)
   (:import-from #:bordeaux-threads #:make-lock #:with-lock-held)
   (:import-from #:drakma #:http-request))

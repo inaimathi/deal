@@ -4,11 +4,7 @@
 
 ## Requirements
 
-Deal directly depends on [optima](https://github.com/m2ym/optima), [cl-ppcre](http://weitz.de/cl-ppcre/), [drakma](http://weitz.de/drakma/), [hunchentoot](http://weitz.de/hunchentoot/), [cl-json](http://common-lisp.net/project/cl-json/), [cl-mop](https://github.com/Inaimathi/cl-mop) and [bordeaux-threads](http://common-lisp.net/project/bordeaux-threads/). Other than cl-mop, all of those can be installed using [`quicklisp`](http://www.quicklisp.org/beta/). [`cl-mop`](http://www.cliki.net/cl-mop) can be installed using `asdf-install`:
-
-    (require 'asdf)/
-    (require 'asdf-install)
-    (asdf-install:install 'cl-mop)
+Deal directly depends on [optima](https://github.com/m2ym/optima), [cl-ppcre](http://weitz.de/cl-ppcre/), [drakma](http://weitz.de/drakma/), [hunchentoot](http://weitz.de/hunchentoot/), [cl-json](http://common-lisp.net/project/cl-json/) and [bordeaux-threads](http://common-lisp.net/project/bordeaux-threads/). All of those can be installed using [`quicklisp`](http://www.quicklisp.org/beta/).
 
 Deal depends on an external SSE publishing service to provide push capability to its clients. The easiest approach is using [nginx](http://wiki.nginx.org/Main) with its [push-stream module](https://github.com/wandenberg/nginx-push-stream-module). The installation instructions deal with this route, but you can probably set up some other streaming service that can be set to publish messages based on input from `localhost` HTTP requests.
 
@@ -32,7 +28,7 @@ Deal depends on an external SSE publishing service to provide push capability to
 
 **5** Copy `nginx-deal` to your `nginx` config directory, and run `nginx`. If you did this on Debian, the newly installed binary will be at `/usr/local/nginx/sbin/nginx`, and the config file will be at `/usr/local/nginx/conf/nginx.conf`.
 
-**6** Run your copy of `deal` by starting a lisp in the appropriate directory, installing `cl-mop` as above, and evaluating `(ql:quickload :deal-ui)`
+**6** Run your copy of `deal` by starting a lisp in the appropriate directory and evaluating `(ql:quickload :deal-ui)`
 
 That's a *lot* more compliacted than I like to make installation, but there isn't a good option for async serving natively in Common Lisp at the moment. Hopefully I can fix that in a future release. 
 
