@@ -39,24 +39,17 @@
     (publish! *server* :changed-nick `((old-tag . ,old)))
     :ok))
 
-(define-handler (lobby/new-private-table) ((tag :string) (passphrase :string))
-  (assert (session-value :player))
-  (with-lock-held ((lock *server*))
-    (let ((player (session-value :player))
-	  (table (make-instance 'table :tag tag :passphrase passphrase)))
-      (insert! *server* table)
-      (insert! table player)
-      (redact table))))
-
-(define-handler (lobby/new-public-table) ((tag :string))
+(define-handler (lobby/new-table) ((tag :string) (passphrase :string))
   (assert (session-value :player))
   (with-lock-held ((lock *server*))
     (let ((player (session-value :player))
 	  (table (make-instance 'table :tag tag)))
       (insert! *server* table)
       (insert! table player)
-      (with-slots (id tag player-count max-players) table
-	(publish! *server* :started-table `((id . ,id) (tag . ,tag) (seated . ,player-count) (of . ,max-players))))
+      (unless (string= passphrase "")
+	(setf (passphrase table) passphrase)
+	(with-slots (id tag player-count max-players) table
+	  (publish! *server* :started-table `((id . ,id) (tag . ,tag) (seated . ,player-count) (of . ,max-players)))))
       (redact table))))
 
 (define-table-handler (lobby/join-table) ((table :table) (passphrase :string))
