@@ -72,6 +72,12 @@
       (redact table))))
 
 ;;;; Game related (once you're already at a table)
+(define-player-handler (table/save) ((table :table) )
+  (assert (= (player-count table) 1) nil "You can't save a table once the game has started.")
+  (setf (header-out :content-type) "application/json"
+	(header-out :content-disposition) "attachment; filename=\"game.json\"")
+  (serialize table))
+
 (define-player-handler (play/leave-table) ((table :table))
   (let ((player (session-value :player)))
     (delete! table player)
@@ -174,8 +180,6 @@
   (publish! table :played-to-stack `((stack . ,(id stack)) (card . ,(redact card))))
   :ok)
 
-;;;;; Non-table handlers
-;;; These handlers don't respond with a redacted table object because it wouldn't make sense in context
 (define-player-handler (stack/draw) ((table :table) (stack :stack) (num :int))
   (loop with rep = (min num (card-count stack)) repeat rep
      do (let ((card (pop! stack)))

@@ -139,7 +139,7 @@ so it made sense to formalize this."
 
 (defmethod serialize ((stack stack))
   (obj->hash stack (:type :stack :cards (mapcar #'serialize (cards stack))) 
-	     cards face card-type x y z rot))
+	     cards card-type x y z rot))
 
 (defmethod serialize ((table table))
   (obj->hash table (:things (hash-map (lambda (v) (serialize v)) things))
