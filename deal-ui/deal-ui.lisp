@@ -30,12 +30,12 @@
 	     (server-info))
 	   
 	   (defun render-table-entry (tbl-entry)
-	     (with-slots (id tag seated of) tbl-entry
+	     (with-slots (id tag player-count max-players) tbl-entry
 	       ($prepend "#open-tables"
 			 (:li :id (+ "game-" id) 
 			      (:span :class "tag" tag)
 			      (:span :class "id" id) 
-			      (:span :class "players" (:span :class "count" seated) "/" of)
+			      (:span :class "players" (:span :class "count" player-count) "/" max-players)
 			      (:button :class "join" "Join")))
 	       ($click (+ "#game-" id " .join") (lobby/join-table id ""))))
 
@@ -466,8 +466,8 @@
 					    ($ sel (replace (render-table-entry (@ ev message))))
 					    (render-table-entry (@ ev message)))))))
 		 ($map public-tables
-		       (with-slots (seated of) elem
-			 (when (< seated of) (render-table-entry elem)))))
+		       (with-slots (player-count max-players) elem
+			 (when (< player-count max-players) (render-table-entry elem)))))
 	       (lobby/session))
 	     
 	     (define-ajax lobby/new-public-table (tag)

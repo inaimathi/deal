@@ -120,46 +120,27 @@ so it made sense to formalize this."
 	  :history (take 100 history))))
 
 (defmethod redact ((hash-table hash-table))
-  (let ((res (make-hash-table)))
-    (loop for k being the hash-keys of hash-table
-       do (setf (gethash k res) (redact (gethash k hash-table))))
-    res))
+  (hash-map (lambda (v) (redact v)) hash-table))
 
 (defmethod redact ((stack stack))
-  (with-slots (id x y z rot belongs-to card-count card-type) stack
-    (hash :type :stack
-	  :id id :x x :y y :z z :rot rot
-	  :belongs-to belongs-to
-	  :card-count card-count
-	  :card-type card-type)))
+  (obj->hash stack (:type :stack) id x y z rot belongs-to card-count card-type))
 
 (defmethod redact ((card card))
-  (with-slots (id x y z rot belongs-to face content card-type) card
-    (hash :type :cards
-	  :x x :y y :z z :rot rot :belongs-to belongs-to
-	  :face face :card-type card-type
-	  :content (when (eq :up face) content))))
+  (obj->hash card (:type :card :content (when (eq :up face) content))
+	     id x y z rot belongs-to face content card-type))
 
 ;;;;;;;;;; Serialize methods
 ;;; More or less like redact, but always shows all information (this one's meant for game saving)
 (defmethod serialize ((card card))
-  (with-slots (content face card-type x y z rot) card
-    (hash :type :card
-	  :x x :y y :z z :rot rot
-	  :content content
-	  :face face
-	  :card-type card-type)))
+  (obj->hash card (:type :card) content face card-type x y z rot))
 
 (defmethod serialize-stacked ((card card))
-  (hash :type :card :content (content card)))
+  (obj->hash card (:type :card) content))
 
 (defmethod serialize ((stack stack))
-  (with-slots (cards face card-type x y z rot)
-      (hash :type :stack :x x :y y :z z :rot rot
-	    :face face :card-type card-type
-	    :cards (mapcar #'serialize (cards stack)))))
+  (obj->hash stack (:type :stack :cards (mapcar #'serialize (cards stack))) 
+	     cards face card-type x y z rot))
 
 (defmethod serialize ((table table))
-  (with-slots (tag things tablecloth) table
-    (hash :tab tag :tablecloth tablecloth
-	  :things (hash-map (lambda (k v) (cons k (serialize v))) things))))
+  (obj->hash table (:things (hash-map (lambda (v) (serialize v)) things))
+	     tag things tablecloth))

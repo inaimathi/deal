@@ -35,6 +35,17 @@
 	    collect `(setf (gethash ,k ,hash-table) ,v))
        ,hash-table)))
 
+(defmacro obj->hash (instance (&rest extra-values) &rest slots)
+  "Turns an object into a hash table, with some Deal-specific idiosyncracies.
+Evaluates the slots twice, and evaluates slots before extra-values.
+This works where it's used inside of Deal, but probably isn't what you want externally."
+  (let ((extra-keys (loop for (k v) on extra-values collect k)))
+    `(with-slots ,slots ,instance
+       (hash ,@(loop for s in slots for sym = (sym->keyword s)
+		  unless (member sym extra-keys)
+		  collect (sym->keyword s) and collect s)
+	     ,@extra-values))))
+
 ;;;;; Basic functions
 (defun escape-string (a-string)
   (regex-replace-all 
@@ -52,8 +63,11 @@
   (loop for val being the hash-values of hash-table collect val))
 
 (defun hash-map (fn hash-table)
-  (loop for key being the hash-keys of hash-table
-     collect (funcall fn key (gethash key hash-table))))
+  (loop with res = (make-hash-table :size (hash-table-count hash-table))
+     for key being the hash-keys of hash-table
+     for val being the hash-values of hash-table
+     do (setf (gethash key res) (funcall fn val))
+     finally (return res)))
 
 (defun pick (a-list)
   "Randomly selects an element from the given list with equal probability."

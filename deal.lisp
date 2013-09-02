@@ -5,12 +5,8 @@
 ;;;;; Getters
 (define-handler (server-info) ()
   (hash :handlers *handlers*
-	:public-tables (hash-map 
-			(lambda (k v)
-			  (hash :id k :tag (tag v) 
-				:seated (player-count v)
-				:of (max-players v)))
-			(public-tables *server*))
+	:public-tables (loop for v being the hash-values of (public-tables *server*)
+			  collect (obj->hash v () id tag player-count max-players))
 	:decks (mapcar #'deck-name (decks *server*))))
 
 (define-handler (look-table) ((table :table)) (redact table))
