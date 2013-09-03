@@ -75,17 +75,18 @@
 	       (:div
 		(:div :id "board")
 		(:div :id "player-info" :class "moveable"
-		      (:h3 (who-ps-html (:span :class "player-id" (@ *session* id)))
+		      (:h3 (:span :class "player-id" (@ *session* id))
 			   (@ *session* tag)
-			   (who-ps-html 
-			    (:a :href (+ "/table/save?table=" *current-table-id*)
-				(:span :class "game-id" *current-table-id*))))		      
-		      (:div :class "contents"
+			   (:span :class "game-id" *current-table-id*))
+		      (:div :class "controls"
 			    (:button :id "leave" "Leave Table")
+			    (:button :id "custom-deck" "Custom Deck")
+			    (:button :id "save-board" "Save")
 			    (:form :id "load-form" :enctype "multipart/form-data"
-				   (:input :name "file" :type "file"))
-			    (:button :id "upload-game-file" "Upload")
-			    
+				   (:span :class "label" "Load: ") 
+				   (:input :type "hidden" :name "table" :value *current-table-id*)
+				   (:input :name "file" :type "file")))
+		      (:div :class "contents"
 			    (:h2 "Hand")
 			    (:div :id "hand")
 			    (:h2 "Chat")
@@ -96,9 +97,7 @@
 				   ;; (:li (:a :href "#minis-tab" "Minis"))
 				   (:li (:a :href "#dice-tab" "Dice/Coin")))
 				  (:div :id "decks-tab" 
-					(map-markup *decks-list*
-						    (:div :class "new-deck" elem))
-					(:button :id "custom-deck" "Custom Deck")
+					(map-markup *decks-list* (:div :class "new-deck" elem))
 					(:br :class "clear"))
 				  ;; (:div :id "minis-tab" (:br :class "clear"))
 				  (:div :id "dice-tab" 
@@ -131,20 +130,7 @@
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
 	     
-	     ($ "#upload-game-file" 
-		(click (fn
-			(let ((form-data (new (-form-data (aref ($ "#load-form") 0)))))
-			  (chain j-query
-				 (ajax (create :url (+ "/table/load?table=" *current-table-id*)
-					       :type "POST"
-					       :success (lambda (a b c)
-							  (log "UPLOADED" a b c))
-					       :error (lambda (a b c)
-							(log "NOPE" a b c))
-					       :data form-data
-					       :cache false
-					       "contentType" false
-					       "processData" false)))))))
+	     ($ "#load-form" (change (fn ($upload "#load-form" "/table/load"))))
 
 	     (show-chat "#game-chat")
 	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
@@ -153,6 +139,11 @@
 	     ($click ".die-roll-icon .increment"
 		     (let ((trg ($ this (siblings ".num-dice"))))
 		       ($ trg (text (min 4096 (+ 1 ($int trg))))))
+		     "#save-board"
+		     ; TODO 
+		     ;;;; I suspect this won't work in the general case. 
+		     ;;;; Checks out in Chromium, Firefox and Conkeror though.
+		     (setf location (+ "/table/save?table=" *current-table-id*))
 		     ".die-roll-icon .decrement"
 		     (let ((trg ($ this (siblings ".num-dice"))))
 		       ($ trg (text (max 1 (- ($int trg) 1)))))

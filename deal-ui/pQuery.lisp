@@ -100,6 +100,21 @@
 	   (cond ,@(loop for (key body) on key/body-pairs by #'cddr
 		      collect `((= key-code ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body))))))))
 
+(defpsmacro $upload (target-form uri &rest success)
+  (with-ps-gensyms (form-data)
+    `(let ((,form-data (new (-form-data (aref ($ ,target-form) 0)))))
+       (chain j-query
+	      (ajax (create :url ,uri
+			    :type "POST"
+			    :success (lambda (data status jqXHR)
+				       ,@success)
+			    :error (lambda (jqXHR status error-thrown)
+				     (log "UPLOAD ERRORED" jqXHR status error-thrown))
+			    :data ,form-data
+			    :cache false
+			    "contentType" false
+			    "processData" false))))))
+
 (defpsmacro $change (target &rest body)
   (with-ps-gensyms (tgt fn)
     `(let ((,tgt ,target)
