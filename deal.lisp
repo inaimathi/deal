@@ -16,6 +16,14 @@
 (define-handler (my-hand) ()
   (hash-values (hand (session-value :player))))
 
+(define-handler (rename) ((new-tag (:string :max 255)))
+  (assert (session-value :player))
+  (let* ((player (session-value :player))
+	 (old (tag player)))
+    (setf (tag player) new-tag)
+    (publish! (aif (current-table player) it *server*) :changed-nick `((old-tag . ,old)))
+    :ok))
+
 ;;;;; Lobby-related
 (define-handler (lobby/session) ()
   (if (session-value :player)
@@ -30,14 +38,6 @@
   (assert (session-value :player))
   (publish! *server* :said (escape-string message))
   :ok)
-
-(define-handler (lobby/tag) ((new-tag (:string :max 255)))
-  (assert (session-value :player))
-  (let* ((player (session-value :player))
-	 (old (tag player)))
-    (setf (tag player) new-tag)
-    (publish! *server* :changed-nick `((old-tag . ,old)))
-    :ok))
 
 (define-handler (lobby/new-table) ((tag :string) (passphrase :string))
   (assert (session-value :player))

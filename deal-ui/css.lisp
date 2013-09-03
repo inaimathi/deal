@@ -48,7 +48,14 @@
 	       
 	       ("#player-info" :width 400px :top 8px :left 518px :left 1230px :top 20px)
 	       ("#player-info h3 span" :font-size small :vertical-align top)
-	       ("#player-info h3 .game-id" :font-size x-small :float right)
+	       ("#player-info h3 .game-id" :font-size x-small)
+	       ("#player-info .control-row" :padding 5px :font-size small)
+	       ("#player-info .control-row .label" :padding-left 3px)
+	       ("#player-info .control-row button" :margin "0px 10px 5px 0px")
+
+	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)
+	       ("#player-info .player-tag" :font-weight bold)
+	       
 
 	       ("#player-info .card" :float left)
 	       ("#player-info .card.in-chat" :position relative :display inline-block :float none :cursor auto)

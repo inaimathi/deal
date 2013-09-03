@@ -75,10 +75,12 @@
 	       (:div
 		(:div :id "board")
 		(:div :id "player-info" :class "moveable"
-		      (:h3 (:span :class "player-id" (@ *session* id))
-			   (@ *session* tag)
-			   (:span :class "game-id" *current-table-id*))
-		      (:div :class "controls"
+		      (:h3 (:span :class "game-id" *current-table-id*)
+			   (@ *session* current-table tag))
+		      (:div :class "control-row"
+			    (:span :class "player-id" (@ *session* id))
+			    (:span :class "player-tag" (@ *session* tag)))
+		      (:div :class "control-row"
 			    (:button :id "leave" "Leave Table")
 			    (:button :id "custom-deck" "Custom Deck")
 			    (:button :id "save-board" "Save")
@@ -136,26 +138,48 @@
 	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
 	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))
 	     
+	     ($ "#player-info"
+		(on :click "span.player-tag"
+		    (lambda (event)
+		      ($ this 
+			 (replace-with (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))))
+		(on :keydown "input.player-tag"
+		    (lambda (event)
+		      (case (@ event key-code)
+			(27 
+			 ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag))))))
+			(13 
+			 (let ((new-tag ($ this (val))))
+			   (rename new-tag)
+			   (setf (@ *session* tag) new-tag)
+			   ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))))))))
+
 	     ($click ".die-roll-icon .increment"
 		     (let ((trg ($ this (siblings ".num-dice"))))
 		       ($ trg (text (min 4096 (+ 1 ($int trg))))))
+
 		     "#save-board"
 		     ; TODO 
 		     ;;;; I suspect this won't work in the general case. 
 		     ;;;; Checks out in Chromium, Firefox and Conkeror though.
 		     (setf location (+ "/table/save?table=" *current-table-id*))
+
 		     ".die-roll-icon .decrement"
 		     (let ((trg ($ this (siblings ".num-dice"))))
 		       ($ trg (text (max 1 (- ($int trg) 1)))))
+
 		     "#custom-deck"
 		     ($ "#new-deck-setup" (show))
+
 		     "#new-deck-setup button.add-card"
 		     ($append "#new-deck-setup .cards"
 			      (:li (:button :class "remove") 
 				   (:span :class "content" ($ "#new-deck-setup textarea.new-card" (val))) 
 				   (:button :class "add")))
+
 		     "#new-deck-setup button.cancel"
 		     ($ "#new-deck-setup" (hide))
+
 		     "#new-deck-setup button.ok"
 		     (let ((deck-name ($ "#new-deck-setup .deck-name" (val)))
 			   (card-type ($ "#new-deck-setup .card-type" (val))))
@@ -198,6 +222,7 @@
 				 (left)
 				 (said)
 				 (loaded (look-table))
+				 (changed-nick)
 				 (moved 
 				  (with-slots (thing x y) ev
 				    ($ (+ "#" thing) (offset (create :left x :top y)))))
@@ -417,7 +442,7 @@
 					 ("moved"
 					  (+ "moved " (@ msg thing)))
 					 ("changedNick"
-					  (+ "changed their tag from " (@ msg old-tag)))
+					  (+ "changed their tag from '" (@ msg old-tag) "'"))
 					 ("startedTable"
 					  (+ "started table " (@ msg id) (if (@ msg tag) (+ ", '" (@ msg tag) "'") "")))
 					 ("filledTable"
@@ -474,7 +499,7 @@
 	     (defvar *lobby-stream* nil)
 	     (defvar *table-stream* nil)
 	     (defvar *session* nil)
-
+	     
 	     (doc-ready (show-lobby "body"))
 	     
 	     ;;; Client-side handler definitions
@@ -511,6 +536,8 @@
 		       (with-slots (player-count max-players) elem
 			 (when (< player-count max-players) (render-table-entry elem)))))
 	       (lobby/session))
+	     
+	     (define-ajax rename (new-tag))
 	     
 	     (define-ajax lobby/new-table (tag passphrase)
 	       (log "STARTING TABLE" res)
