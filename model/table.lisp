@@ -129,8 +129,8 @@ so it made sense to formalize this."
 
 ;;;;;;;;;; Redact methods
 (defmethod redact ((table table))
-  (with-slots (id tablecloth things players history) table
-    (hash :type :table :id id
+  (with-slots (id tablecloth things players history tag) table
+    (hash :type :table :id id :tag tag
 	  :tablecloth tablecloth :things (redact things)
 	  :players (mapcar #'redact players)
 	  :history (take 100 history))))

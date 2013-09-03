@@ -79,12 +79,13 @@
 			   (@ *session* tag)
 			   (who-ps-html 
 			    (:a :href (+ "/table/save?table=" *current-table-id*)
-				(:span :class "game-id" *current-table-id*))))
-		      (:form :id "load-form" :enctype "multipart/form-data"
-			     (:input :name "file" :type "file"))
-		      (:button :id "upload-game-file" "Test")
+				(:span :class "game-id" *current-table-id*))))		      
 		      (:div :class "contents"
 			    (:button :id "leave" "Leave Table")
+			    (:form :id "load-form" :enctype "multipart/form-data"
+				   (:input :name "file" :type "file"))
+			    (:button :id "upload-game-file" "Upload")
+			    
 			    (:h2 "Hand")
 			    (:div :id "hand")
 			    (:h2 "Chat")
@@ -322,7 +323,7 @@
 	   (defun push-chat-message (msg)
 	     (with-slots (messages current-message) *chat-history*
 	       (setf current-message (length messages))
-	       (unless (= msg (aref messages current-message))
+	       (unless (= msg (aref messages (- current-message 1)))
 		 (chain messages (push msg))
 		 (if (> (length messages) 50)
 		     (chain messages (splice 0 1))
