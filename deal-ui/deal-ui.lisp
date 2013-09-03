@@ -76,7 +76,7 @@
 		(:div :id "board")
 		(:div :id "player-info" :class "moveable"
 		      (:h3 (:span :class "game-id" *current-table-id*)
-			   (@ *session* current-table tag))
+			   (:span :class "game-tag" *current-table-tag*))
 		      (:div :class "control-row"
 			    (:span :class "player-id" (@ *session* id))
 			    (:span :class "player-tag" (@ *session* tag)))
@@ -487,6 +487,7 @@
 
 (to-file "static/js/deal.js"
 	 (ps (defvar *current-table-id* nil)
+	     (defvar *current-table-tag* nil)
 	     
 	     (defvar *handlers-list* nil)
 	     (defvar *decks-list* nil)
@@ -506,7 +507,8 @@
 	     (define-ajax lobby/session ()
 	       (setf *session* res)
 	       (when (@ res current-table)
-		 (setf *current-table-id* (@ res current-table :id))
+		 (setf *current-table-id* (@ res current-table :id)
+		       *current-table-tag* (@ res current-table :tag))
 		 (show-table "body")		  
 		 (my-hand)
 		 (render-board (@ res current-table))))
@@ -537,18 +539,21 @@
 			 (when (< player-count max-players) (render-table-entry elem)))))
 	       (lobby/session))
 	     
-	     (define-ajax rename (new-tag))
+	     (define-ajax rename (new-tag)
+	       (log "CHANGED NAME" res))
 	     
 	     (define-ajax lobby/new-table (tag passphrase)
 	       (log "STARTING TABLE" res)
-	       (setf *current-table-id* (@ res :id))
+	       (setf *current-table-id* (@ res :id)
+		     *current-table-tag* (@ res :tag))
 	       (show-table "body")
 	       (my-hand)
 	       (render-board res))
 
 	     (define-ajax lobby/join-table (table passphrase)
 	       (log "JOINING TABLE" res)
-	       (setf *current-table-id* (@ res :id))
+	       (setf *current-table-id* (@ res :id)
+		     *current-table-tag* (@ res :tag))
 	       (show-table "body")		  
 	       (my-hand)
 	       (render-board res))
