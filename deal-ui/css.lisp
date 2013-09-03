@@ -46,7 +46,8 @@
 	       
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
-	       ("#player-info" :width 400px :top 8px :left 518px :left 1230px :top 20px)
+	       ("#player-info" :width 400px :top 10px :left 10px ;; :left 1230px :top 20px
+			       )
 	       ("#player-info h3 span" :font-size small :vertical-align top)
 	       ("#player-info h3 .game-id" :font-size x-small)
 	       ("#player-info .control-row" :padding 5px :font-size small)

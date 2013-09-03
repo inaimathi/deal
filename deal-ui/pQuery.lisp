@@ -19,6 +19,16 @@
   `(let ((it ,test-form))
      (if it ,true-form ,else-form)))
 
+(defpsmacro let-match (target regex (&rest bindings) &body body)
+  (with-ps-gensyms (re match)
+    `(let* ((,re (new (-reg-exp ,regex)))
+	    (,match (chain ,target (match ,re))))
+       (when ,match
+	 (let ,(loop for a-bind in bindings for i from 1
+		  if (symbolp a-bind) collect `(,a-bind (@ ,match ,i)) 
+		  else collect `(,(first a-bind) (or (@ ,match ,i) ,(second a-bind))))
+	   ,@body)))))
+
 ;;;;;;;;;; jQuery Basics
 (defpsmacro $ (selector &body chains)
   `(chain (j-query ,selector) ,@chains))

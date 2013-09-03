@@ -150,9 +150,7 @@
 			 ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag))))))
 			(13 
 			 (let ((new-tag ($ this (val))))
-			   (rename new-tag)
-			   (setf (@ *session* tag) new-tag)
-			   ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))))))))
+			   (rename new-tag)))))))
 
 	     ($click ".die-roll-icon .increment"
 		     (let ((trg ($ this (siblings ".num-dice"))))
@@ -288,8 +286,7 @@
 			    (play/new-stack-from-deck ($ dropped (text)) (@ event client-x) (@ event client-y) 0 0))
 
 			   (:die-roll-icon
-			    (destructuring-bind (num-dice die-size mod) (parse-die-roll ($ dropped (text)))
-			      (play/roll num-dice die-size mod)))
+			    (string->die-roll ($ dropped (text))))
 			   (:coin-flip-icon
 			    (play/coin-toss)))
 	       ($ chat-selector 
@@ -352,38 +349,26 @@
 	       (if (= count (- by))
 		   ($ id (remove))
 		   ($ ct-class (html (+ "x" (+ count by)))))))
-	   
+
 	   (defun chat-command (txt)
-	     (aif (parse-die-command txt)
-		  (progn 
-		    (destructuring-bind (num-dice die-size modifier) it
-		      (play/roll num-dice die-size modifier)
-		      ($ "#chat-input" (val "")))
-		    t)
-		  (if (parse-coin-toss txt)
-		      (progn (play/coin-toss)
-			     ($ "#chat-input" (val ""))
-			     t)
-		      nil)))
-
-	   (defun parse-coin-toss (txt)
-	     (chain txt (match "^@(flip|toss)")))
+	     (let ((re (new (-reg-exp "^(@\\S+)"))))
+	       (aif (chain txt (match re))
+		    (progn ((aref *chat-commands* (@ it 1))
+			    (chain txt (substring (length (@ it 1))) (replace " +" "")))
+			   ($ "#chat-input" (val ""))
+			   t))))
 	   
-	   (defun parse-die-command (txt)
-	     (let* ((re (new (-reg-exp "^@roll *(\\d*)d(\\d+)([-+]\\d+)?")))
-		    (match (chain txt (match re))))
-	       (when match
-		 (list (or (parse-int (@ match 1)) 1)
-		       (parse-int (@ match 2))
-		       (or (parse-int (@ match 3)) 0)))))
+	   (defvar *chat-commands*
+	     (create "@roll"   (lambda (txt) (string->die-roll txt))
+		     "@toss"   (lambda (txt) (play/coin-toss))
+		     "@rename" (lambda (txt) (rename txt))))
 
-	   (defun parse-die-roll (txt)
-	     (let* ((re (new (-reg-exp "(\\d*)d(\\d+)([-+]\\d+)?")))
-		    (match (chain txt (match re))))
-	       (when match
-		 (list (or (parse-int (@ match 1)) 1)
-		       (parse-int (@ match 2))
-		       (or (parse-int (@ match 3)) 0)))))
+	   (defun string->die-roll (die-string)
+	     (let-match die-string "(\\d*)d(\\d+)([-+]\\d+)?"
+			((num-dice "1")
+			 die-size
+			 (modifier "0"))
+			(play/roll num-dice die-size modifier)))
 
 	   (defun scrolled-to-bottom? (selector)
 	     (let ((sel ($ selector)))
@@ -540,7 +525,10 @@
 	       (lobby/session))
 	     
 	     (define-ajax rename (new-tag)
-	       (log "CHANGED NAME" res))
+	       (log "RENAMING!")
+	       (setf (@ *session* tag) new-tag)
+	       ($ "span.player-tag" (text new-tag))
+	       ($ "input.player-tag" (replace-with (who-ps-html (:span :class "player-tag" new-tag)))))
 	     
 	     (define-ajax lobby/new-table (tag passphrase)
 	       (log "STARTING TABLE" res)
