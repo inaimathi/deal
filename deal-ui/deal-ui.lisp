@@ -25,8 +25,8 @@
 		     "#new-table" (progn ($ "#new-table-setup" (show))
 					 ($ "#new-table-setup .game-tag" (focus))))
 	     ($keydown "#new-table-setup .game-tag" 
-			<ret> ($ "#new-table-setup .ok" (click))
-			<esc> ($ "#new-table-setup .cancel" (click)))
+		       <ret> ($ "#new-table-setup .ok" (click))
+		       <esc> ($ "#new-table-setup .cancel" (click)))
 	     (server-info))
 	   
 	   (defun render-table-entry (tbl-entry)
@@ -46,18 +46,18 @@
 			   (:textarea :id "chat-input" :type "text")
 			   (:button :id "send" :class "chat-button" "Send")))
 	     ($keydown "#chat-input"
-			<ret> (unless shift?
-				(chain event (prevent-default))
-				($ "#send" (click)))
-			<up> (when ctrl?
-			       (with-slots (messages current-message) *chat-history*
-				 (setf current-message (max 0 (- current-message 1)))
-				 ($ "#chat-input" (val (aref messages current-message)))))
-			<down> (when ctrl?
-				 (with-slots (messages current-message) *chat-history*
-				   (setf current-message (min (length messages) (+ current-message 1)))
-				   ($ "#chat-input" (val (aref messages current-message)))))
-			<esc> ($ "#chat-input" (val "")))
+		       <ret> (unless shift?
+			       (chain event (prevent-default))
+			       ($ "#send" (click)))
+		       <up> (when ctrl?
+			      (with-slots (messages current-message) *chat-history*
+				(setf current-message (max 0 (- current-message 1)))
+				($ "#chat-input" (val (aref messages current-message)))))
+		       <down> (when ctrl?
+				(with-slots (messages current-message) *chat-history*
+				  (setf current-message (min (length messages) (+ current-message 1)))
+				  ($ "#chat-input" (val (aref messages current-message)))))
+		       <esc> ($ "#chat-input" (val "")))
 	     ($click "#lobby .chat #send"
 		     (let ((txt ($ "#chat-input" (val))))
 		       (push-chat-message txt)
@@ -138,26 +138,23 @@
 	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
 	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))
 	     
-	     ($ "#player-info"
+	     ($ "#player-info .control-row"
 		(on :click "span.player-tag"
 		    (lambda (event)
 		      ($ this 
-			 (replace-with (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))))
-		(on :keydown "input.player-tag"
-		    (lambda (event)
-		      (case (@ event key-code)
-			(27 
-			 ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag))))))
-			(13 
-			 (let ((new-tag ($ this (val))))
-			   (rename new-tag)))))))
+			 (replace-with 
+			  (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))
+		      ($keydown "#player-info .control-row input.player-tag"
+				<esc> ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))
+				<ret> (rename ($ this (val))))
+		      ($ "#player-info .control-row input.player-tag" (focus)))))
 
 	     ($click ".die-roll-icon .increment"
 		     (let ((trg ($ this (siblings ".num-dice"))))
 		       ($ trg (text (min 4096 (+ 1 ($int trg))))))
 
 		     "#save-board"
-		     ; TODO 
+					; TODO 
 		     ;;;; I suspect this won't work in the general case. 
 		     ;;;; Checks out in Chromium, Firefox and Conkeror though.
 		     (setf location (+ "/table/save?table=" *current-table-id*))
@@ -333,14 +330,16 @@
 
 (to-file "static/js/util.js"
 	 (ps 
-	   (defun push-chat-message (msg)
-	     (with-slots (messages current-message) *chat-history*
-	       (setf current-message (length messages))
-	       (unless (= msg (aref messages (- current-message 1)))
-		 (chain messages (push msg))
-		 (if (> (length messages) 50)
-		     (chain messages (splice 0 1))
-		     (incf current-message)))))
+	   (defun push-chat-message (message)
+	     (let* ((re (new (-reg-exp "\\s+$")))
+		    (msg (chain message (replace re ""))))
+	       (with-slots (messages current-message) *chat-history*
+		 (setf current-message (length messages))
+		 (unless (= msg (aref messages (- current-message 1)))
+		   (chain messages (push msg))
+		   (if (> (length messages) 50)
+		       (chain messages (splice 0 1))
+		       (incf current-message))))))
 
 	   (defun change-stack-count (stack-id by)
 	     (let* ((id (+ "#" stack-id))
@@ -393,20 +392,20 @@
 	   (defun card-html (card)
 	     (log card)
 	     (markup-by-card-type card
-	      ("french"
-	       (:div (@ content rank)
-	     	     (case (@ content suit)
-	     	       ("hearts" (who-ps-html (:span :style "color: red;" "&#9829;")))
-	     	       ("spades" (who-ps-html (:span :style "color: black;" "&#9824;")))
-	     	       ("diamonds" (who-ps-html (:span :style "color: red;" "&#9830;")))
-	     	       ("clubs" (who-ps-html (:span :style "color: black;" "&#9827;")))))
-	       (:div "Face-Down French"))
-	      ("nItalian"
-	       (:div (@ content rank) " - " (@ content suit))
-	       (:div "Face-Down Italian"))
-	      ("occultTarot"
-	       (:div (@ content rank) " T " (@ content suit))
-	       (:div "Face-Down Tarot"))))
+				  ("french"
+				   (:div (@ content rank)
+					 (case (@ content suit)
+					   ("hearts" (who-ps-html (:span :style "color: red;" "&#9829;")))
+					   ("spades" (who-ps-html (:span :style "color: black;" "&#9824;")))
+					   ("diamonds" (who-ps-html (:span :style "color: red;" "&#9830;")))
+					   ("clubs" (who-ps-html (:span :style "color: black;" "&#9827;")))))
+				   (:div "Face-Down French"))
+				  ("nItalian"
+				   (:div (@ content rank) " - " (@ content suit))
+				   (:div "Face-Down Italian"))
+				  ("occultTarot"
+				   (:div (@ content rank) " T " (@ content suit))
+				   (:div "Face-Down Tarot"))))
 
 	   (defun chat-message (msg)
 	     (with-slots (player player-tag time type message) msg
@@ -527,7 +526,7 @@
 	     (define-ajax rename (new-tag)
 	       (log "RENAMING!")
 	       (setf (@ *session* tag) new-tag)
-	       ($ "span.player-tag" (text new-tag))
+	       ($ "#player-info .control-row span.player-tag" (text new-tag))
 	       ($ "input.player-tag" (replace-with (who-ps-html (:span :class "player-tag" new-tag)))))
 	     
 	     (define-ajax lobby/new-table (tag passphrase)
