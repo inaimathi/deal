@@ -77,6 +77,9 @@
 	   (define-component table
 	       (:div
 		(:div :id "board")
+		(:div :id "zoomed-card" :class "moveable"
+		      (:h3 "Zoomed" (:button :class "hide"))
+		      (:div :class "content"))
 		(:div :id "table-toolbar" :class "moveable"
 		      (:h3 (:span :class "game-id" *current-table-id*)
 			   (:span :class "game-tag" *current-table-tag*))
@@ -136,6 +139,10 @@
 	       (setf *lobby-stream* nil))
 	     
 	     ($ "#load-form" (change (fn ($upload "#load-form" "/table/load"))))
+
+	     ($ "#zoomed-card button.hide" 
+		(button (create :icons (create :primary "ui-icon-zoomout") :text nil))
+		(click (fn ($ "#zoomed-card" (hide)))))
 
 	     (show-chat "#game-chat")
 	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
@@ -310,14 +317,24 @@
 
 	   (define-thing card 
 	       (:div :id (self id) :class "card" :style (self position)
-		     (:span :class "content" (card-html self)))
+		     (:span :class "content" (card-html self))
+		     (:button :class "zoom"))
+	     ($ (+ css-id " button.zoom")
+		(button (create :icons (create :primary "ui-icon-zoomin") :text nil))
+		(click (fn ($ "#zoomed-card" (show))
+			   ($ "#zoomed-card .content" (empty) (append (card-html self))))))	     
 	     ($draggable css-id () 
 			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
 			 (when shift? (play/flip (self id)))))
 
 	   (define-thing card-in-hand
 	       (:div :id (self id) :class "card card-in-hand"
-		     (:span :class "content" (card-html self)))
+		     (:span :class "content" (card-html self))
+		     (:button :class "zoom"))
+	     ($ (+ css-id " button.zoom")
+		(button (create :icons (create :primary "ui-icon-zoomin") :text nil))
+		(click (fn ($ "#zoomed-card" (show))
+			   ($ "#zoomed-card .content" (empty) (append (card-html self))))))
 	     ($draggable css-id (:revert t)))))
 
 (to-file "static/js/util.js"
@@ -379,7 +396,7 @@
 	     (log "CARD" card)
 	     (who-ps-html
 	      (who-ps-html (:div :class "card in-chat" 
-				 (:span :class "content" (card-html card))))))
+				 (:span :class "content" (card-html card))))))	   
 
 	   (defun card-html (card)
 	     (log card)

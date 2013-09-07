@@ -40,14 +40,18 @@
 	       (".stack .card-count" :font-size x-small :text-align right)
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
-	       (".card .content" :font-size small :font-weight bold)
+	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px)
 	       (".card .type" :font-size xx-small :text-align right)
+	       (".card button" :float right :width 22px :height 22px)
 	       (.card-in-hand :position relative :z-index 10000)
 	       
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
-	       
-	       ("#table-toolbar" :width 400px :top 10px :left 10px ;; :left 1230px :top 20px
-			       )
+
+	       ("#zoomed-card" :width 150px :height 210px :top 10px :left 10px :display none)
+	       ("#zoomed-card button" :float right)
+	       ("#zoomed-card .content" :padding 10px)
+	       ("#table-toolbar" :width 400px :left 1230px :top 20px)
+
 	       ("#table-toolbar h3 span" :font-size small :vertical-align top)
 	       ("#table-toolbar h3 .game-id" :font-size x-small)
 	       ("#table-toolbar .control-row" :padding 5px :font-size small)
@@ -55,7 +59,7 @@
 	       ("#table-toolbar .control-row button" :margin "0px 10px 5px 0px")
 
 	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)
-	       ("#player-info .player-tag" :font-weight bold)
+	       ("#player-info .player-tag" :font-weight bold :cursor pointer)
 	       
 
 	       ("#table-toolbar .card" :float left)
