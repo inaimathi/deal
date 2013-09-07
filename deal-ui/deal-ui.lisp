@@ -339,6 +339,25 @@
 
 (to-file "static/js/util.js"
 	 (ps 
+	   (defun set-cookie (object)
+	     (setf (@ document cookie) (encode-cookie object)))
+	   
+	   (defun get-cookie ()
+	     (decode-cookie (@ document cookie)))
+
+	   (defun encode-cookie (object &optional (expires 60))
+	     (let ((d (new (-date))))
+	       (chain d (set-date (+ (chain d (get-date)) expires)))
+	       (+ (chain ($map object (+ "" i "=" elem)) (join "; "))
+		  "; expires=" (chain d (to-u-t-c-string)))))
+
+	   (defun decode-cookie (cookie)
+	     (let ((props (chain cookie (split "; ")))
+		   (res (create)))
+	       (loop for p in props for sp = (chain p (split "="))
+		  do (setf (aref res (@ sp 0)) (@ sp 1)))
+	       res))
+	   
 	   (defun push-chat-message (message)
 	     (let* ((re (new (-reg-exp "\\s+$")))
 		    (msg (chain message (replace re ""))))
