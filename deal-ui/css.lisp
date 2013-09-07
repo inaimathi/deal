@@ -44,6 +44,10 @@
 	       (".card .type" :font-size xx-small :text-align right)
 	       (".card button" :float right :width 22px :height 22px)
 	       (.card-in-hand :position relative :z-index 10000)
+
+	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)
+	       ("#player-info .player-tag" :font-weight bold :cursor pointer)
+	       ("#lobby #player-info" :border "1px solid #ddd" :padding 8px :border-radius 5px)
 	       
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 
@@ -57,11 +61,6 @@
 	       ("#table-toolbar .control-row" :padding 5px :font-size small)
 	       ("#table-toolbar .control-row .label" :padding-left 3px)
 	       ("#table-toolbar .control-row button" :margin "0px 10px 5px 0px")
-
-	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)
-	       ("#player-info .player-tag" :font-weight bold :cursor pointer)
-	       
-
 	       ("#table-toolbar .card" :float left)
 	       ("#table-toolbar .card.in-chat" :position relative :display inline-block :float none :cursor auto)
 	       ("#table-toolbar .card.in-chat .type" :margin-top 20px)
