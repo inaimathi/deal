@@ -62,7 +62,7 @@
 		     (let ((txt ($ "#chat-input" (val))))
 		       (push-chat-message txt)
 		       (lobby/speak txt))
-		     "#player-info #send" 
+		     "#table-toolbar #send" 
 		     (let ((txt ($ "#chat-input" (val))))
 		       (push-chat-message txt)
 		       (if (chain txt (match "^@"))
@@ -74,10 +74,10 @@
 	   (define-component table
 	       (:div
 		(:div :id "board")
-		(:div :id "player-info" :class "moveable"
+		(:div :id "table-toolbar" :class "moveable"
 		      (:h3 (:span :class "game-id" *current-table-id*)
 			   (:span :class "game-tag" *current-table-tag*))
-		      (:div :class "control-row"
+		      (:div :id "player-info" :class "control-row"
 			    (:span :class "player-id" (@ *session* id))
 			    (:span :class "player-tag" (@ *session* tag)))
 		      (:div :class "control-row"
@@ -136,18 +136,18 @@
 
 	     (show-chat "#game-chat")
 	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
-	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))
-	     
-	     ($ "#player-info .control-row"
-		(on :click "span.player-tag"
+	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))	     
+
+	     ($ "#table-toolbar"
+		(on :click "#player-info span.player-tag"
 		    (lambda (event)
 		      ($ this 
 			 (replace-with 
 			  (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))
-		      ($keydown "#player-info .control-row input.player-tag"
+		      ($keydown "#player-info input.player-tag"
 				<esc> ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))
 				<ret> (rename ($ this (val))))
-		      ($ "#player-info .control-row input.player-tag" (focus)))))
+		      ($ "#player-info input.player-tag" (focus)))))
 
 	     ($click ".die-roll-icon .increment"
 		     (let ((trg ($ this (siblings ".num-dice"))))
@@ -526,7 +526,7 @@
 	     (define-ajax rename (new-tag)
 	       (log "RENAMING!")
 	       (setf (@ *session* tag) new-tag)
-	       ($ "#player-info .control-row span.player-tag" (text new-tag))
+	       ($ "#table-toolbar .control-row span.player-tag" (text new-tag))
 	       ($ "input.player-tag" (replace-with (who-ps-html (:span :class "player-tag" new-tag)))))
 	     
 	     (define-ajax lobby/new-table (tag passphrase)

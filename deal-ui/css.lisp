@@ -46,22 +46,22 @@
 	       
 	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
 	       
-	       ("#player-info" :width 400px :top 10px :left 10px ;; :left 1230px :top 20px
+	       ("#table-toolbar" :width 400px :top 10px :left 10px ;; :left 1230px :top 20px
 			       )
-	       ("#player-info h3 span" :font-size small :vertical-align top)
-	       ("#player-info h3 .game-id" :font-size x-small)
-	       ("#player-info .control-row" :padding 5px :font-size small)
-	       ("#player-info .control-row .label" :padding-left 3px)
-	       ("#player-info .control-row button" :margin "0px 10px 5px 0px")
+	       ("#table-toolbar h3 span" :font-size small :vertical-align top)
+	       ("#table-toolbar h3 .game-id" :font-size x-small)
+	       ("#table-toolbar .control-row" :padding 5px :font-size small)
+	       ("#table-toolbar .control-row .label" :padding-left 3px)
+	       ("#table-toolbar .control-row button" :margin "0px 10px 5px 0px")
 
-	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)
-	       ("#player-info .player-tag" :font-weight bold)
+	       ("#table-toolbar .player-id" :font-size x-small :font-style oblique :vertical-align top)
+	       ("#table-toolbar .player-tag" :font-weight bold)
 	       
 
-	       ("#player-info .card" :float left)
-	       ("#player-info .card.in-chat" :position relative :display inline-block :float none :cursor auto)
-	       ("#player-info .card.in-chat .type" :margin-top 20px)
-	       ("#player-info textarea" ,@css-text-block)
+	       ("#table-toolbar .card" :float left)
+	       ("#table-toolbar .card.in-chat" :position relative :display inline-block :float none :cursor auto)
+	       ("#table-toolbar .card.in-chat .type" :margin-top 20px)
+	       ("#table-toolbar textarea" ,@css-text-block)
 
 	       ("#hand" :height ,(px (+ css-card-height 5)))
 
@@ -93,11 +93,11 @@
 	       ("#new-deck-setup textarea" ,@css-text-block)
 	       ("#new-deck-setup .cards" :height 100px :overflow auto)
 
-	       ("#player-info #chat-history" :height 200px :font-size small)
-	       ("#player-info #chat-history .time" :display none)
-	       ("#player-info #chat-history li .player" :font-size xx-small)
-	       ("#player-info #chat-history li .player-tag" :font-weight bold)
-	       ("#player-info #chat-history li .message" :display inline)
+	       ("#table-toolbar #chat-history" :height 200px :font-size small)
+	       ("#table-toolbar #chat-history .time" :display none)
+	       ("#table-toolbar #chat-history li .player" :font-size xx-small)
+	       ("#table-toolbar #chat-history li .player-tag" :font-weight bold)
+	       ("#table-toolbar #chat-history li .message" :display inline)
 
 	       ("#chat-history li.did" ,@(css-box nil) :border none :padding 3px :margin-bottom 2px)
 	       ("#chat-history li.did" :font-style oblique :color "#33f")
