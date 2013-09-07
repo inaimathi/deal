@@ -21,7 +21,7 @@
   (let* ((player (session-value :player))
 	 (old (tag player)))
     (setf (tag player) new-tag)
-    (publish! (aif (current-table player) it *server*) :changed-nick `((old-tag . ,old)))
+    (publish! (aif (current-table player) it *server*) :changed-tag `((old-tag . ,old)))
     :ok))
 
 ;;;;; Lobby-related
@@ -36,7 +36,7 @@
 
 (define-handler (lobby/speak) ((message (:string :min 2 :max 255)))
   (assert (session-value :player))
-  (publish! *server* :said (escape-string message))
+  (publish! *server* :said `((message . ,(escape-string message))))
   :ok)
 
 (define-handler (lobby/new-table) ((tag :string) (passphrase :string))
@@ -49,7 +49,7 @@
       (unless (string= passphrase "")
 	(setf (passphrase table) passphrase)
 	(with-slots (id tag player-count max-players) table
-	  (publish! *server* :started-table `((id . ,id) (tag . ,tag) (seated . ,player-count) (of . ,max-players)))))
+	  (publish! *server* :started-table `((table ((id . ,id) (tag . ,tag) (seated . ,player-count) (of . ,max-players)))))))
       (redact table))))
 
 (define-table-handler (lobby/join-table) ((table :table) (passphrase :string))
@@ -90,7 +90,7 @@
     (unless (passphrase table)
       (publish! table :left)
       (publish! *server* :left 
-		`((id . ,(id table)) (tag . ,(tag table)) (seated . ,(player-count table)) (of . ,(max-players table)))))
+		`((table ((id . ,(id table)) (tag . ,(tag table)) (seated . ,(player-count table)) (of . ,(max-players table)))))))
     :ok))
 
 (define-player-handler (play/speak) ((table :table) (message (:string :min 2 :max 255)))

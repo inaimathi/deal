@@ -66,6 +66,6 @@
 			 (time . ,(get-universal-time))
 			 (player . ,(id player))
 			 (player-tag . ,(tag player))
-			 (message . ,message))))
+			 ,@message)))
     (http-request (format nil "~apub?id=lobby" stream-server)
 		  :method :post :content (encode-json-to-string full-message))))

@@ -54,8 +54,8 @@
 	       ("#table-toolbar .control-row .label" :padding-left 3px)
 	       ("#table-toolbar .control-row button" :margin "0px 10px 5px 0px")
 
-	       ("#table-toolbar .player-id" :font-size x-small :font-style oblique :vertical-align top)
-	       ("#table-toolbar .player-tag" :font-weight bold)
+	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)
+	       ("#player-info .player-tag" :font-weight bold)
 	       
 
 	       ("#table-toolbar .card" :float left)
@@ -71,7 +71,7 @@
 	       ("#lobby ul" :padding 0px :list-style-type none)
 	       ("#lobby ul li" :margin-top 5px)
 	       
-	       ("#open-tables" ,@css-sub-window :height 400px)
+	       ("#open-tables" ,@css-sub-window :height 300px)
 	       ("#open-tables li" ,@(css-box :filled) :padding 5px :margin-bottom 5px)
 	       ("#open-tables li span" ,@css-display-line)
 	       ("#open-tables li .tag" :width 150px :text-align left)

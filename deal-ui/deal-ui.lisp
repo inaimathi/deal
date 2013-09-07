@@ -8,6 +8,9 @@
 	       (:div :id "lobby"
 		     (:div :id "left-pane")
 		     (:div :id "right-pane"
+			   (:div :id "player-info"
+				 (:span :class "player-id")
+				 (:span :class "player-tag"))
 			   (:ul :id "open-tables")
 			   (:ul (:li (:button :id "new-table" "New Table"))))
 		     (:div :id "new-table-setup" :class "overlay"
@@ -136,18 +139,7 @@
 
 	     (show-chat "#game-chat")
 	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
-	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))	     
-
-	     ($ "#table-toolbar"
-		(on :click "#player-info span.player-tag"
-		    (lambda (event)
-		      ($ this 
-			 (replace-with 
-			  (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))
-		      ($keydown "#player-info input.player-tag"
-				<esc> ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))
-				<ret> (rename ($ this (val))))
-		      ($ "#player-info input.player-tag" (focus)))))
+	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))
 
 	     ($click ".die-roll-icon .increment"
 		     (let ((trg ($ this (siblings ".num-dice"))))
@@ -217,7 +209,7 @@
 				 (left)
 				 (said)
 				 (loaded (look-table))
-				 (changed-nick)
+				 (changed-tag)
 				 (moved 
 				  (with-slots (thing x y) ev
 				    ($ (+ "#" thing) (offset (create :left x :top y)))))
@@ -425,7 +417,7 @@
 					  (+ "loaded a saved table. Added " (@ msg things) " things."))
 					 ("moved"
 					  (+ "moved " (@ msg thing)))
-					 ("changedNick"
+					 ("changedTag"
 					  (+ "changed their tag from '" (@ msg old-tag) "'"))
 					 ("startedTable"
 					  (+ "started table " (@ msg id) (if (@ msg tag) (+ ", '" (@ msg tag) "'") "")))
@@ -485,11 +477,24 @@
 	     (defvar *table-stream* nil)
 	     (defvar *session* nil)
 	     
-	     (doc-ready (show-lobby "body"))
+	     (doc-ready 
+	      (show-lobby "body")
+	      ($ "body"
+		 (on :click "#player-info span.player-tag"
+		     (lambda (event)
+		       ($ this 
+			  (replace-with 
+			   (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))
+		       ($keydown "#player-info input.player-tag"
+				 <esc> ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))
+				 <ret> (rename ($ this (val))))
+		       ($ "#player-info input.player-tag" (focus))))))
 	     
 	     ;;; Client-side handler definitions
 	     (define-ajax lobby/session ()
 	       (setf *session* res)
+	       ($ "#player-info .player-id" (text (@ *session* id)))
+	       ($ "#player-info .player-tag" (text (@ *session* tag)))
 	       (when (@ res current-table)
 		 (setf *current-table-id* (@ res current-table :id)
 		       *current-table-tag* (@ res current-table :tag))
@@ -504,20 +509,20 @@
 		       *lobby-stream*
 		       (event-source "/ev/lobby"
 				     (said)
-				     (changed-nick)
+				     (changed-tag)
 				     (started-table
-				      (render-table-entry (@ ev message)))
+				      (render-table-entry (@ ev table)))
 				     (filled-table
-				      ($ (+ "#game-" (@ ev message id)) (remove)))
+				      ($ (+ "#game-" (@ ev id)) (remove)))
 				     (joined
-				      (let* ((elem ($ (+ "#game-" (@ ev message id) " .players .count")))
+				      (let* ((elem ($ (+ "#game-" (@ ev id) " .players .count")))
 					     (new-count (+ 1 ($int elem))))
 					(chain elem (text (+ 1 ($int elem))))))
 				     (left
-				      (let ((sel (+ "#game-" (@ ev message id))))
+				      (let ((sel (+ "#game-" (@ ev id))))
 					(if ($exists? sel)
-					    ($ sel (replace (render-table-entry (@ ev message))))
-					    (render-table-entry (@ ev message)))))))
+					    ($ sel (replace (render-table-entry (@ ev table))))
+					    (render-table-entry (@ ev table)))))))
 		 ($map public-tables
 		       (with-slots (player-count max-players) elem
 			 (when (< player-count max-players) (render-table-entry elem)))))
