@@ -247,13 +247,17 @@
 		   (when (chain i (match "^#"))
 		     ($ i (offset (string->obj elem)))))
 
-	     ($ "#zoomed-card button.hide" 
-		(button (create :icons (create :primary "ui-icon-zoomout") :text nil))
-		(click (fn ($ "#zoomed-card" (hide)))))
+	     ($button "#zoomed-card button.hide" (:zoomout) ($ "#zoomed-card" (hide)))
 
 	     (show-chat "#game-chat")
-	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
-	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))
+	     ($button ".die-roll-icon .increment" (:plus)
+		      (let ((trg ($ this (siblings ".num-dice"))))
+			($ trg (text (min 4096 (+ 1 ($int trg)))))
+			(set-dice-cookie)))
+	     ($button ".die-roll-icon .decrement" (:minus)
+		      (let ((trg ($ this (siblings ".num-dice"))))
+			($ trg (text (max 1 (- ($int trg) 1))))
+			(set-dice-cookie)))
 
 	     (aif (@ *session* cookie :dice)
 		  (loop for elem in ($ "#dice-tab .num-dice") for num-dice in (string->obj it)
@@ -264,17 +268,7 @@
 			   (loop for elem in ($ "#dice-tab .num-dice")
 			      collect ($ elem (text)))))
 
-	     ($click ".die-roll-icon .increment"
-		     (let ((trg ($ this (siblings ".num-dice"))))
-		       ($ trg (text (min 4096 (+ 1 ($int trg)))))
-		       (set-dice-cookie))
-		     ".die-roll-icon .decrement"
-		     (let ((trg ($ this (siblings ".num-dice"))))
-		       ($ trg (text (max 1 (- ($int trg) 1))))
-		       (set-dice-cookie))
-
-
-		     "#save-board"
+	     ($click "#save-board"
 					; TODO 
 		     ;;;; I suspect this won't work in the general case. 
 		     ;;;; Checks out in Chromium, Firefox and Conkeror though.
@@ -410,7 +404,7 @@
 	   (define-thing stack
 	       (:div :id (self id) :class "stack" :style (self position)
 		     (:button :class "draw" "Draw")
-		     (:button :class "shuffle control-button")
+		     (:button :class "shuffle")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
 	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
@@ -421,9 +415,9 @@
 			  (stack/add-to (self id) ($ dropped (attr :id))))
 			 (:stack
 			  (stack/merge (self id) ($ dropped (attr :id)))))
-	     ($ (+ css-id " .shuffle") (button (create :icons (create :primary "ui-icon-shuffle") :text nil)))
-	     ($click (+ css-id " .draw") (stack/draw (self id) 1)
-		     (+ css-id " .shuffle") (stack/shuffle (self id))))
+	     ($button (+ css-id " .shuffle") (:shuffle)
+		      (stack/shuffle (self id)))
+	     ($click (+ css-id " .draw") (stack/draw (self id) 1)))
 
 	   (define-thing mini
 	       (:img :id (self id) :class "mini" :style (self position) :src (self mini-uri))
@@ -433,12 +427,11 @@
 	   (define-thing card 
 	       (:div :id (self id) :class "card" :style (self position)
 		     (:span :class "content" (card-html self))
-		     (:button :class "zoom control-button"))
+		     (:button :class "zoom"))
 	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
-	     ($ (+ css-id " button.zoom")
-		(button (create :icons (create :primary "ui-icon-zoomin") :text nil))
-		(click (fn ($ "#zoomed-card" (show))
-			   ($ "#zoomed-card .content" (empty) (append (card-html self))))))	     
+	     ($button (+ css-id " button.zoom") (:zoomin)
+		      ($ "#zoomed-card" (show))
+		      ($ "#zoomed-card .content" (empty) (append (card-html self))))	     
 	     ($draggable css-id () 
 			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
 			 (when shift? (play/flip (self id)))))
@@ -446,11 +439,10 @@
 	   (define-thing card-in-hand
 	       (:div :id (self id) :class "card card-in-hand"
 		     (:span :class "content" (card-html self))
-		     (:button :class "zoom control-button"))
-	     ($ (+ css-id " button.zoom")
-		(button (create :icons (create :primary "ui-icon-zoomin") :text nil))
-		(click (fn ($ "#zoomed-card" (show))
-			   ($ "#zoomed-card .content" (empty) (append (card-html self))))))
+		     (:button :class "zoom"))
+	     ($button (+ css-id " button.zoom") (:zoomin)
+		      ($ "#zoomed-card" (show))
+		      ($ "#zoomed-card .content" (empty) (append (card-html self))))
 	     ($draggable css-id (:revert t)))))
 
 (to-file "static/js/deck-editor.js"
@@ -475,11 +467,9 @@
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
 
-	     ($ "#new-deck-setup"
-		(on :click "button.remove"
-		    (lambda (event) ($ this (parent) (remove))))
-		(on :click "button.add"
-		    (lambda (event) ($ "#new-deck-setup .cards" (append ($ this (parent) (clone)))))))
+	     ($on "#new-deck-setup"
+		  (:click "button.remove" ($ this (parent) (remove)))
+		  (:click "button.add" ($ "#new-deck-setup .cards" (append ($ this (parent) (clone))))))
 
 	     ($click "#new-deck-setup button.add-card"
 		     (progn ($append "#new-deck-setup .cards"
@@ -605,16 +595,15 @@
 	     
 	     (doc-ready 
 	      (show-lobby "body")
-	      ($ "body"
-		 (on :click "#player-info span.player-tag"
-		     (lambda (event)
-		       ($ this 
-			  (replace-with 
-			   (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))
-		       ($keydown "#player-info input.player-tag"
-				 <esc> ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))
-				 <ret> (rename ($ this (val))))
-		       ($ "#player-info input.player-tag" (focus))))))
+	      ($on "body"
+		   (:click "#player-info span.player-tag"
+			   ($ this 
+			      (replace-with 
+			       (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))
+			   ($keydown "#player-info input.player-tag"
+				     <esc> ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))
+				     <ret> (rename ($ this (val))))
+			   ($ "#player-info input.player-tag" (focus)))))
 	     
 	     ;;; Client-side handler definitions
 	     (define-ajax lobby/session ()

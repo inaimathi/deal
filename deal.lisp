@@ -200,6 +200,7 @@
   :ok)
 
 (define-player-handler (hand/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
+  (setf (face card) :down)
   (move! card (session-value :player) stack)
   (publish! table :played-to-stack `((stack . ,(id stack)) (card . ,(redact card))))
   :ok)

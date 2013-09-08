@@ -97,11 +97,16 @@
   `(progn ,@(loop for (target body) on target/body-list by #'cddr
 	       collect `($ ,target (click (lambda (event) ,body))))))
 
-(defpsmacro $button (selector (icon-name &optional text?) &body on-click)
+(defpsmacro $on (context-selector &rest event/selector/behavior-list)
+  `($ ,context-selector
+      ,@(loop for (ev sel . behav) in event/selector/behavior-list
+	   collect `(on ,ev ,sel (lambda (event) ,@behav)))))
+
+(defpsmacro $button (selector (icon-name &key text? (class "control-button")) &body on-click)
   `($ ,selector
-      (button (create :icons (create :primary ,(format nil "ui-icon-~(~a~)" icon-name)) :text ,(when text? t)))
+      (button (create :icons (create :primary ,(format nil "ui-icon-~(~a~)" icon-name)) :text ,text?))
       (click (lambda (event) ,@on-click))
-      (add-class "control-button")))
+      ,@(when class `((add-class ,class)))))
 
 (defpsmacro $append (target &rest html)
   `($ ,target (append (who-ps-html ,@html))))
