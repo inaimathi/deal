@@ -7,7 +7,9 @@
   (hash :handlers *handlers*
 	:public-tables (loop for v being the hash-values of (public-tables *server*)
 			  collect (obj->hash v () id tag player-count max-players))
-	:decks (mapcar #'deck-name (decks *server*))))
+	:decks (mapcar #'deck-name (decks *server*))
+	:minis *mini-uris*
+	:tablecloths *tablecloth-uris*))
 
 (define-handler (look-table) ((table :table)) (redact table))
 
@@ -83,6 +85,11 @@
   (publish! table :loaded `((things . ,(length (getj :things file)))))
   :ok)
 
+(define-player-handler (table/tablecloth) ((table :table) (tablecloth-uri :string))
+  (setf (tablecloth table) tablecloth-uri)
+  (publish! table :tablecloth `((tablecloth . ,tablecloth-uri)))
+  :ok)
+
 (define-player-handler (play/leave-table) ((table :table))
   (let ((player (session-value :player)))
     (delete! table player)
@@ -110,6 +117,18 @@
 
 (define-player-handler (play/coin-toss) ((table :table))
   (publish! table :flipped-coin `((result . ,(pick (list :heads :tails)))))
+  :ok)
+
+(define-player-handler (play/mini) ((table :table) (mini-uri :string) (x :int) (y :int) (z :int) (rot :int))
+  (let ((mini (make-instance 'mini :belongs-to (id (session-value :player)))))
+    (set-props mini mini-uri x y z rot)
+    (insert! table mini)
+    (publish! table :placed-mini `((mini . ,(redact mini))))
+    :ok))
+
+(define-player-handler (play/remove) ((table :table) (thing :placeable))
+  (delete! table thing)
+  (publish! table :removed `((thing . ,(id thing))))
   :ok)
 
 (define-player-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))

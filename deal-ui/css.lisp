@@ -10,6 +10,11 @@
 (defun css-box (&optional filled?)
   `(:border "1px solid #ccc" :background-color ,(if filled? "#eee" "#fff") :border-radius 4px))
 
+(defun css-control-button (selector &optional margin-left)
+  `((,selector :width 22px :height 22px :float right :opacity .7
+	       ,@(when margin-left `(:margin-left ,(px margin-left))) )
+    (,(format nil "~a:hover" selector) :opacity 1)))
+
 (defparameter css-card-height 70)
 (defparameter css-card-size `(:width 50px :height ,(px css-card-height)))
 (defparameter css-display-line '(:height 16px :display inline-block))
@@ -18,7 +23,6 @@
 (defparameter css-sub-window `(,@css-tight :overflow auto))
 (defparameter css-header `(:margin 0px :padding 5px :border-radius 3px :background-color "#eee"))
 (defparameter css-text-block `(:width 100% :height 60px :margin-bottom 5px))
-
 
 (compile-css "static/css/main.css"
 	     `((body ,@css-tight :font-family sans-serif)
@@ -38,23 +42,31 @@
 	       
 	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc" :cursor move)
 	       (".stack .card-count" :font-size x-small :text-align right)
+
+	       (.mini :position absolute :cursor move)
+	       (".mini img")
+	       ,@(css-control-button ".mini button" -22)
+
+	       (.tablecloth ,@(css-box) :width 50px :height 50px)
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
 	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px)
 	       (".card .type" :font-size xx-small :text-align right)
-	       (".card button" :float right :width 22px :height 22px)
+	       ,@(css-control-button ".card button")
 	       (.card-in-hand :position relative :z-index 10000)
 
 	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)
-	       ("#player-info .player-tag" :font-weight bold :cursor pointer)
+	       ("#player-info .player-tag" :font-weight bold :cursor pointer :min-width 20px :border-bottom "1px solid #eee" :display inline-block)
 	       ("#lobby #player-info" :border "1px solid #ddd" :padding 8px :border-radius 5px)
 	       
-	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc")
+	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc" :background-repeat no-repeat)
 
 	       ("#zoomed-card" :width 150px :height 210px :top 10px :left 10px :display none)
 	       ("#zoomed-card button" :float right)
 	       ("#zoomed-card .content" :padding 10px)
 	       ("#table-toolbar" :width 400px :left 1230px :top 20px)
+
+	       (".backpack-mini" :max-height 75px :max-width 75px)
 
 	       ("#table-toolbar h3 span" :font-size small :vertical-align top)
 	       ("#table-toolbar h3 .game-id" :font-size x-small)

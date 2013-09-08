@@ -76,7 +76,7 @@
 	 (ps
 	   (define-component table
 	       (:div
-		(:div :id "board")
+		(:div :id "board" :style (aif (@ *table-info* tablecloth) (+ "background-image: url(" it ")") ""))
 		(:div :id "zoomed-card" :class "moveable"
 		      (:h3 "Zoomed" (:button :class "hide"))
 		      (:div :class "content"))
@@ -102,19 +102,30 @@
 			    (:div :id "backpack"
 				  (:ul
 				   (:li (:a :href "#decks-tab" "Decks"))
-				   ;; (:li (:a :href "#minis-tab" "Minis"))
-				   (:li (:a :href "#dice-tab" "Dice/Coin")))
+				   (:li (:a :href "#dice-tab" "Dice/Coin"))
+				   (:li (:a :href "#minis-tab" "Minis"))
+				   (:li (:a :href "#tablecloth-tab" "Tablecloths")))
 				  (:div :id "decks-tab" 
-					(map-markup *decks-list* (:div :class "new-deck" elem))
+					(map-markup (@ *server-info* decks) (:div :class "new-deck" elem))
 					(:br :class "clear"))
-				  ;; (:div :id "minis-tab" (:br :class "clear"))
 				  (:div :id "dice-tab" 
 					(map-markup (list "d3" "d4" "d6" "d8" "d10" "d20" "d100")
-						    (:div :class "die-roll-icon" (:span :class "num-dice" "1")
+						    (:div :class "die-roll-icon" 
+							  (:span :class "num-dice" "1")
 							  elem
 							  (:button :class "increment")
 							  (:button :class "decrement")))
 					(:div :class "coin-flip-icon" "Flip")
+					(:br :class "clear"))
+				  (:div :id "minis-tab" 
+					(map-markup 
+					 (@ *server-info* minis)
+					 (:img :class "backpack-mini" :src elem))
+					(:br :class "clear"))
+				  (:div :id "tablecloth-tab" 
+					(map-markup 
+					 (@ *server-info* tablecloths)
+					 (:div :class "tablecloth" elem))
 					(:br :class "clear")))))
 		(:div :id "new-deck-setup" :class "overlay"
 		      (:h3 "New Deck")
@@ -138,7 +149,23 @@
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
 	     
+	     ($draggable ".tablecloth" (:revert t))
+
+	     ($draggable ".backpack-mini" (:revert t))
+	     
+	     ($droppable "#backpack" (:overlapping "#board, .stack")
+			 (:mini 
+			  (play/remove ($ dropped (attr :id))))
+			 (:stack
+			  (play/remove ($ dropped (attr :id))))
+			 (:card
+			  (play/remove ($ dropped (attr :id)))))
+	     
 	     ($ "#load-form" (change (fn ($upload "#load-form" "/table/load"))))
+
+	     ($map (@ *session* cookie)
+		   (when (chain i (match "^#"))
+		     ($ i (offset (string->obj elem)))))
 
 	     ($ "#zoomed-card button.hide" 
 		(button (create :icons (create :primary "ui-icon-zoomout") :text nil))
@@ -148,19 +175,32 @@
 	     ($ ".increment" (button (create :icons (create :primary "ui-icon-plus") :text nil)))
 	     ($ ".decrement" (button (create :icons (create :primary "ui-icon-minus") :text nil)))
 
+	     (aif (@ *session* cookie :dice)
+		  (loop for elem in ($ "#dice-tab .num-dice") for num-dice in (string->obj it)
+		     do ($ elem (text num-dice))))
+
+	     (defun set-dice-cookie ()
+	       (set-cookie :dice
+			   (loop for elem in ($ "#dice-tab .num-dice")
+			      collect ($ elem (text)))))
+
 	     ($click ".die-roll-icon .increment"
 		     (let ((trg ($ this (siblings ".num-dice"))))
-		       ($ trg (text (min 4096 (+ 1 ($int trg))))))
+		       ($ trg (text (min 4096 (+ 1 ($int trg)))))
+		       (set-dice-cookie))
+		     ".die-roll-icon .decrement"
+		     (let ((trg ($ this (siblings ".num-dice"))))
+		       ($ trg (text (max 1 (- ($int trg) 1))))
+		       (set-dice-cookie))
+
 
 		     "#save-board"
 					; TODO 
 		     ;;;; I suspect this won't work in the general case. 
 		     ;;;; Checks out in Chromium, Firefox and Conkeror though.
+		     ;;;; Also, doesn't work if you shouldn't be saving when you click it.
+		     ;;;; Should probably just remove it when there's multiple players in the game
 		     (setf location (+ "/table/save?table=" *current-table-id*))
-
-		     ".die-roll-icon .decrement"
-		     (let ((trg ($ this (siblings ".num-dice"))))
-		       ($ trg (text (max 1 (- ($int trg) 1)))))
 
 		     "#custom-deck"
 		     ($ "#new-deck-setup" (show))
@@ -203,7 +243,10 @@
 			 (:card (unless ($ dropped (has-class :card-in-hand))
 				  (hand/pick-up ($ dropped (attr :id))))))
 	     
-	     ($draggable ".moveable" (:handle "h3"))
+	     
+	     
+	     ($draggable ".moveable" (:handle "h3")
+			 (set-cookie (+ "#" ($ this (attr :id))) ($ this (offset))))
 	     ($draggable ".new-deck" (:revert t))
 	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
 	     ($ "#backpack" (tabs))
@@ -216,6 +259,8 @@
 				 (left)
 				 (said)
 				 (loaded (look-table))
+				 (tablecloth
+				  ($ "#board" (css "background-image" (+ "url(" (@ ev tablecloth) ")"))))
 				 (changed-tag)
 				 (moved 
 				  (with-slots (thing x y) ev
@@ -248,6 +293,10 @@
 				 (peeked (log "Peeked at cards from a stack"))
 				 (revealed (log "Showed everyone cards from a stack"))
 
+				 (placed-mini
+				  (create-mini "body" (@ ev mini)))
+				 (removed
+				  ($ (+ "#" (@ ev thing)) (remove)))
 				 (played-from-hand 
 				  (create-card "body" (@ ev card)))
 
@@ -267,19 +316,27 @@
 		   (chat-selector "#chat-history")
 		   (ts (@ table things)))
 	       ($ board-selector (empty))
+	       (log "TABLE" table)
+	       (aif (@ table tablecloth)
+		    (progn (log "TABLECLOTH" it)
+			   ($ board-selector (css "background-image" (+ "url(" it ")")))))
 	       ($droppable board-selector ()
 			   (:card-in-hand 
 			    (hand/play ($ dropped (attr :id))
-				       (if shift? :down :up) (@ event client-x) (@ event client-y) 0 0))
+				       (if shift? :down :up) ($x board-selector event) ($y board-selector event) 0 0))
 			   
 			   (:new-custom-deck
-			    ;; play/new-stack-from-json
 			    (play/new-stack-from-json
 			     (obj->string (aref *local-decks* ($ dropped (text))))
-			     (@ event client-x) (@ event client-y) 0 0))
+			     ($x board-selector event) ($y board-selector event) 0 0))
+			   
+			   (:backpack-mini
+			    (play/mini ($ dropped (attr :src)) ($x board-selector event) ($y board-selector event) 0 0))
 
 			   (:new-deck
-			    (play/new-stack-from-deck ($ dropped (text)) (@ event client-x) (@ event client-y) 0 0))
+			    (play/new-stack-from-deck ($ dropped (text)) ($x board-selector event) ($y board-selector event) 0 0))
+
+			   (:tablecloth (table/tablecloth ($ dropped (text))))
 
 			   (:die-roll-icon
 			    (string->die-roll ($ dropped (text))))
@@ -292,7 +349,8 @@
 	       (scroll-to-bottom chat-selector)
 	       ($map ts 
 		     (cond ((= (@ elem type) :stack) (create-stack "body" elem))
-			   ((= (@ elem type) :card) (create-card "body" elem))))))
+			   ((= (@ elem type) :card) (create-card "body" elem))
+			   ((= (@ elem type) :mini) (create-mini "body" elem))))))
 	   
 	   (defun render-hand (cards)
 	     (let ((hand-selector "#hand"))
@@ -314,6 +372,10 @@
 			  (stack/merge (self id) ($ dropped (attr :id)))))
 	     ($click (+ css-id " .draw") (stack/draw (self id) 1)
 		     (+ css-id " .shuffle") (stack/shuffle (self id))))
+
+	   (define-thing mini
+	       (:img :id (self id) :class "mini" :style (self position) :src (self mini-uri))
+	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
 	   (define-thing card 
 	       (:div :id (self id) :class "card" :style (self position)
@@ -339,23 +401,23 @@
 
 (to-file "static/js/util.js"
 	 (ps 
-	   (defun set-cookie (object)
-	     (setf (@ document cookie) (encode-cookie object)))
+	   (defun set-cookie (name value &optional (expires 120))
+	     (setf (@ document cookie) (encode-cookie name value expires)))
 	   
-	   (defun get-cookie ()
-	     (decode-cookie (@ document cookie)))
+	   (defun get-cookies ()
+	     (decode-cookies (@ document cookie)))
 
-	   (defun encode-cookie (object &optional (expires 60))
+	   (defun encode-cookie (name value &optional (expires 120))
 	     (let ((d (new (-date))))
 	       (chain d (set-date (+ (chain d (get-date)) expires)))
-	       (+ (chain ($map object (+ "" i "=" elem)) (join "; "))
+	       (+ "" name "=" (escape (if (stringp value) value (obj->string value)))
 		  "; expires=" (chain d (to-u-t-c-string)))))
 
-	   (defun decode-cookie (cookie)
+	   (defun decode-cookies (cookie)
 	     (let ((props (chain cookie (split "; ")))
 		   (res (create)))
 	       (loop for p in props for sp = (chain p (split "="))
-		  do (setf (aref res (@ sp 0)) (@ sp 1)))
+		  do (setf (aref res (@ sp 0)) (unescape (@ sp 1))))
 	       res))
 	   
 	   (defun push-chat-message (message)
@@ -365,6 +427,7 @@
 		 (setf current-message (length messages))
 		 (unless (= msg (aref messages (- current-message 1)))
 		   (chain messages (push msg))
+		   (set-cookie :chat-messages messages)
 		   (if (> (length messages) 50)
 		       (chain messages (splice 0 1))
 		       (incf current-message))))))
@@ -412,13 +475,11 @@
 	       (chain message (replace re "<br />"))))
 
 	   (defun chat-card (card)
-	     (log "CARD" card)
 	     (who-ps-html
 	      (who-ps-html (:div :class "card in-chat" 
 				 (:span :class "content" (card-html card))))))	   
 
 	   (defun card-html (card)
-	     (log card)
 	     (markup-by-card-type card
 				  ("french"
 				   (:div (@ content rank)
@@ -451,6 +512,8 @@
 					  (newline->break message))
 					 ("loaded"
 					  (+ "loaded a saved table. Added " (@ msg things) " things."))
+					 ("tablecloth"
+					  (+ "set a new tablecloth"))
 					 ("moved"
 					  (+ "moved " (@ msg thing)))
 					 ("changedTag"
@@ -466,11 +529,12 @@
 					 ("peeked"
 					  (+ "peeked at " (@ msg count) " cards from " (@ msg stack)))
 					 ("revealed"
-					  ;;; TODO actually render the cards here. 
-					  ;;; In fact TODO anywhere there's a card being sent, it should be rendered in-line
 					  (+ "revealed some cards"))
 					 ("flipped"
 					  (+ "flipped over " (chat-card (@ msg card))))
+					 ("placedMini" "placed a mini")
+					 ("removed"
+					  (+ "removed " (@ msg thing) " from play"))
 					 ("playedFromHand"
 					  (+ "played " (chat-card (@ msg card)) " from hand"))
 					 ("playedFromStack"
@@ -501,7 +565,9 @@
 	 (ps (defvar *current-table-id* nil)
 	     (defvar *current-table-tag* nil)
 	     
-	     (defvar *handlers-list* nil)
+	     (defvar *server-info* nil)
+	     (defvar *table-info* nil)
+	     
 	     (defvar *decks-list* nil)
 	     (defvar *local-decks* (create))
 
@@ -528,11 +594,24 @@
 	     
 	     ;;; Client-side handler definitions
 	     (define-ajax lobby/session ()
-	       (setf *session* res)
+	       (setf *session* res
+		     (@ *session* cookie) (get-cookies))
 	       ($ "#player-info .player-id" (text (@ *session* id)))
-	       ($ "#player-info .player-tag" (text (@ *session* tag)))
+
+	       ;; get tag from cookie
+	       (aif (@ *session* cookie tag)
+		    (progn (log "COOKIED TAG: " it)
+			   (rename it))
+		   ($ "#player-info .player-tag" (text (@ *session* tag))))
+
+	       ;; get chat history from cookie
+	       (aif (@ *session* cookie :chat-messages)
+		    (setf (@ *chat-history* messages) (string->obj it)
+			  (@ *chat-history* current-message) (length (@ *chat-history* messages))))
+
 	       (when (@ res current-table)
-		 (setf *current-table-id* (@ res current-table :id)
+		 (setf *table-info* res
+		       *current-table-id* (@ res current-table :id)
 		       *current-table-tag* (@ res current-table :tag))
 		 (show-table "body")		  
 		 (my-hand)
@@ -540,8 +619,7 @@
 
 	     (define-ajax server-info ()
 	       (with-slots (handlers decks public-tables) res
-		 (setf *handlers-list* handlers
-		       *decks-list* decks
+		 (setf *server-info* res
 		       *lobby-stream*
 		       (event-source "/ev/lobby"
 				     (said)
@@ -567,12 +645,16 @@
 	     (define-ajax rename (new-tag)
 	       (log "RENAMING!")
 	       (setf (@ *session* tag) new-tag)
-	       ($ "#table-toolbar .control-row span.player-tag" (text new-tag))
+	       (unless (= new-tag (@ *session* cookie tag))
+		 (setf (@ *session* cookie tag) new-tag)
+		 (set-cookie :tag new-tag))
+	       ($ "#player-info .player-tag" (text new-tag))
 	       ($ "input.player-tag" (replace-with (who-ps-html (:span :class "player-tag" new-tag)))))
 	     
 	     (define-ajax lobby/new-table (tag passphrase)
 	       (log "STARTING TABLE" res)
-	       (setf *current-table-id* (@ res :id)
+	       (setf *table-info* res
+		     *current-table-id* (@ res :id)
 		     *current-table-tag* (@ res :tag))
 	       (show-table "body")
 	       (my-hand)
@@ -580,7 +662,8 @@
 
 	     (define-ajax lobby/join-table (table passphrase)
 	       (log "JOINING TABLE" res)
-	       (setf *current-table-id* (@ res :id)
+	       (setf *table-info* res
+		     *current-table-id* (@ res :id)
 		     *current-table-tag* (@ res :tag))
 	       (show-table "body")		  
 	       (my-hand)
@@ -599,6 +682,8 @@
 	     (define-ajax look-table ()
 	       (log "SHOWING BOARD" res)			  
 	       (render-board res))
+
+	     (define-ajax table/tablecloth (tablecloth-uri))
 	     
 	     (define-ajax my-hand ()
 	       (log "SHOWING HAND" res)
@@ -616,10 +701,12 @@
 	     (define-ajax play/new-stack-from-deck (deck-name x y z rot))
 	     (define-ajax play/new-stack-from-cards (cards))
 	     (define-ajax play/new-stack-from-json (deck x y z rot))
+	     (define-ajax play/mini (mini-uri x y z rot))
 	     (define-ajax stack/merge (stack stack-two))
 	     (define-ajax stack/add-to (stack card))
 	     (define-ajax stack/shuffle (stack))
 	     (define-ajax play/move (thing x y z rot))
+	     (define-ajax play/remove (thing))
 
 	     (define-ajax hand/play (card face x y z rot)
 	       ($ (+ "#" card) (remove)))

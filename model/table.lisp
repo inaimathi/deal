@@ -47,7 +47,7 @@
   ((counter-value :accessor counter-value :initarg :counter-value)))
 
 (defclass mini (placeable)
-  ((sprite :accessor sprite :initarg :sprite)))
+  ((mini-uri :accessor mini-uri :initarg :mini-uri)))
 
 (defun make-card (content card-type belongs-to &optional (x 0) (y 0) (z 0) (rot 0))
   (make-instance 'card :content content :face :down 
@@ -145,8 +145,14 @@ so it made sense to formalize this."
   (obj->hash card (:type :card :content (when (eq :up face) content))
 	     id x y z rot belongs-to face content card-type))
 
+(defmethod redact ((mini mini))
+  (obj->hash mini (:type :mini) id x y z rot belongs-to mini-uri))
+
 ;;;;;;;;;; Serialize methods
 ;;; More or less like redact, but always shows all information (this one's meant for game saving)
+(defmethod serialize ((mini mini))
+  (obj->hash mini (:type :mini) id x y z rot belongs-to mini-uri))
+
 (defmethod serialize ((card card))
   (obj->hash card (:type :card) content face card-type x y z rot))
 

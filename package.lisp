@@ -3,6 +3,7 @@
 (defpackage #:deal 
   (:use #:cl #:optima #:json #:hunchentoot)
   (:import-from #:cl-ppcre #:regex-replace-all)
+  (:import-from #:cl-fad #:list-directory)
   (:import-from #:bordeaux-threads #:make-lock #:with-lock-held)
   (:import-from #:drakma #:http-request))
 
@@ -13,6 +14,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *handlers* (make-hash-table :test 'equal))
+
+(defun dir->uris (dir)
+  (let ((uri (concatenate 'string "/" dir)))
+    (mapcar 
+     (lambda (path)
+       (namestring (merge-pathnames (file-namestring path) uri)))
+     (list-directory (merge-pathnames dir)))))
+
+(defparameter *mini-uris* (dir->uris "static/img/minis/"))
+(defparameter *tablecloth-uris* (dir->uris "static/img/tablecloths/"))
 
 ;;;;;;;;;; Generic definitions
 (defgeneric insert! (container item)

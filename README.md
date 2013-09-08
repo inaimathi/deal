@@ -33,3 +33,14 @@ Deal depends on an external SSE publishing service to provide push capability to
 That's a *lot* more compliacted than I like to make installation, but there isn't a good option for async serving natively in Common Lisp at the moment. Hopefully I can fix that in a future release. 
 
 In any case, you should now be able to visit `[your-server]/static/index.html` and play.
+
+## License
+
+This program is released under the GNU AGPL (License text can be found in the LICENSE.md file, or at <http://www.gnu.org/licenses/>)
+
+Minified copies of [jQuery](http://jquery.com/) and [jQueryUI](http://jqueryui.com/) are included for ease of installation; jQuery is dual-licensed under the [GPL and Expat licenses](http://jquery.org/license/). Readable source can be found at respective project pages.
+
+Media is included from OpenGameArt.org. This includes
+
+- [chess/go/checkers piees](http://opengameart.org/content/boardgame-tiles) ([CC-BY 3.0 license](http://creativecommons.org/licenses/by/3.0/) by [Sharm](http://opengameart.org/users/sharm), aka Lanea Zimmerman)
+- [plants](http://opengameart.org/content/lpc-plant-repack) (Dual-licensed under [CC-BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/) and [GPL3](http://www.gnu.org/licenses/gpl-3.0.html), re-packaged by [William. Thompsonj](http://opengameart.org/users/williamthompsonj))

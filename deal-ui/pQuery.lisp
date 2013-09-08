@@ -48,7 +48,7 @@
        (when ,list (chain j-query (map ,list (lambda (elem i) ,@body)))))))
 
 (defpsmacro map-markup (lst &body elem-markup)
-  `(chain (loop for elem in ,lst
+  `(chain (loop for elem in ,lst for i from 0
 	     collect (who-ps-html ,@elem-markup))
 	  (join "")))
 
@@ -69,11 +69,20 @@
 	:drop (lambda (event ui)
 		(let ((dropped (@ ui helper context))
 		      (shift? (@ event shift-key)))
-		  (cond ,@(loop for (class action) in class/action-list
-			     collect `(($ dropped (has-class ,class)) ,action)))))
+		  (cond ,@(loop for (class . action) in class/action-list
+			     collect `(($ dropped (has-class ,class)) ,@action)))
+		  ($ ,overlapping (droppable "enable"))))
 	,@(when overlapping
 		`(:over (fn ($ ,overlapping (droppable "disable")))
 		  :out (fn ($ ,overlapping (droppable "enable")))))))))
+
+(defpsmacro $x (elem ev)
+  `(- (+ (@ ,ev client-x) ($ window (scroll-left)))
+      (parse-int ($ ,elem (css :margin)))))
+
+(defpsmacro $y (elem ev)
+  `(- (+ (@ ,ev client-y) ($ window (scroll-top)))
+      (parse-int ($ ,elem (css :margin)))))
 
 (defpsmacro $draggable (target (&key revert handle cancel) &body body)
   `($ ,target (draggable (create :stop (lambda (event ui) 
