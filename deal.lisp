@@ -163,6 +163,7 @@
 
 (define-player-handler (play/new-stack-from-json) ((table :table) (deck :json) (x :int) (y :int) (z :int) (rot :int))
   (let ((stack (stack<-json (session-value :player) deck)))
+    (assert (cards stack))
     (set-props stack x y z rot)
     (insert! table stack)
     (publish! table :new-deck `((name . ,(getj :deck-name deck)) (stack . ,(redact stack))))

@@ -30,13 +30,13 @@
 	       
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
-	       (".overlay .contents" :padding 10px)
-	       (".overlay .contents .row" :margin-bottom 5px)
+	       (".overlay .content" :padding 10px)
+	       (".overlay .content .row" :margin-bottom 5px)
 	       
 	       (.moveable ,@(css-box) :position absolute :z-index 10001 :width 400px)
 	       (".moveable h3" ,@css-header :cursor move :clear both)
 	       (".moveable h2" ,@css-header :font-size small :font-style oblique :clear both :margin "5px 0px 5px 0px")
-	       (".moveable .contents" :padding 10px)
+	       (".moveable .content" :padding 10px)
 	       
 	       (.stack ,@(css-box :filled) ,@css-card-size :font-size small :position absolute :cursor move :border-bottom-width 6px)
 	       (".stack .card-count" :font-size x-small :float right :width 100% :text-align right)
@@ -105,7 +105,7 @@
 	       ("#deck-editor .cards" :height 100px :overflow auto :list-style-type none)
 	       ("#deck-editor .cards li" :width 300px)
 	       ("#deck-editor .cards .add" :float left)
-	       ("#deck-editor .cards .contents" :max-width 220px :max-height 40px :overflow auto :padding-top 3px :display inline-block)
+	       ("#deck-editor .cards .content" :max-width 220px :max-height 40px :overflow auto :padding-top 3px :display inline-block)
 
 	       (".backpack-mini" :max-height 75px :max-width 75px)
 

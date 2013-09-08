@@ -15,7 +15,7 @@
 			   (:ul (:li (:button :id "new-table" "New Table"))))
 		     (:div :id "new-table-setup" :class "overlay"
 			   (:h3 "New Table")
-			   (:div :class "contents"
+			   (:div :class "content"
 				 (:input :class "game-tag")
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
@@ -188,7 +188,7 @@
 				   (:span :class "label" "Load: ") 
 				   (:input :type "hidden" :name "table" :value (@ *table-info* id))
 				   (:input :name "file" :type "file")))
-		      (:div :class "contents"
+		      (:div :class "content"
 			    (:h2 "Hand")
 			    (:div :id "hand")
 			    (:h2 "Chat")
@@ -451,7 +451,7 @@
 	   (define-component (deck-editor :empty? nil)
 	       (:div :id "deck-editor" :class "moveable"
 		     (:h3 "Deck Editor")
-		     (:div :class "contents"
+		     (:div :class "content"
 			   (:div :class "row"
 				 (:span :class "label" "Deck Name: ")
 				 (:input :class "deck-name"))
@@ -476,7 +476,7 @@
 		     (progn ($append "#deck-editor .cards"
 				     (:li  
 				      (:button :class "add")(:button :class "remove")
-				      (:span :class "contents" ($ "#deck-editor textarea.new-card" (val)))))
+				      (:span :class "content" ($ "#deck-editor textarea.new-card" (val)))))
 			    ($button "#deck-editor .remove:last" (:minus))
 			    ($button "#deck-editor .add:last" (:plus)))
 
