@@ -88,6 +88,7 @@
   `($ ,target (draggable (create :stop (lambda (event ui) 
 					 (let ((shift? (@ event shift-key)))
 					   ,@body))
+				 :start (fn ($ this (css "z-index" 100001) ))
 				 ,@(when revert `(:revert ,revert))
 				 ,@(when handle `(:handle ,handle))
 				 ,@(when cancel `(:cancel ,cancel))))))

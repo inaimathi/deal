@@ -264,7 +264,11 @@
 				 (changed-tag)
 				 (moved 
 				  (with-slots (thing x y) ev
-				    ($ (+ "#" thing) (offset (create :left x :top y)))))
+				    (let ((elem ($ (+ "#" thing))))
+				      (log "NEW ZINDEX" (+ y ($ elem (height))))
+				      ($ elem 
+					 (offset (create :left x :top y))
+					 (css "z-index" (+ y ($ elem (height))))))))
 				 (took-control (log "Someone took something"))
 				 (flipped 
 				  ($ (+ "#" (@ ev card id)) (remove))
@@ -362,6 +366,7 @@
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle" "Shuffle")
 		     (:div :class "card-count" (+ "x" (self card-count))))
+	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
 	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
 	     ($droppable css-id (:overlapping "#board")
 			 (:card-in-hand
@@ -375,12 +380,14 @@
 
 	   (define-thing mini
 	       (:img :id (self id) :class "mini" :style (self position) :src (self mini-uri))
+	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
 	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
 	   (define-thing card 
 	       (:div :id (self id) :class "card" :style (self position)
 		     (:span :class "content" (card-html self))
 		     (:button :class "zoom"))
+	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
 	     ($ (+ css-id " button.zoom")
 		(button (create :icons (create :primary "ui-icon-zoomin") :text nil))
 		(click (fn ($ "#zoomed-card" (show))
