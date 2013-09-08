@@ -4,7 +4,7 @@
 ;;;;; JS
 (to-file "static/js/lobby.js"
 	 (ps
-	   (define-component lobby 
+	   (define-component (lobby) 
 	       (:div :id "lobby"
 		     (:div :id "left-pane")
 		     (:div :id "right-pane"
@@ -15,7 +15,7 @@
 			   (:ul (:li (:button :id "new-table" "New Table"))))
 		     (:div :id "new-table-setup" :class "overlay"
 			   (:h3 "New Table")
-			   (:div :class "body"
+			   (:div :class "contents"
 				 (:input :class "game-tag")
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
@@ -40,42 +40,136 @@
 			      (:span :class "id" id) 
 			      (:span :class "players" (:span :class "count" player-count) "/" max-players)
 			      (:button :class "join" "Join")))
-	       ($click (+ "#game-" id " .join") (lobby/join-table id ""))))
+	       ($click (+ "#game-" id " .join") (lobby/join-table id ""))))))
 
-	   (define-component chat
-	       (:div :class "chat"
-		     (:ul :id "chat-history")
-		     (:div :id "chat-controls"
-			   (:textarea :id "chat-input" :type "text")
-			   (:button :id "send" :class "chat-button" "Send")))
-	     ($keydown "#chat-input"
-		       <ret> (unless shift?
-			       (chain event (prevent-default))
-			       ($ "#send" (click)))
-		       <up> (when ctrl?
-			      (with-slots (messages current-message) *chat-history*
-				(setf current-message (max 0 (- current-message 1)))
-				($ "#chat-input" (val (aref messages current-message)))))
-		       <down> (when ctrl?
+(to-file "static/js/chat.js"
+	 (ps (define-component (chat)
+		 (:div :class "chat"
+		       (:ul :id "chat-history")
+		       (:div :id "chat-controls"
+			     (:textarea :id "chat-input" :type "text")
+			     (:button :id "send" :class "chat-button" "Send")))
+	       ($keydown "#chat-input"
+			 <ret> (unless shift?
+				 (chain event (prevent-default))
+				 ($ "#send" (click)))
+			 <up> (when ctrl?
 				(with-slots (messages current-message) *chat-history*
-				  (setf current-message (min (length messages) (+ current-message 1)))
+				  (setf current-message (max 0 (- current-message 1)))
 				  ($ "#chat-input" (val (aref messages current-message)))))
-		       <esc> ($ "#chat-input" (val "")))
-	     ($click "#lobby .chat #send"
-		     (let ((txt ($ "#chat-input" (val))))
-		       (push-chat-message txt)
-		       (lobby/speak txt))
-		     "#table-toolbar #send" 
-		     (let ((txt ($ "#chat-input" (val))))
-		       (push-chat-message txt)
-		       (if (chain txt (match "^@"))
-			   (chat-command txt)
-			   (play/speak txt)))))))
+			 <down> (when ctrl?
+				  (with-slots (messages current-message) *chat-history*
+				    (setf current-message (min (length messages) (+ current-message 1)))
+				    ($ "#chat-input" (val (aref messages current-message)))))
+			 <esc> ($ "#chat-input" (val "")))
+	       ($click "#lobby .chat #send"
+		       (let ((txt ($ "#chat-input" (val))))
+			 (push-chat-message txt)
+			 (lobby/speak txt))
+		       "#table-toolbar #send" 
+		       (let ((txt ($ "#chat-input" (val))))
+			 (push-chat-message txt)
+			 (if (chain txt (match "^@"))
+			     (chat-command txt)
+			     (play/speak txt)))))
+
+	     (defun chat-message (msg)
+	       (with-slots (player player-tag time type message) msg
+		 (who-ps-html (:li :class (if (= type "said") "said" "did")
+				   (:span :class "time" (new (chain (-date time) (to-time-string))))
+				   (:span :class "player" player)
+				   (:span :class "player-tag" player-tag)
+				   (:div :class "message"
+					 (case type
+					   ("joined" 
+					    (+ "joined table " (@ msg table)))
+					   ("left" 
+					    "left the table")
+					   ("said" 
+					    (newline->break message))
+					   ("loaded"
+					    (+ "loaded a saved table. Added " (@ msg things) " things."))
+					   ("tablecloth"
+					    (+ "set a new tablecloth"))
+					   ("moved"
+					    (+ "moved " (@ msg thing)))
+					   ("changedTag"
+					    (+ "changed their tag from '" (@ msg old-tag) "'"))
+					   ("startedTable"
+					    (+ "started table " (@ msg id) (if (@ msg tag) (+ ", '" (@ msg tag) "'") "")))
+					   ("filledTable"
+					    "filled up table " (@ msg id) (if (@ msg tag) (+ ", '" (@ msg tag) "'") ""))
+					   ("newDeck" 
+					    (+ "put down a '" (@ msg name) "' deck"))
+					   ("drewFrom" 
+					    (+ "drew " (@ msg count) " from " (@ msg stack)))
+					   ("peeked"
+					    (+ "peeked at " (@ msg count) " cards from " (@ msg stack)))
+					   ("revealed"
+					    (+ "revealed some cards"))
+					   ("flipped"
+					    (+ "flipped over " (chat-card (@ msg card))))
+					   ("placedMini" "placed a mini")
+					   ("removed"
+					    (+ "removed " (@ msg thing) " from play"))
+					   ("playedFromHand"
+					    (+ "played " (chat-card (@ msg card)) " from hand"))
+					   ("playedFromStack"
+					    (+ "played " (chat-card (@ msg card)) " from " (@ msg stack)))
+					   ("playedToStack"
+					    (+ "played " (chat-card (@ msg card)) " to stack " (@ msg stack)))
+					   ("addedToStack"
+					    (+ "put " (@ msg card) " on top of " (@ msg stack)))
+					   ("mergedStacks"
+					    (+ "merged " (@ msg merged) " into " (@ msg stack id)))
+					   ("shuffled"
+					    (+ "shuffled " (@ msg stack)))
+					   ("pickedUp"
+					    (+ "picked up card " (@ msg card)))
+					   ("rolled"
+					    (+ "rolled " (@ msg total) " on " (@ msg dice) "; " (obj->string (@ msg rolls))))
+					   ("flippedCoin"
+					    (+ "flipped a coin; it landed on " (@ msg result)))
+					   (t "did something")))))))
+	     
+	     (defun update-chat (selector msg-html)
+	       (let ((scrl? (scrolled-to-bottom? selector)))
+		 ($ selector (append msg-html))
+		 (when scrl? (scroll-to-bottom selector))))
+	     (defun push-chat-message (message)
+	       (let* ((re (new (-reg-exp "\\s+$")))
+		      (msg (chain message (replace re ""))))
+		 (with-slots (messages current-message) *chat-history*
+		   (setf current-message (length messages))
+		   (unless (= msg (aref messages (- current-message 1)))
+		     (chain messages (push msg))
+		     (set-cookie :chat-messages messages)
+		     (if (> (length messages) 50)
+			 (chain messages (splice 0 1))
+			 (incf current-message))))))
+
+	     (defun chat-command (txt)
+	       (let ((re (new (-reg-exp "^(@\\S+)"))))
+		 (aif (chain txt (match re))
+		      (progn ((aref *chat-commands* (@ it 1))
+			      (chain txt (substring (length (@ it 1))) (replace " +" "")))
+			     ($ "#chat-input" (val ""))
+			     t))))
+	     
+	     (defvar *chat-commands*
+	       (create "@roll"   (lambda (txt) (string->die-roll txt))
+		       "@toss"   (lambda (txt) (play/coin-toss))
+		       "@rename" (lambda (txt) (rename txt))))
+
+	     (defun chat-card (card)
+	       (who-ps-html
+		(who-ps-html (:div :class "card in-chat" 
+				   (:span :class "content" (card-html card))))))))
 
 (to-file "static/js/table.js"
 	 (ps
-	   (define-component table
-	       (:div
+	   (define-component (table)
+	       (:div :id "table"
 		(:div :id "board" :style (aif (@ *table-info* tablecloth) (+ "background-image: url(" it ")") ""))
 		(:div :id "zoomed-card" :class "moveable"
 		      (:h3 "Zoomed" (:button :class "hide"))
@@ -128,31 +222,15 @@
 					 (:div :class "tablecloth" :title elem
 					       :style (+ "background-image: url(" elem ");")
 					       (uri->name elem)))
-					(:br :class "clear")))))
-		(:div :id "new-deck-setup" :class "overlay"
-		      (:h3 "New Deck")
-		      (:div :class "body"
-			    (:div :class "row"
-				  (:span :class "label" "Deck Name: ")
-				  (:input :class "deck-name"))
-			    (:div :class "row"
-				  (:span :class "label" "Card Type: ")
-				  (:input :class "card-type"))
-			    (:div :class "row"
-				  (:ul :class "cards"))
-			    (:div :class "row"
-				  (:textarea :class "new-card"))
-			    (:div :class "row"
-				  (:button :class "add-card" "Add Card"))
-			    (:div :class "row"
-				  (:button :class "ok" "Ok")
-				  (:button :class "cancel" "Cancel")))))
+					(:br :class "clear"))))))
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
 	     
-	     ($draggable ".tablecloth" (:revert t))
+	     (show-deck-editor "#table")
 
+	     ($draggable ".tablecloth" (:revert t))
+	     
 	     ($draggable ".backpack-mini" (:revert t))
 	     
 	     ($droppable "#backpack" (:overlapping "#board, .stack")
@@ -205,42 +283,8 @@
 		     (setf location (+ "/table/save?table=" *current-table-id*))
 
 		     "#custom-deck"
-		     ($ "#new-deck-setup" (show))
-
-		     "#new-deck-setup button.add-card"
-		     ($append "#new-deck-setup .cards"
-			      (:li (:button :class "remove") 
-				   (:span :class "content" ($ "#new-deck-setup textarea.new-card" (val))) 
-				   (:button :class "add")))
-
-		     "#new-deck-setup button.cancel"
-		     ($ "#new-deck-setup" (hide))
-
-		     "#new-deck-setup button.ok"
-		     (let ((deck-name ($ "#new-deck-setup .deck-name" (val)))
-			   (card-type ($ "#new-deck-setup .card-type" (val))))
-		       (setf (aref *local-decks* deck-name)
-			     (create 'deck-name deck-name 
-				     'card-type card-type 
-				     'cards (loop for card-elem in ($ "#new-deck-setup .cards .content")
-					       collect (let ((txt ($ card-elem (text))))
-							 (try (string->obj txt)
-							      (:catch (error) txt))))))
-		       (unless ($exists? (+ ".new-deck.new-custom-deck[title=" deck-name "]"))
-			 ($prepend "#decks-tab" (:div :class "new-deck new-custom-deck" 
-						      :title deck-name deck-name))
-			 ($draggable "#decks-tab .new-custom-deck:first" (:revert t)))
-		       ($ "#new-deck-setup" (hide))))
+		     ($ "#new-deck-setup" (show)))
 	     
-	     ($ "#new-deck-setup"
-		(on :click "button.remove"
-		    (lambda (event) 
-		      ($ this (parent) (remove))))
-		(on :click "button.add"
-		    (lambda (event)
-		      (log ($ this (parent) (clone)))
-		      ($ "#new-deck-setup .cards" (append ($ this (parent) (clone)))))))
-
 	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
 				  (hand/pick-up ($ dropped (attr :id))))))
@@ -409,6 +453,61 @@
 			   ($ "#zoomed-card .content" (empty) (append (card-html self))))))
 	     ($draggable css-id (:revert t)))))
 
+(to-file "static/js/deck-editor.js"
+	 (ps 
+	   (define-component (deck-editor :empty? nil)
+	       (:div :id "new-deck-setup" :class "moveable"
+		     (:h3 "New Deck")
+		     (:div :class "contents"
+			   (:div :class "row"
+				 (:span :class "label" "Deck Name: ")
+				 (:input :class "deck-name"))
+			   (:div :class "row"
+				 (:span :class "label" "Card Type: ")
+				 (:input :class "card-type"))
+			   (:div :class "row"
+				 (:ul :class "cards"))
+			   (:div :class "row"
+				 (:textarea :class "new-card"))
+			   (:div :class "row"
+				 (:button :class "add-card" "Add Card"))
+			   (:div :class "row"
+				 (:button :class "ok" "Ok")
+				 (:button :class "cancel" "Cancel"))))
+
+	     ($ "#new-deck-setup"
+		(on :click "button.remove"
+		    (lambda (event) ($ this (parent) (remove))))
+		(on :click "button.add"
+		    (lambda (event) ($ "#new-deck-setup .cards" (append ($ this (parent) (clone)))))))
+
+	     ($click "#new-deck-setup button.add-card"
+		     (progn ($append "#new-deck-setup .cards"
+				     (:li (:button :class "remove") 
+					  (:span :class "content" ($ "#new-deck-setup textarea.new-card" (val))) 
+					  (:button :class "add")))
+			    ($button "#new-deck-setup .remove:last" (:minus))
+			    ($button "#new-deck-setup .add:last" (:plus)))
+
+		     "#new-deck-setup button.cancel"
+		     ($ "#new-deck-setup" (hide))
+
+		     "#new-deck-setup button.ok"
+		     (let ((deck-name ($ "#new-deck-setup .deck-name" (val)))
+			   (card-type ($ "#new-deck-setup .card-type" (val))))
+		       (setf (aref *local-decks* deck-name)
+			     (create 'deck-name deck-name 
+				     'card-type card-type 
+				     'cards (loop for card-elem in ($ "#new-deck-setup .cards .content")
+					       collect (let ((txt ($ card-elem (text))))
+							 (try (string->obj txt)
+							      (:catch (error) txt))))))
+		       (unless ($exists? (+ ".new-deck.new-custom-deck[title=" deck-name "]"))
+			 ($prepend "#decks-tab" (:div :class "new-deck new-custom-deck" 
+						      :title deck-name deck-name))
+			 ($draggable "#decks-tab .new-custom-deck:first" (:revert t)))
+		       ($ "#new-deck-setup" (hide)))))))
+
 (to-file "static/js/util.js"
 	 (ps 
 	   (defun uri->name (uri)
@@ -440,18 +539,6 @@
 		  do (setf (aref res (@ sp 0)) (unescape (@ sp 1))))
 	       res))
 	   
-	   (defun push-chat-message (message)
-	     (let* ((re (new (-reg-exp "\\s+$")))
-		    (msg (chain message (replace re ""))))
-	       (with-slots (messages current-message) *chat-history*
-		 (setf current-message (length messages))
-		 (unless (= msg (aref messages (- current-message 1)))
-		   (chain messages (push msg))
-		   (set-cookie :chat-messages messages)
-		   (if (> (length messages) 50)
-		       (chain messages (splice 0 1))
-		       (incf current-message))))))
-
 	   (defun change-stack-count (stack-id by)
 	     (let* ((id (+ "#" stack-id))
 		    (ct-class (+ id " .card-count"))
@@ -459,19 +546,6 @@
 	       (if (= count (- by))
 		   ($ id (remove))
 		   ($ ct-class (html (+ "x" (+ count by)))))))
-
-	   (defun chat-command (txt)
-	     (let ((re (new (-reg-exp "^(@\\S+)"))))
-	       (aif (chain txt (match re))
-		    (progn ((aref *chat-commands* (@ it 1))
-			    (chain txt (substring (length (@ it 1))) (replace " +" "")))
-			   ($ "#chat-input" (val ""))
-			   t))))
-	   
-	   (defvar *chat-commands*
-	     (create "@roll"   (lambda (txt) (string->die-roll txt))
-		     "@toss"   (lambda (txt) (play/coin-toss))
-		     "@rename" (lambda (txt) (rename txt))))
 
 	   (defun string->die-roll (die-string)
 	     (let-match die-string "(\\d*)d(\\d+)([-+]\\d+)?"
@@ -492,12 +566,7 @@
 
 	   (defun newline->break (message)
 	     (let ((re (new (-reg-exp #\newline :g))))
-	       (chain message (replace re "<br />"))))
-
-	   (defun chat-card (card)
-	     (who-ps-html
-	      (who-ps-html (:div :class "card in-chat" 
-				 (:span :class "content" (card-html card))))))	   
+	       (chain message (replace re "<br />"))))	   
 
 	   (defun card-html (card)
 	     (markup-by-card-type card
@@ -514,72 +583,7 @@
 				   (:div "Face-Down Italian"))
 				  ("occultTarot"
 				   (:div (@ content rank) " T " (@ content suit))
-				   (:div "Face-Down Tarot"))))
-
-	   (defun chat-message (msg)
-	     (with-slots (player player-tag time type message) msg
-	       (who-ps-html (:li :class (if (= type "said") "said" "did")
-				 (:span :class "time" (new (chain (-date time) (to-time-string))))
-				 (:span :class "player" player)
-				 (:span :class "player-tag" player-tag)
-				 (:div :class "message"
-				       (case type
-					 ("joined" 
-					  (+ "joined table " (@ msg table)))
-					 ("left" 
-					  "left the table")
-					 ("said" 
-					  (newline->break message))
-					 ("loaded"
-					  (+ "loaded a saved table. Added " (@ msg things) " things."))
-					 ("tablecloth"
-					  (+ "set a new tablecloth"))
-					 ("moved"
-					  (+ "moved " (@ msg thing)))
-					 ("changedTag"
-					  (+ "changed their tag from '" (@ msg old-tag) "'"))
-					 ("startedTable"
-					  (+ "started table " (@ msg id) (if (@ msg tag) (+ ", '" (@ msg tag) "'") "")))
-					 ("filledTable"
-					  "filled up table " (@ msg id) (if (@ msg tag) (+ ", '" (@ msg tag) "'") ""))
-					 ("newDeck" 
-					  (+ "put down a '" (@ msg name) "' deck"))
-					 ("drewFrom" 
-					  (+ "drew " (@ msg count) " from " (@ msg stack)))
-					 ("peeked"
-					  (+ "peeked at " (@ msg count) " cards from " (@ msg stack)))
-					 ("revealed"
-					  (+ "revealed some cards"))
-					 ("flipped"
-					  (+ "flipped over " (chat-card (@ msg card))))
-					 ("placedMini" "placed a mini")
-					 ("removed"
-					  (+ "removed " (@ msg thing) " from play"))
-					 ("playedFromHand"
-					  (+ "played " (chat-card (@ msg card)) " from hand"))
-					 ("playedFromStack"
-					  (+ "played " (chat-card (@ msg card)) " from " (@ msg stack)))
-					 ("playedToStack"
-					  (+ "played " (chat-card (@ msg card)) " to stack " (@ msg stack)))
-					 ("addedToStack"
-					  (+ "put " (@ msg card) " on top of " (@ msg stack)))
-					 ("mergedStacks"
-					  (+ "merged " (@ msg merged) " into " (@ msg stack id)))
-					 ("shuffled"
-					  (+ "shuffled " (@ msg stack)))
-					 ("pickedUp"
-					  (+ "picked up card " (@ msg card)))
-					 ("rolled"
-					  (+ "rolled " (@ msg total) " on " (@ msg dice) "; " (obj->string (@ msg rolls))))
-					 ("flippedCoin"
-					  (+ "flipped a coin; it landed on " (@ msg result)))
-					 (t "did something")))))))
-
-	   
-	   (defun update-chat (selector msg-html)
-	     (let ((scrl? (scrolled-to-bottom? selector)))
-	       ($ selector (append msg-html))
-	       (when scrl? (scroll-to-bottom selector))))))
+				   (:div "Face-Down Tarot"))))))
 
 (to-file "static/js/deal.js"
 	 (ps (defvar *current-table-id* nil)
@@ -739,5 +743,5 @@
 	   (:html :xmlns "http://www.w3.org/1999/xhtml" :lang "en"
 		  (:head (:title "Tabletop Prototyping System - Deal")
 			 (styles "jquery-ui.css" "main.css")
-			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "util.js" "lobby.js" "table.js" "deal.js"))
+			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "util.js" "chat.js" "lobby.js" "deck-editor.js" "table.js" "deal.js"))
 		  (:body))))

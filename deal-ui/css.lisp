@@ -27,16 +27,17 @@
 
 	       (button.control-button :width 22px :height 22px :float right :opacity .7)
 	       ("button.control-button:hover" :opacity 1)
+	       (".moveable .control-button, .overlay .control-button" :float none)
 	       
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
-	       (".overlay .body" :padding 10px)
-	       (".overlay .body .row" :margin-bottom 5px)
+	       (".overlay .contents" :padding 10px)
+	       (".overlay .contents .row" :margin-bottom 5px)
 	       
-	       (.moveable ,@(css-box) :position absolute :z-index 10001)
+	       (.moveable ,@(css-box) :position absolute :z-index 10001 :width 400px)
 	       (".moveable h3" ,@css-header :cursor move :clear both)
 	       (".moveable h2" ,@css-header :font-size small :font-style oblique :clear both :margin "5px 0px 5px 0px")
-	       (".moveable .contents" :padding 5px)
+	       (".moveable .contents" :padding 10px)
 	       
 	       (.stack ,@(css-box :filled) ,@css-card-size :font-size small :position absolute :cursor move :border-bottom-width 6px)
 	       (".stack .card-count" :font-size x-small :float right :width 100% :text-align right)
@@ -59,9 +60,8 @@
 	       ("#zoomed-card" :width 150px :height 210px :top 10px :left 10px :display none)
 	       ("#zoomed-card button" :float right)
 	       ("#zoomed-card .content" :padding 10px)
-	       ("#table-toolbar" :width 400px :left 1230px :top 20px)
 
-	       (".backpack-mini" :max-height 75px :max-width 75px)
+	       ("#table-toolbar" :left 1230px :top 20px)
 
 	       ("#table-toolbar h3 span" :font-size small :vertical-align top)
 	       ("#table-toolbar h3 .game-id" :font-size x-small)
@@ -102,6 +102,8 @@
 	       ("#new-deck-setup" ,@(css-centered-box 400 365 'fixed))
 	       ("#new-deck-setup textarea" ,@css-text-block)
 	       ("#new-deck-setup .cards" :height 100px :overflow auto)
+
+	       (".backpack-mini" :max-height 75px :max-width 75px)
 
 	       ("#table-toolbar #chat-history" :height 200px :font-size small)
 	       ("#table-toolbar #chat-history .time" :display none)

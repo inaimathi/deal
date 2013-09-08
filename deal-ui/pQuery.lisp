@@ -97,6 +97,12 @@
   `(progn ,@(loop for (target body) on target/body-list by #'cddr
 	       collect `($ ,target (click (lambda (event) ,body))))))
 
+(defpsmacro $button (selector (icon-name &optional text?) &body on-click)
+  `($ ,selector
+      (button (create :icons (create :primary ,(format nil "ui-icon-~(~a~)" icon-name)) :text ,(when text? t)))
+      (click (lambda (event) ,@on-click))
+      (add-class "control-button")))
+
 (defpsmacro $append (target &rest html)
   `($ ,target (append (who-ps-html ,@html))))
 
@@ -176,9 +182,9 @@
 	 ,@(loop for clause in behavior
 	      collect (expand-self-expression clause thing))))))
 
-(defpsmacro define-component (name markup &body behavior)
+(defpsmacro define-component ((name &key (empty? t)) markup &body behavior)
   `(defun ,(intern (format nil "show-~a" name)) (container)
-     ($ container (empty) (append (who-ps-html ,markup)))
+     ($ container ,@(when empty? `((empty))) (append (who-ps-html ,markup)))
      ,@behavior))
 
 (defpsmacro markup-by-card-type (card &rest card-type/face-up/face-down-list)
