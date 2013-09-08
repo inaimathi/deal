@@ -125,7 +125,9 @@
 				  (:div :id "tablecloth-tab" 
 					(map-markup 
 					 (@ *server-info* tablecloths)
-					 (:div :class "tablecloth" elem))
+					 (:div :class "tablecloth" :title elem
+					       :style (+ "background-image: url(" elem ");")
+					       (uri->name elem)))
 					(:br :class "clear")))))
 		(:div :id "new-deck-setup" :class "overlay"
 		      (:h3 "New Deck")
@@ -340,7 +342,7 @@
 			   (:new-deck
 			    (play/new-stack-from-deck ($ dropped (text)) ($x board-selector event) ($y board-selector event) 0 0))
 
-			   (:tablecloth (table/tablecloth ($ dropped (text))))
+			   (:tablecloth (table/tablecloth ($ dropped (attr :title))))
 
 			   (:die-roll-icon
 			    (string->die-roll ($ dropped (text))))
@@ -364,7 +366,7 @@
 	   (define-thing stack
 	       (:div :id (self id) :class "stack" :style (self position)
 		     (:button :class "draw" "Draw")
-		     (:button :class "shuffle" "Shuffle")
+		     (:button :class "shuffle control-button")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
 	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
@@ -375,6 +377,7 @@
 			  (stack/add-to (self id) ($ dropped (attr :id))))
 			 (:stack
 			  (stack/merge (self id) ($ dropped (attr :id)))))
+	     ($ (+ css-id " .shuffle") (button (create :icons (create :primary "ui-icon-shuffle") :text nil)))
 	     ($click (+ css-id " .draw") (stack/draw (self id) 1)
 		     (+ css-id " .shuffle") (stack/shuffle (self id))))
 
@@ -386,7 +389,7 @@
 	   (define-thing card 
 	       (:div :id (self id) :class "card" :style (self position)
 		     (:span :class "content" (card-html self))
-		     (:button :class "zoom"))
+		     (:button :class "zoom control-button"))
 	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
 	     ($ (+ css-id " button.zoom")
 		(button (create :icons (create :primary "ui-icon-zoomin") :text nil))
@@ -399,7 +402,7 @@
 	   (define-thing card-in-hand
 	       (:div :id (self id) :class "card card-in-hand"
 		     (:span :class "content" (card-html self))
-		     (:button :class "zoom"))
+		     (:button :class "zoom control-button"))
 	     ($ (+ css-id " button.zoom")
 		(button (create :icons (create :primary "ui-icon-zoomin") :text nil))
 		(click (fn ($ "#zoomed-card" (show))
@@ -408,6 +411,16 @@
 
 (to-file "static/js/util.js"
 	 (ps 
+	   (defun uri->name (uri)
+	     (chain 
+	      (loop for word in (chain uri (match "/([^/]+)\\.") 1 (split "-"))
+		 collect (capitalize word))
+	      (join " ")))
+	   
+	   (defun capitalize (string)
+	     (+ (chain string (char-at 0) (to-upper-case))
+		(chain string (slice 1))))
+	   
 	   (defun set-cookie (name value &optional (expires 120))
 	     (setf (@ document cookie) (encode-cookie name value expires)))
 	   

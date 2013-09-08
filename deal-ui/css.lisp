@@ -10,11 +10,6 @@
 (defun css-box (&optional filled?)
   `(:border "1px solid #ccc" :background-color ,(if filled? "#eee" "#fff") :border-radius 4px))
 
-(defun css-control-button (selector &optional margin-left)
-  `((,selector :width 22px :height 22px :float right :opacity .7
-	       ,@(when margin-left `(:margin-left ,(px margin-left))) )
-    (,(format nil "~a:hover" selector) :opacity 1)))
-
 (defparameter css-card-height 70)
 (defparameter css-card-size `(:width 50px :height ,(px css-card-height)))
 (defparameter css-display-line '(:height 16px :display inline-block))
@@ -29,6 +24,9 @@
 	       (.clear :clear both)
 
 	       (.floating-menu :font-size x-small :width 150px :position absolute)
+
+	       (button.control-button :width 22px :height 22px :float right :opacity .7)
+	       ("button.control-button:hover" :opacity 1)
 	       
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
@@ -40,19 +38,16 @@
 	       (".moveable h2" ,@css-header :font-size small :font-style oblique :clear both :margin "5px 0px 5px 0px")
 	       (".moveable .contents" :padding 5px)
 	       
-	       (.stack ,@css-card-size :position absolute :background-color "#ddd" :border "4px solid #ccc" :cursor move)
-	       (".stack .card-count" :font-size x-small :text-align right)
+	       (.stack ,@(css-box :filled) ,@css-card-size :font-size small :position absolute :cursor move :border-bottom-width 6px)
+	       (".stack .card-count" :font-size x-small :float right :width 100% :text-align right)
 
 	       (.mini :position absolute :cursor move)
-	       (".mini img")
-	       ,@(css-control-button ".mini button" -22)
 
-	       (.tablecloth ,@(css-box) :width 50px :height 50px)
+	       (.tablecloth ,@(css-box) :width 75px :height 75px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left)
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
 	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px)
 	       (".card .type" :font-size xx-small :text-align right)
-	       ,@(css-control-button ".card button")
 	       (.card-in-hand :position relative :z-index 10000)
 
 	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)

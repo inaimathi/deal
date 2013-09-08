@@ -44,3 +44,7 @@ Media is included from OpenGameArt.org. This includes
 
 - [chess/go/checkers piees](http://opengameart.org/content/boardgame-tiles) ([CC-BY 3.0 license](http://creativecommons.org/licenses/by/3.0/) by [Sharm](http://opengameart.org/users/sharm), aka Lanea Zimmerman)
 - [plants](http://opengameart.org/content/lpc-plant-repack) (Dual-licensed under [CC-BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/) and [GPL3](http://www.gnu.org/licenses/gpl-3.0.html), re-packaged by [William. Thompsonj](http://opengameart.org/users/williamthompsonj))
+
+Some media is included from other sources.
+
+- [Shuffle icon](https://www.iconfinder.com/icons/63027/shuffle_icon#size=40) from [yummygum](http://yummygum.com/), free for commercial use
