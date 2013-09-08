@@ -175,8 +175,8 @@
 		      (:h3 "Zoomed" (:button :class "hide"))
 		      (:div :class "content"))
 		(:div :id "table-toolbar" :class "moveable"
-		      (:h3 (:span :class "game-id" *current-table-id*)
-			   (:span :class "game-tag" *current-table-tag*))
+		      (:h3 (:span :class "game-id" (@ *table-info* id))
+			   (:span :class "game-tag" (@ *table-info* tag)))
 		      (:div :id "player-info" :class "control-row"
 			    (:span :class "player-id" (@ *session* id))
 			    (:span :class "player-tag" (@ *session* tag)))
@@ -186,7 +186,7 @@
 			    (:button :id "save-board" "Save")
 			    (:form :id "load-form" :enctype "multipart/form-data"
 				   (:span :class "label" "Load: ") 
-				   (:input :type "hidden" :name "table" :value *current-table-id*)
+				   (:input :type "hidden" :name "table" :value (@ *table-info* id))
 				   (:input :name "file" :type "file")))
 		      (:div :class "contents"
 			    (:h2 "Hand")
@@ -217,6 +217,7 @@
 					 (:img :class "backpack-mini" :src elem))
 					(:br :class "clear"))
 				  (:div :id "tablecloth-tab" 
+					(:div :class "tablecloth" :title "" "None")
 					(map-markup 
 					 (@ *server-info* tablecloths)
 					 (:div :class "tablecloth" :title elem
@@ -274,7 +275,7 @@
 		     ;;;; Checks out in Chromium, Firefox and Conkeror though.
 		     ;;;; Also, doesn't work if you shouldn't be saving when you click it.
 		     ;;;; Should probably just remove it when there's multiple players in the game
-		     (setf location (+ "/table/save?table=" *current-table-id*))
+		     (setf location (+ "/table/save?table=" (@ *table-info* id)))
 
 		     "#custom-deck"
 		     ($ "#deck-editor" (show)))
@@ -294,7 +295,7 @@
 	     ($click "#leave" (play/leave-table))
 	     
 	     (setf *table-stream*
-		   (event-source (+ "/ev/" (chain *current-table-id* (to-upper-case)))
+		   (event-source (+ "/ev/" (chain (@ *table-info* id) (to-upper-case)))
 				 (joined)
 				 (left)
 				 (said)
@@ -449,7 +450,7 @@
 	 (ps 
 	   (define-component (deck-editor :empty? nil)
 	       (:div :id "deck-editor" :class "moveable"
-		     (:h3 "New Deck")
+		     (:h3 "Deck Editor")
 		     (:div :class "contents"
 			   (:div :class "row"
 				 (:span :class "label" "Deck Name: ")
@@ -473,9 +474,9 @@
 
 	     ($click "#deck-editor button.add-card"
 		     (progn ($append "#deck-editor .cards"
-				     (:li (:button :class "remove") 
-					  (:span :class "content" ($ "#deck-editor textarea.new-card" (val))) 
-					  (:button :class "add")))
+				     (:li  
+				      (:button :class "add")(:button :class "remove")
+				      (:span :class "contents" ($ "#deck-editor textarea.new-card" (val)))))
 			    ($button "#deck-editor .remove:last" (:minus))
 			    ($button "#deck-editor .add:last" (:plus)))
 
@@ -492,7 +493,7 @@
 					       collect (let ((txt ($ card-elem (text))))
 							 (try (string->obj txt)
 							      (:catch (error) txt))))))
-		       (unless ($exists? (+ ".new-deck.new-custom-deck[title=" deck-name "]"))
+		       (unless ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
 			 ($prepend "#decks-tab" (:div :class "new-deck new-custom-deck" 
 						      :title deck-name deck-name))
 			 ($draggable "#decks-tab .new-custom-deck:first" (:revert t)))
@@ -576,22 +577,18 @@
 				   (:div "Face-Down Tarot"))))))
 
 (to-file "static/js/deal.js"
-	 (ps (defvar *current-table-id* nil)
-	     (defvar *current-table-tag* nil)
-	     
-	     (defvar *server-info* nil)
+	 (ps (defvar *server-info* nil)
 	     (defvar *table-info* nil)
-	     
-	     (defvar *decks-list* nil)
+
 	     (defvar *local-decks* (create))
 
+	     (defvar *session* nil)
 	     (defvar *chat-history* 
 	       (create messages (new (-array))
 		       current-message 0))
 	     
 	     (defvar *lobby-stream* nil)
 	     (defvar *table-stream* nil)
-	     (defvar *session* nil)
 	     
 	     (doc-ready 
 	      (show-lobby "body")
@@ -623,9 +620,7 @@
 			  (@ *chat-history* current-message) (length (@ *chat-history* messages))))
 
 	       (when (@ res current-table)
-		 (setf *table-info* res
-		       *current-table-id* (@ res current-table :id)
-		       *current-table-tag* (@ res current-table :tag))
+		 (setf *table-info* (@ res current-table))
 		 (show-table "body")		  
 		 (my-hand)
 		 (render-board (@ res current-table))))
@@ -666,18 +661,14 @@
 	     
 	     (define-ajax lobby/new-table (tag passphrase)
 	       (log "STARTING TABLE" res)
-	       (setf *table-info* res
-		     *current-table-id* (@ res :id)
-		     *current-table-tag* (@ res :tag))
+	       (setf *table-info* res)
 	       (show-table "body")
 	       (my-hand)
 	       (render-board res))
 
 	     (define-ajax lobby/join-table (table passphrase)
 	       (log "JOINING TABLE" res)
-	       (setf *table-info* res
-		     *current-table-id* (@ res :id)
-		     *current-table-tag* (@ res :tag))
+	       (setf *table-info* res)
 	       (show-table "body")		  
 	       (my-hand)
 	       (render-board res))

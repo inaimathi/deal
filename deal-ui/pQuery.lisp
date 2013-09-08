@@ -156,7 +156,7 @@
 ;;;;;;;;;; Define client-side handlers
 (defpsmacro define-ajax (name arg-list &body body)
   `(defun ,name ,arg-list
-     ($post ,(format nil "/~(~a~)" name) (,@(unless (member 'table arg-list) `(:table *current-table-id*)) ,@(args->plist arg-list)) 
+     ($post ,(format nil "/~(~a~)" name) (,@(unless (member 'table arg-list) `(:table (when *table-info* (@ *table-info* :id)))) ,@(args->plist arg-list)) 
 	    ,@body)))
 
 ;;;;;;;;;; Defining markup/behavior hybrids made easier

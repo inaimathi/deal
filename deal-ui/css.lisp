@@ -27,7 +27,6 @@
 
 	       (button.control-button :width 22px :height 22px :float right :opacity .7)
 	       ("button.control-button:hover" :opacity 1)
-	       (".moveable .control-button, .overlay .control-button" :float none)
 	       
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
@@ -44,7 +43,7 @@
 
 	       (.mini :position absolute :cursor move)
 
-	       (.tablecloth ,@(css-box) :width 75px :height 75px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left)
+	       (.tablecloth ,@(css-box) :width 50px :height 50px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left)
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
 	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px)
@@ -99,9 +98,14 @@
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
 	       ("#chat-controls textarea" ,@css-text-block)
 
-	       ("#deck-editor" ,@(css-centered-box 400 365 'fixed))
+	       ("#deck-editor" ,@(css-centered-box 400 365 'fixed) ;; :display none
+			       )
+	       ("#deck-editor .label" :display inline-block :min-width 100px)
 	       ("#deck-editor textarea" ,@css-text-block)
-	       ("#deck-editor .cards" :height 100px :overflow auto)
+	       ("#deck-editor .cards" :height 100px :overflow auto :list-style-type none)
+	       ("#deck-editor .cards li" :width 300px)
+	       ("#deck-editor .cards .add" :float left)
+	       ("#deck-editor .cards .contents" :max-width 220px :max-height 40px :overflow auto :padding-top 3px :display inline-block)
 
 	       (".backpack-mini" :max-height 75px :max-width 75px)
 
