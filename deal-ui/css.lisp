@@ -99,9 +99,9 @@
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
 	       ("#chat-controls textarea" ,@css-text-block)
 
-	       ("#new-deck-setup" ,@(css-centered-box 400 365 'fixed))
-	       ("#new-deck-setup textarea" ,@css-text-block)
-	       ("#new-deck-setup .cards" :height 100px :overflow auto)
+	       ("#deck-editor" ,@(css-centered-box 400 365 'fixed))
+	       ("#deck-editor textarea" ,@css-text-block)
+	       ("#deck-editor .cards" :height 100px :overflow auto)
 
 	       (".backpack-mini" :max-height 75px :max-width 75px)
 

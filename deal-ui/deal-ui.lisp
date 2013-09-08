@@ -277,7 +277,7 @@
 		     (setf location (+ "/table/save?table=" *current-table-id*))
 
 		     "#custom-deck"
-		     ($ "#new-deck-setup" (show)))
+		     ($ "#deck-editor" (show)))
 	     
 	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
@@ -448,7 +448,7 @@
 (to-file "static/js/deck-editor.js"
 	 (ps 
 	   (define-component (deck-editor :empty? nil)
-	       (:div :id "new-deck-setup" :class "moveable"
+	       (:div :id "deck-editor" :class "moveable"
 		     (:h3 "New Deck")
 		     (:div :class "contents"
 			   (:div :class "row"
@@ -467,28 +467,28 @@
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
 
-	     ($on "#new-deck-setup"
+	     ($on "#deck-editor"
 		  (:click "button.remove" ($ this (parent) (remove)))
-		  (:click "button.add" ($ "#new-deck-setup .cards" (append ($ this (parent) (clone))))))
+		  (:click "button.add" ($ "#deck-editor .cards" (append ($ this (parent) (clone))))))
 
-	     ($click "#new-deck-setup button.add-card"
-		     (progn ($append "#new-deck-setup .cards"
+	     ($click "#deck-editor button.add-card"
+		     (progn ($append "#deck-editor .cards"
 				     (:li (:button :class "remove") 
-					  (:span :class "content" ($ "#new-deck-setup textarea.new-card" (val))) 
+					  (:span :class "content" ($ "#deck-editor textarea.new-card" (val))) 
 					  (:button :class "add")))
-			    ($button "#new-deck-setup .remove:last" (:minus))
-			    ($button "#new-deck-setup .add:last" (:plus)))
+			    ($button "#deck-editor .remove:last" (:minus))
+			    ($button "#deck-editor .add:last" (:plus)))
 
-		     "#new-deck-setup button.cancel"
-		     ($ "#new-deck-setup" (hide))
+		     "#deck-editor button.cancel"
+		     ($ "#deck-editor" (hide))
 
-		     "#new-deck-setup button.ok"
-		     (let ((deck-name ($ "#new-deck-setup .deck-name" (val)))
-			   (card-type ($ "#new-deck-setup .card-type" (val))))
+		     "#deck-editor button.ok"
+		     (let ((deck-name ($ "#deck-editor .deck-name" (val)))
+			   (card-type ($ "#deck-editor .card-type" (val))))
 		       (setf (aref *local-decks* deck-name)
 			     (create 'deck-name deck-name 
 				     'card-type card-type 
-				     'cards (loop for card-elem in ($ "#new-deck-setup .cards .content")
+				     'cards (loop for card-elem in ($ "#deck-editor .cards .content")
 					       collect (let ((txt ($ card-elem (text))))
 							 (try (string->obj txt)
 							      (:catch (error) txt))))))
@@ -496,7 +496,7 @@
 			 ($prepend "#decks-tab" (:div :class "new-deck new-custom-deck" 
 						      :title deck-name deck-name))
 			 ($draggable "#decks-tab .new-custom-deck:first" (:revert t)))
-		       ($ "#new-deck-setup" (hide)))))))
+		       ($ "#deck-editor" (hide)))))))
 
 (to-file "static/js/util.js"
 	 (ps 
