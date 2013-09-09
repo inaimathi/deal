@@ -454,6 +454,9 @@
 		     (:h3 "Deck Editor")
 		     (:div :class "content"
 			   (:div :class "row"
+				 (:form :id "load-deck-form" :enctype "multipart/form-data"
+					(:span :class "label" "Load: ") (:input :name "deck" :type "file")))
+			   (:div :class "row"
 				 (:span :class "label" "Deck Name: ")
 				 (:input :class "deck-name"))
 			   (:div :class "row"
@@ -472,6 +475,17 @@
 	     (defun cookie-decks ()
 	       (set-cookie :custom-decks (@ *session* cookie :custom-decks)))
 
+	     (defun load-deck-for-editing (deck)
+	       (with-slots (deck-name card-type cards) deck
+		 ($ "#deck-editor .deck-name" (val deck-name))
+		 ($ "#deck-editor .card-type" (val card-type))
+		 (loop for c in cards do (create-card-record "#deck-editor .cards" c))))
+	     
+	     ($ "#load-deck-form" 
+		(change 
+		 (fn ($upload "#load-deck-form" "/load-deck"
+			      (load-deck-for-editing res)))))
+	     
 	     (define-thing card-record
 		 (:li (:button :class "add")(:button :class "remove")
 		      (:span :class "content" (obj->string self)))
@@ -491,10 +505,8 @@
 	       ($button ($child ".download") (:arrowthick-1-s)
 			($save-as (name->filename (self deck-name)) self))
 	       ($button ($child ".edit") (:pencil)
-			($ "#deck-editor .deck-name" (val (self deck-name)))
-			($ "#deck-editor .card-type" (val (self card-type)))
-			($ "#deck-editor" (show))
-			(loop for c in (self cards) do (create-card-record "#deck-editor .cards" c))))
+			(load-deck-for-editing self)
+			($ "#deck-editor" (show))))
 	     
 	     ;; get custom decks from cookie
 	     (awhen (@ *session* cookie :custom-decks)

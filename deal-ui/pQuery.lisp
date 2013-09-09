@@ -154,7 +154,8 @@
 	      (ajax (create :url ,uri
 			    :type "POST"
 			    :success (lambda (data status jqXHR)
-				       ,@success)
+				       (let ((res (string->obj (@ jqXHR response-text))))
+					 ,@success))
 			    :error (lambda (jqXHR status error-thrown)
 				     (log "UPLOAD ERRORED" jqXHR status error-thrown))
 			    :data ,form-data

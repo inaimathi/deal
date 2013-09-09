@@ -18,6 +18,11 @@
 (define-handler (my-hand) ()
   (hash-values (hand (session-value :player))))
 
+;;; TODO: figure out a way to do this entirely on the client side. 
+;;; Why should I have to give a rats' ass what they want to load?
+(define-handler (load-deck) ((deck :json-file))
+  deck)
+
 (define-handler (rename) ((new-tag (:string :max 255)))
   (assert (session-value :player))
   (let* ((player (session-value :player))
