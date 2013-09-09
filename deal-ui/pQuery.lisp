@@ -223,15 +223,14 @@
 	 (if (= face "down")
 	     (case type
 	       ,@f-down
-	       (t (who-ps-html (:div (:p "Face Down") (:span :class "type" type)))))
+	       (t (who-ps-html (:div (:p "Face Down")))))
 	     (let ((content (@ ,crd content)))
 	       (if (stringp content)
-		   (who-ps-html (:div :class type (newline->break content)))
+		   (who-ps-html (:div (newline->break content)))
 		   (case type
 		     ,@f-up
 		     (t (who-ps-html 
-			 (:div :class type
-			       (:ul (chain 
+			 (:div (:ul (chain 
 				     ($map content
 					   (who-ps-html (:li :class (+ "card-field " i) (:span :class "label" i) (:span :class "text" elem))))
 				     (join ""))))))))))))))

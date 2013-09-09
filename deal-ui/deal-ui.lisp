@@ -422,8 +422,9 @@
 	     ($draggable $self () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
 	   (define-thing card 
-	       (:div :id (self id) :class "card" :style (self position)
+	       (:div :id (self id) :class (+ "card " (self card-type)) :style (self position)
 		     (:span :class "content" (card-html self))
+		     (:span :class "card-type" (self card-type))
 		     (:button :class "zoom"))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($button ($child ".zoom") (:zoomin)

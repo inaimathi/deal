@@ -46,7 +46,8 @@
 	       (.tablecloth ,@(css-box) :width 50px :height 50px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left :cursor move)
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
-	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px :padding 0px)
+	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :padding 0px)
+	       (".card .card-type" :font-size xx-small :white-space nowrap)
 	       (".card .content ul" :list-style-type none :margin 0px :padding 0px)
 	       (".card .content ul .card-field, .card .content ul .label" :display none)
 	       (".card .content ul .card-field.name, .card .content ul .card-field.tag" :display block)
