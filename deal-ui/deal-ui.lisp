@@ -427,7 +427,7 @@
 		     (:button :class "zoom"))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($button ($child ".zoom") (:zoomin)
-		      ($ "#zoomed-card" (show))
+		      ($ "#zoomed-card" (toggle))
 		      ($ "#zoomed-card .content" (empty) (append (card-html self))))	     
 	     ($draggable $self () 
 			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
