@@ -150,11 +150,11 @@
 
 	     (defun chat-command (txt)
 	       (let ((re (new (-reg-exp "^(@\\S+)"))))
-		 (aif (chain txt (match re))
-		      (progn ((aref *chat-commands* (@ it 1))
-			      (chain txt (substring (length (@ it 1))) (replace " +" "")))
-			     ($ "#chat-input" (val ""))
-			     t))))
+		 (awhen (chain txt (match re))
+		   ((aref *chat-commands* (@ it 1))
+		    (chain txt (substring (length (@ it 1))) (replace " +" "")))
+		   ($ "#chat-input" (val ""))
+		   t)))
 	     
 	     (defvar *chat-commands*
 	       (create "@roll"   (lambda (txt) (string->die-roll txt))
@@ -182,7 +182,6 @@
 			    (:span :class "player-tag" (@ *session* tag)))
 		      (:div :class "control-row"
 			    (:button :id "leave" "Leave Table")
-			    (:button :id "custom-deck" "Custom Deck")
 			    (:button :id "save-board" "Save")
 			    (:form :id "load-form" :enctype "multipart/form-data"
 				   (:span :class "label" "Load: ") 
@@ -195,7 +194,7 @@
 			    (:div :id "game-chat")
 			    (:div :id "backpack"
 				  (:ul
-				   (:li (:a :href "#decks-tab" "Decks"))
+				   (:li (:a :href "#decks-tab" "Decks") (:button :id "custom-deck" "Custom Deck"))
 				   (:li (:a :href "#dice-tab" "Dice/Coin"))
 				   (:li (:a :href "#minis-tab" "Minis"))
 				   (:li (:a :href "#tablecloth-tab" "Tablecloths")))
@@ -227,7 +226,20 @@
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
+
+	     ;; get custom decks from cookie
+	     (awhen (@ *session* cookie :custom-decks)
+	       (let ((decks (string->obj it)))
+		 (setf (@ *session* cookie :custom-decks) decks)
+		 ($map decks
+		       (with-slots (deck-name) elem
+			 ($prepend "#decks-tab"
+				   (:div :class "new-deck new-custom-deck"
+					 :title deck-name deck-name)))))
+	       ($draggable "#decks-tab .new-custom-deck" (:revert t)))
 	     
+	     ($button "#custom-deck" (:plus) ($ "#deck-editor" (show)))
+
 	     (show-deck-editor "#table")
 
 	     ($draggable ".tablecloth" (:revert t))
@@ -275,10 +287,7 @@
 		     ;;;; Checks out in Chromium, Firefox and Conkeror though.
 		     ;;;; Also, doesn't work if you shouldn't be saving when you click it.
 		     ;;;; Should probably just remove it when there's multiple players in the game
-		     (setf location (+ "/table/save?table=" (@ *table-info* id)))
-
-		     "#custom-deck"
-		     ($ "#deck-editor" (show)))
+		     (setf location (+ "/table/save?table=" (@ *table-info* id))))
 	     
 	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
@@ -362,9 +371,9 @@
 		   (ts (@ table things)))
 	       ($ board-selector (empty))
 	       (log "TABLE" table)
-	       (aif (@ table tablecloth)
-		    (progn (log "TABLECLOTH" it)
-			   ($ board-selector (css "background-image" (+ "url(" it ")")))))
+	       (awhen (@ table tablecloth)
+		 (log "TABLECLOTH" it)
+		 ($ board-selector (css "background-image" (+ "url(" it ")"))))
 	       ($droppable board-selector ()
 			   (:card-in-hand 
 			    (hand/play ($ dropped (attr :id))
@@ -372,7 +381,7 @@
 			   
 			   (:new-custom-deck
 			    (play/new-stack-from-json
-			     (obj->string (aref *local-decks* ($ dropped (text))))
+			     (obj->string (aref (@ *session* cookie :custom-decks) ($ dropped (text))))
 			     ($x board-selector event) ($y board-selector event) 0 0))
 			   
 			   (:backpack-mini
@@ -470,7 +479,12 @@
 
 	     ($on "#deck-editor"
 		  (:click "button.remove" ($ this (parent) (remove)))
-		  (:click "button.add" ($ "#deck-editor .cards" (append ($ this (parent) (clone))))))
+		  (:click "button.add" ($ "#deck-editor .cards" (append ($ this (parent) (clone)))))
+		  (:keydown ".new-card"
+			    <ret> (unless shift?
+				    (chain event (prevent-default))
+				    ($ "#deck-editor button.add-card" (click)))
+			    <esc> ($ "#deck-editor .new-card" (val ""))))
 
 	     ($click "#deck-editor button.add-card"
 		     (progn ($append "#deck-editor .cards"
@@ -478,7 +492,8 @@
 				      (:button :class "add")(:button :class "remove")
 				      (:span :class "content" ($ "#deck-editor textarea.new-card" (val)))))
 			    ($button "#deck-editor .remove:last" (:minus))
-			    ($button "#deck-editor .add:last" (:plus)))
+			    ($button "#deck-editor .add:last" (:plus))
+			    ($ "#deck-editor .new-card" (val "")))
 
 		     "#deck-editor button.cancel"
 		     ($ "#deck-editor" (hide))
@@ -486,7 +501,7 @@
 		     "#deck-editor button.ok"
 		     (let ((deck-name ($ "#deck-editor .deck-name" (val)))
 			   (card-type ($ "#deck-editor .card-type" (val))))
-		       (setf (aref *local-decks* deck-name)
+		       (setf (aref (@ *session* cookie :custom-decks) deck-name)
 			     (create 'deck-name deck-name 
 				     'card-type card-type 
 				     'cards (loop for card-elem in ($ "#deck-editor .cards .content")
@@ -497,6 +512,7 @@
 			 ($prepend "#decks-tab" (:div :class "new-deck new-custom-deck" 
 						      :title deck-name deck-name))
 			 ($draggable "#decks-tab .new-custom-deck:first" (:revert t)))
+		       (set-cookie :custom-decks (@ *session* cookie :custom-decks))
 		       ($ "#deck-editor" (hide)))))))
 
 (to-file "static/js/util.js"
@@ -580,8 +596,6 @@
 	 (ps (defvar *server-info* nil)
 	     (defvar *table-info* nil)
 
-	     (defvar *local-decks* (create))
-
 	     (defvar *session* nil)
 	     (defvar *chat-history* 
 	       (create messages (new (-array))
@@ -590,7 +604,7 @@
 	     (defvar *lobby-stream* nil)
 	     (defvar *table-stream* nil)
 	     
-	     (doc-ready 
+ 	     (doc-ready 
 	      (show-lobby "body")
 	      ($on "body"
 		   (:click "#player-info span.player-tag"
@@ -612,7 +626,7 @@
 	       (aif (@ *session* cookie tag)
 		    (progn (log "COOKIED TAG: " it)
 			   (rename it))
-		   ($ "#player-info .player-tag" (text (@ *session* tag))))
+		    ($ "#player-info .player-tag" (text (@ *session* tag))))
 
 	       ;; get chat history from cookie
 	       (aif (@ *session* cookie :chat-messages)

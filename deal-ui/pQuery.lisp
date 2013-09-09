@@ -2,6 +2,12 @@
 
 (defparameter *debugging* t)
 
+(defparameter mod-keys 
+  `((shift? (@ event shift-key)) (alt? (@ event alt-key)) (ctrl? (@ event ctrl-key)) (meta? (@ event meta-key))))
+
+(defparameter key-codes
+  `((<ret> 13) (<esc> 27) (<space> 32) (<up> 38) (<down> 40) (<left> 37) (<right> 39)))
+
 (defpsmacro log (&body body)
   (when *debugging*
     `(chain console (log ,@body))))
@@ -18,6 +24,9 @@
 (defpsmacro aif (test-form true-form &optional else-form)
   `(let ((it ,test-form))
      (if it ,true-form ,else-form)))
+
+(defpsmacro awhen (test-form &body when-true)
+  `(aif ,test-form (progn ,@when-true)))
 
 (defpsmacro let-match (target regex (&rest bindings) &body body)
   (with-ps-gensyms (re match)
@@ -67,8 +76,8 @@
       (droppable 
        (create 
 	:drop (lambda (event ui)
-		(let ((dropped (@ ui helper context))
-		      (shift? (@ event shift-key)))
+		(let (,@mod-keys
+		      (dropped (@ ui helper context)))
 		  (cond ,@(loop for (class . action) in class/action-list
 			     collect `(($ dropped (has-class ,class)) ,@action)))
 		  ($ ,overlapping (droppable "enable"))))
@@ -86,7 +95,7 @@
 
 (defpsmacro $draggable (target (&key revert handle cancel) &body body)
   `($ ,target (draggable (create :stop (lambda (event ui) 
-					 (let ((shift? (@ event shift-key)))
+					 (let (,@mod-keys)
 					   ,@body))
 				 :start (fn ($ this (css "z-index" 100001) ))
 				 ,@(when revert `(:revert ,revert))
@@ -100,7 +109,14 @@
 (defpsmacro $on (context-selector &rest event/selector/behavior-list)
   `($ ,context-selector
       ,@(loop for (ev sel . behav) in event/selector/behavior-list
-	   collect `(on ,ev ,sel (lambda (event) ,@behav)))))
+	   collect 
+	     `(on ,ev ,sel (lambda (event) 
+			     ,@(if (eq ev :keydown)
+				   `((let (,@mod-keys ,@key-codes
+					   (key-code (or (@ event key-code) (@ event which))))
+				       (cond ,@(loop for (key body) on behav by #'cddr
+						  collect `((= key-code ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body)))))
+				   behav))))))
 
 (defpsmacro $button (selector (icon-name &key text? (class "control-button")) &body on-click)
   `($ ,selector
@@ -121,12 +137,7 @@
   `($ ,target
       (keydown
        (lambda (event)
-	 (let ((shift? (@ event shift-key))
-	       (alt? (@ event alt-key))
-	       (ctrl? (@ event ctrl-key))
-	       (meta? (@ event meta-key))
-	       (<ret> 13) (<esc> 27) (<space> 32) 
-	       (<up> 38) (<down> 40) (<left> 37) (<right> 39)
+	 (let (,@mod-keys ,@key-codes
 	       (key-code (or (@ event key-code) (@ event which))))
 	   (cond ,@(loop for (key body) on key/body-pairs by #'cddr
 		      collect `((= key-code ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body))))))))

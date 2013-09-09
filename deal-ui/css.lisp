@@ -46,7 +46,7 @@
 	       (.tablecloth ,@(css-box) :width 50px :height 50px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left)
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
-	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px)
+	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px :padding 0px)
 	       (".card .type" :font-size xx-small :text-align right)
 	       (.card-in-hand :position relative :z-index 10000)
 
@@ -98,7 +98,7 @@
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
 	       ("#chat-controls textarea" ,@css-text-block)
 
-	       ("#deck-editor" ,@(css-centered-box 400 365 'fixed) ;; :display none
+	       ("#deck-editor" ;; :display none
 			       )
 	       ("#deck-editor .label" :display inline-block :min-width 100px)
 	       ("#deck-editor textarea" ,@css-text-block)
@@ -121,8 +121,11 @@
 	       (".chat-button" :margin "3px 0px 0px 0px" :padding "3px 40px")
 
 	       (".ui-tabs" :margin-top 10px)
-	       (".ui-tabs .ui-tabs-nav li a" :font-size small)
+	       (".ui-tabs .ui-tabs-nav li" :height 35px)
+	       (".ui-tabs .ui-tabs-nav li a" :font-size small :height 22px)
+	       (".ui-tabs .ui-tabs-nav .control-button" :margin "7px 5px")
 	       (".ui-tabs .ui-tabs-panel" :padding 5px)
+	       
 	       (".new-deck" ,@(css-box :filled) ,@css-card-size :font-size small :float left :margin-right 2px)
 
 	       (".ui-tabs #dice-tab .die-roll-icon, .coin-flip-icon" :width 55px :height 55px :border "1px solid #ccc" :float left :margin 3px :cursor move :text-align center :border-radius 4px :background-color "#fff" :padding-top 6px)
