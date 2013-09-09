@@ -142,6 +142,11 @@
 	   (cond ,@(loop for (key body) on key/body-pairs by #'cddr
 		      collect `((= key-code ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body))))))))
 
+(defpsmacro $save-as (filename contents &optional (type "application/json;charset=utf-8"))
+  (with-ps-gensyms (blob)
+    `(let ((,blob (new (-blob (list (obj->string ,contents)) (create :type ,type)))))
+       (save-as ,blob ,filename))))
+
 (defpsmacro $upload (target-form uri &rest success)
   (with-ps-gensyms (form-data)
     `(let ((,form-data (new (-form-data (aref ($ ,target-form) 0)))))
@@ -191,12 +196,11 @@
 (defpsmacro define-thing (name markup &body behavior)
   (with-ps-gensyms (thing container)
     `(defun ,(intern (format nil "create-~a" name)) (,container ,thing)
-       (let ((css-id (+ "#" (@ ,thing id))))
-	 ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
-	 (let (($self ($ ,container (children) (last))))
-	   (flet (($child (selector) (chain $self (children selector))))
-	     ,@(loop for clause in behavior
-		  collect (expand-self-expression clause thing))))))))
+       ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
+       (let (($self (aif (@ ,thing id) ($ (+ "#" it)) ($ ,container (children) (last)))))
+	 (flet (($child (selector) (chain $self (children selector))))
+	   ,@(loop for clause in behavior
+		collect (expand-self-expression clause thing)))))))
 
 (defpsmacro define-component ((name &key (empty? t)) markup &body behavior)
   `(defun ,(intern (format nil "show-~a" name)) (container)

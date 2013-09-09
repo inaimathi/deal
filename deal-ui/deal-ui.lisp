@@ -409,33 +409,32 @@
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle")
 		     (:div :class "card-count" (+ "x" (self card-count))))
-	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
-	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
-	     ($droppable css-id (:overlapping "#board")
+	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
+	     ($draggable $self () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
+	     ($droppable $self (:overlapping "#board")
 			 (:card-in-hand
 			  (hand/play-to ($ dropped (attr :id)) (self id)))
 			 (:card
 			  (stack/add-to (self id) ($ dropped (attr :id))))
 			 (:stack
 			  (stack/merge (self id) ($ dropped (attr :id)))))
-	     ($button (+ css-id " .shuffle") (:shuffle)
-		      (stack/shuffle (self id)))
-	     ($click (+ css-id " .draw") (stack/draw (self id) 1)))
+	     ($button ($child ".shuffle") (:shuffle) (stack/shuffle (self id)))
+	     ($click ($child ".draw") (stack/draw (self id) 1)))
 
 	   (define-thing mini
 	       (:img :id (self id) :class "mini" :style (self position) :src (self mini-uri))
-	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
-	     ($draggable css-id () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
+	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
+	     ($draggable $self () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
 	   (define-thing card 
 	       (:div :id (self id) :class "card" :style (self position)
 		     (:span :class "content" (card-html self))
 		     (:button :class "zoom"))
-	     ($ css-id (css "z-index" (+ (self y) ($ css-id (height)))))
-	     ($button (+ css-id " button.zoom") (:zoomin)
+	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
+	     ($button ($child ".zoom") (:zoomin)
 		      ($ "#zoomed-card" (show))
 		      ($ "#zoomed-card .content" (empty) (append (card-html self))))	     
-	     ($draggable css-id () 
+	     ($draggable $self () 
 			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
 			 (when shift? (play/flip (self id)))))
 
@@ -443,10 +442,10 @@
 	       (:div :id (self id) :class "card card-in-hand"
 		     (:span :class "content" (card-html self))
 		     (:button :class "zoom"))
-	     ($button (+ css-id " button.zoom") (:zoomin)
+	     ($button ($child ".zoom") (:zoomin)
 		      ($ "#zoomed-card" (show))
 		      ($ "#zoomed-card .content" (empty) (append (card-html self))))
-	     ($draggable css-id (:revert t)))))
+	     ($draggable $self (:revert t)))))
 
 (to-file "static/js/deck-editor.js"
 	 (ps 
@@ -469,12 +468,33 @@
 			   (:div :class "row"
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
+	     
+	     (defun cookie-decks ()
+	       (set-cookie :custom-decks (@ *session* cookie :custom-decks)))
+
+	     (define-thing card-record
+		 (:li (:button :class "add")(:button :class "remove")
+		      (:span :class "content" (obj->string self)))
+	       ($button ($child ".remove") (:minus))
+	       ($button ($child ".add") (:plus)))
 
 	     (define-thing custom-deck
 		 (:div :class "new-deck new-custom-deck"
 		       :title (self deck-name) (self deck-name)
-		       (:button :class "delete"))
-	       ($button (chain $self (children "button.delete")) (:cancel) (log "DELETED!" (self deck-name))))
+		       (:button :class "delete")
+		       (:button :class "edit")
+		       (:button :class "download"))
+	       ($button ($child ".delete") (:cancel)
+			(delete (aref (@ *session* cookie :custom-decks) (self deck-name)))
+			(cookie-decks)
+			($ $self (remove)))
+	       ($button ($child ".download") (:arrowthick-1-s)
+			($save-as (name->filename (self deck-name)) self))
+	       ($button ($child ".edit") (:pencil)
+			($ "#deck-editor .deck-name" (val (self deck-name)))
+			($ "#deck-editor .card-type" (val (self card-type)))
+			($ "#deck-editor" (show))
+			(loop for c in (self cards) do (create-card-record "#deck-editor .cards" c))))
 	     
 	     ;; get custom decks from cookie
 	     (awhen (@ *session* cookie :custom-decks)
@@ -493,34 +513,33 @@
 			    <esc> ($ "#deck-editor .new-card" (val ""))))
 
 	     ($click "#deck-editor button.add-card"
-		     (progn ($append "#deck-editor .cards"
-				     (:li  
-				      (:button :class "add")(:button :class "remove")
-				      (:span :class "content" ($ "#deck-editor textarea.new-card" (val)))))
-			    ($button "#deck-editor .remove:last" (:minus))
-			    ($button "#deck-editor .add:last" (:plus))
-			    ($ "#deck-editor .new-card" (val "")))
+		     (let ((txt ($ "#deck-editor .new-card" (val))))
+		       (create-card-record "#deck-editor .cards" (try (string->obj txt) (:catch (error) txt)))
+		       ($ "#deck-editor .new-card" (val "")))
 
 		     "#deck-editor button.cancel"
 		     ($ "#deck-editor" (hide))
 
 		     "#deck-editor button.ok"
-		     (let ((deck-name ($ "#deck-editor .deck-name" (val)))
-			   (card-type ($ "#deck-editor .card-type" (val)))
-			   (deck (create 'deck-name deck-name 
-					 'card-type card-type 
-					 'cards (loop for card-elem in ($ "#deck-editor .cards .content")
-						   collect (let ((txt ($ card-elem (text))))
-							     (try (string->obj txt) (:catch (error) txt)))))))
+		     (let* ((deck-name ($ "#deck-editor .deck-name" (val)))
+			    (card-type ($ "#deck-editor .card-type" (val)))
+			    (deck (create 'deck-name deck-name 
+					  'card-type card-type 
+					  'cards (loop for card-elem in ($ "#deck-editor .cards .content")
+						    collect (let ((txt ($ card-elem (text))))
+							      (try (string->obj txt) (:catch (error) txt)))))))
 		       (setf (aref (@ *session* cookie :custom-decks) deck-name) deck)
-		       (unless ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
-			 (create-custom-deck "#decks-tab .content" deck)
-			 ($draggable "#decks-tab .new-custom-deck:first" (:revert t)))
-		       (set-cookie :custom-decks (@ *session* cookie :custom-decks))
+		       ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove))
+		       (create-custom-deck "#decks-tab .content" deck)
+		       ($draggable "#decks-tab .new-custom-deck:first" (:revert t))
+		       (cookie-decks)
 		       ($ "#deck-editor" (hide)))))))
 
 (to-file "static/js/util.js"
 	 (ps 
+	   (defun name->filename (name &optional (extension ".json"))
+	     (+ (chain name (replace " " "-") (to-lower-case)) extension))
+	   
 	   (defun uri->name (uri)
 	     (chain 
 	      (loop for word in (chain uri (match "/([^/]+)\\.") 1 (split "-"))
@@ -741,5 +760,7 @@
 	   (:html :xmlns "http://www.w3.org/1999/xhtml" :lang "en"
 		  (:head (:title "Tabletop Prototyping System - Deal")
 			 (styles "jquery-ui.css" "main.css")
-			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "util.js" "chat.js" "lobby.js" "deck-editor.js" "table.js" "deal.js"))
+			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" 
+				  "Blob.js" "FileSaver.js" 
+				  "util.js" "chat.js" "lobby.js" "deck-editor.js" "table.js" "deal.js"))
 		  (:body))))

@@ -38,13 +38,12 @@ In any case, you should now be able to visit `[your-server]/static/index.html` a
 
 This program is released under the GNU AGPL (License text can be found in the LICENSE.md file, or at <http://www.gnu.org/licenses/>)
 
-Minified copies of [jQuery](http://jquery.com/) and [jQueryUI](http://jqueryui.com/) are included for ease of installation; jQuery is dual-licensed under the [GPL and Expat licenses](http://jquery.org/license/). Readable source can be found at respective project pages.
+Deal bundles some javascript libraries.
 
-Media is included from OpenGameArt.org. This includes
+- Minified copies of [jQuery](http://jquery.com/) and [jQueryUI](http://jqueryui.com/); both are dual-licensed under the [GPL and Expat licenses](http://jquery.org/license/). Readable source can be found at respective project pages.
+- [FileSaver.js](https://github.com/eligrey/FileSaver.js) and [Blob.js](https://github.com/eligrey/Blob.js) for JS-based file saving; both dual-licensed under [Expat and X11 licenses](https://github.com/eligrey/FileSaver.js/blob/master/LICENSE.md)
+
+Deal bundles some images from [OpenGameArt.org](http://opengameart.org/). This includes
 
 - [chess/go/checkers piees](http://opengameart.org/content/boardgame-tiles) ([CC-BY 3.0 license](http://creativecommons.org/licenses/by/3.0/) by [Sharm](http://opengameart.org/users/sharm), aka Lanea Zimmerman)
 - [plants](http://opengameart.org/content/lpc-plant-repack) (Dual-licensed under [CC-BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/) and [GPL3](http://www.gnu.org/licenses/gpl-3.0.html), re-packaged by [William. Thompsonj](http://opengameart.org/users/williamthompsonj))
-
-Some media is included from other sources.
-
-- [Shuffle icon](https://www.iconfinder.com/icons/63027/shuffle_icon#size=40) from [yummygum](http://yummygum.com/), free for commercial use
