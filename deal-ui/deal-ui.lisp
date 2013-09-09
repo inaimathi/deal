@@ -196,7 +196,7 @@
 			    (:div :id "backpack"
 				  (:ul
 				   (:li (:a :href "#decks-tab" "Decks") (:button :id "custom-deck" "Custom Deck"))
-				   (:li (:a :href "#dice-tab" "Dice/Coin"))
+				   (:li (:a :href "#dice-tab" "Dice"))
 				   (:li (:a :href "#minis-tab" "Minis"))
 				   (:li (:a :href "#tablecloth-tab" "Tablecloths")))
 				  (:div :id "decks-tab" 

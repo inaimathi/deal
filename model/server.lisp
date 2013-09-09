@@ -22,13 +22,15 @@
   (find deck-name decks-list :key #'deck-name :test #'string=))
 
 (defmethod redact ((player player))
-  (hash :id (id player) :hand (hash-table-count (hand player))))
+  (with-slots (id tag hand) player
+    (hash :id id :tag tag :hand (hash-table-count hand))))
 
 (defmethod delete! ((player player) (card card))
   "Removes the given card from the given players' hand"
   (remhash (id card) (hand player)))
 
 (defmethod delete! ((table table) (player player))
+  "Removes the given playe from the given table"
   (setf (players table) (remove player (players table)))
   (decf (player-count table)))
 

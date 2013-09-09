@@ -1,7 +1,7 @@
 (in-package :deal)
 
 ;;;;;;;;;; State
-(defparameter *server* (make-instance 'server))
+(defvar *server* (make-instance 'server))
 
 (defun make-standard-deck (deck-name card-type extra-cards suits ranks)
   (make-instance 

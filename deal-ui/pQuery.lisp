@@ -229,7 +229,12 @@
 		   (who-ps-html (:div :class (+ type " " content) content))
 		   (case type
 		     ,@f-up
-		     (t (who-ps-html (:div :class type (obj->string content))))))))))))
+		     (t (who-ps-html 
+			 (:div :class type
+			       (:ul (chain 
+				     ($map content
+					   (who-ps-html (:li (:span :class "label" i) (:span :class "text" elem))))
+				     (join ""))))))))))))))
 
 (defpsmacro event-source (uri &body name/body-list)
   (with-ps-gensyms (stream handlers ev)

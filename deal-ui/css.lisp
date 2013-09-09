@@ -43,7 +43,7 @@
 
 	       (.mini :position absolute :cursor move)
 
-	       (.tablecloth ,@(css-box) :width 50px :height 50px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left)
+	       (.tablecloth ,@(css-box) :width 50px :height 50px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left :cursor move)
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
 	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px :padding 0px)
@@ -106,7 +106,7 @@
 	       ("#deck-editor .cards .add" :float left)
 	       ("#deck-editor .cards .content" :max-width 220px :max-height 40px :overflow auto :padding-top 3px :display inline-block)
 
-	       (".backpack-mini" :max-height 75px :max-width 75px)
+	       (".backpack-mini" :max-height 75px :max-width 75px :cursor move)
 
 	       ("#table-toolbar #chat-history" :height 200px :font-size small)
 	       ("#table-toolbar #chat-history .time" :display none)
@@ -120,8 +120,8 @@
 	       (".chat-button" :margin "3px 0px 0px 0px" :padding "3px 40px")
 
 	       (".ui-tabs" :margin-top 10px)
-	       (".ui-tabs .ui-tabs-nav li" :height 35px)
-	       (".ui-tabs .ui-tabs-nav li a" :font-size small :height 22px)
+	       (".ui-tabs .ui-tabs-nav li" :height 35px :font-size x-small)
+	       (".ui-tabs .ui-tabs-nav li a" :height 22px :padding-top 10px)
 	       (".ui-tabs .ui-tabs-nav .control-button" :margin "7px 5px")
 	       (".ui-tabs .ui-tabs-panel" :padding 5px)
 	       
