@@ -199,44 +199,37 @@
 				   (:li (:a :href "#minis-tab" "Minis"))
 				   (:li (:a :href "#tablecloth-tab" "Tablecloths")))
 				  (:div :id "decks-tab" 
-					(map-markup (@ *server-info* decks) (:div :class "new-deck" elem))
+					(:div :class "content"
+					      (map-markup (@ *server-info* decks) (:div :class "new-deck" elem)))
 					(:br :class "clear"))
 				  (:div :id "dice-tab" 
-					(map-markup (list "d3" "d4" "d6" "d8" "d10" "d20" "d100")
-						    (:div :class "die-roll-icon" 
-							  (:span :class "num-dice" "1")
-							  elem
-							  (:button :class "increment")
-							  (:button :class "decrement")))
-					(:div :class "coin-flip-icon" "Flip")
+					(:div :class "content"
+					      (map-markup (list "d3" "d4" "d6" "d8" "d10" "d20" "d100")
+							  (:div :class "die-roll-icon" 
+								(:span :class "num-dice" "1")
+								elem
+								(:button :class "increment")
+								(:button :class "decrement")))
+					      (:div :class "coin-flip-icon" "Flip"))
 					(:br :class "clear"))
-				  (:div :id "minis-tab" 
-					(map-markup 
-					 (@ *server-info* minis)
-					 (:img :class "backpack-mini" :src elem))
+				  (:div :id "minis-tab"
+					(:div :class "content"
+					      (map-markup 
+					       (@ *server-info* minis)
+					       (:img :class "backpack-mini" :src elem)))
 					(:br :class "clear"))
 				  (:div :id "tablecloth-tab" 
-					(:div :class "tablecloth" :title "" "None")
-					(map-markup 
-					 (@ *server-info* tablecloths)
-					 (:div :class "tablecloth" :title elem
-					       :style (+ "background-image: url(" elem ");")
-					       (uri->name elem)))
+					(:div :class "content"
+					      (:div :class "tablecloth" :title "" "None")
+					      (map-markup 
+					       (@ *server-info* tablecloths)
+					       (:div :class "tablecloth" :title elem
+						     :style (+ "background-image: url(" elem ");")
+						     (uri->name elem))))
 					(:br :class "clear"))))))
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
-
-	     ;; get custom decks from cookie
-	     (awhen (@ *session* cookie :custom-decks)
-	       (let ((decks (string->obj it)))
-		 (setf (@ *session* cookie :custom-decks) decks)
-		 ($map decks
-		       (with-slots (deck-name) elem
-			 ($prepend "#decks-tab"
-				   (:div :class "new-deck new-custom-deck"
-					 :title deck-name deck-name)))))
-	       ($draggable "#decks-tab .new-custom-deck" (:revert t)))
 	     
 	     ($button "#custom-deck" (:plus) ($ "#deck-editor" (show)))
 
@@ -477,6 +470,19 @@
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
 
+	     (define-thing custom-deck
+		 (:div :class "new-deck new-custom-deck"
+		       :title (self deck-name) (self deck-name)
+		       (:button :class "delete"))
+	       ($button (chain $self (children "button.delete")) (:cancel) (log "DELETED!" (self deck-name))))
+	     
+	     ;; get custom decks from cookie
+	     (awhen (@ *session* cookie :custom-decks)
+	       (let ((decks (string->obj it)))
+		 (setf (@ *session* cookie :custom-decks) decks)
+		 ($map decks (create-custom-deck "#decks-tab .content" elem)))
+	       ($draggable "#decks-tab .new-custom-deck" (:revert t)))
+
 	     ($on "#deck-editor"
 		  (:click "button.remove" ($ this (parent) (remove)))
 		  (:click "button.add" ($ "#deck-editor .cards" (append ($ this (parent) (clone)))))
@@ -500,17 +506,15 @@
 
 		     "#deck-editor button.ok"
 		     (let ((deck-name ($ "#deck-editor .deck-name" (val)))
-			   (card-type ($ "#deck-editor .card-type" (val))))
-		       (setf (aref (@ *session* cookie :custom-decks) deck-name)
-			     (create 'deck-name deck-name 
-				     'card-type card-type 
-				     'cards (loop for card-elem in ($ "#deck-editor .cards .content")
-					       collect (let ((txt ($ card-elem (text))))
-							 (try (string->obj txt)
-							      (:catch (error) txt))))))
+			   (card-type ($ "#deck-editor .card-type" (val)))
+			   (deck (create 'deck-name deck-name 
+					 'card-type card-type 
+					 'cards (loop for card-elem in ($ "#deck-editor .cards .content")
+						   collect (let ((txt ($ card-elem (text))))
+							     (try (string->obj txt) (:catch (error) txt)))))))
+		       (setf (aref (@ *session* cookie :custom-decks) deck-name) deck)
 		       (unless ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
-			 ($prepend "#decks-tab" (:div :class "new-deck new-custom-deck" 
-						      :title deck-name deck-name))
+			 (create-custom-deck "#decks-tab .content" deck)
 			 ($draggable "#decks-tab .new-custom-deck:first" (:revert t)))
 		       (set-cookie :custom-decks (@ *session* cookie :custom-decks))
 		       ($ "#deck-editor" (hide)))))))

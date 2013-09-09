@@ -190,13 +190,13 @@
 
 (defpsmacro define-thing (name markup &body behavior)
   (with-ps-gensyms (thing container)
-    `(defun ,(intern (format nil "create-~a" name)) (container thing)
-       (let* ((,thing thing)
-	      (,container container)
-	      (css-id (+ "#" (@ ,thing id))))
+    `(defun ,(intern (format nil "create-~a" name)) (,container ,thing)
+       (let ((css-id (+ "#" (@ ,thing id))))
 	 ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
-	 ,@(loop for clause in behavior
-	      collect (expand-self-expression clause thing))))))
+	 (let (($self ($ ,container (children) (last))))
+	   (flet (($child (selector) (chain $self (children selector))))
+	     ,@(loop for clause in behavior
+		  collect (expand-self-expression clause thing))))))))
 
 (defpsmacro define-component ((name &key (empty? t)) markup &body behavior)
   `(defun ,(intern (format nil "show-~a" name)) (container)
