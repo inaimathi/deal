@@ -98,8 +98,7 @@
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
 	       ("#chat-controls textarea" ,@css-text-block)
 
-	       ("#deck-editor" ;; :display none
-			       )
+	       ("#deck-editor" :display none :left 30px :top 30px :position absolute)
 	       ("#deck-editor .label" :display inline-block :min-width 100px)
 	       ("#deck-editor textarea" ,@css-text-block)
 	       ("#deck-editor .cards" :height 100px :overflow auto :list-style-type none)
@@ -130,5 +129,3 @@
 
 	       (".ui-tabs #dice-tab .die-roll-icon, .coin-flip-icon" :width 55px :height 55px :border "1px solid #ccc" :float left :margin 3px :cursor move :text-align center :border-radius 4px :background-color "#fff" :padding-top 6px)
 	       (".ui-tabs #dice-tab .die-roll-icon button" :width 22px :height 22px :margin-left 2px)))
-
-;; { "rank": "ace", "suit": "hearts" }
