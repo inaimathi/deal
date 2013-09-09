@@ -505,10 +505,11 @@
 	       ($draggable $self (:revert t)))
 	     
 	     ;; get custom decks from cookie
-	     (awhen (@ *session* cookie :custom-decks)
-	       (let ((decks (string->obj it)))
-		 (setf (@ *session* cookie :custom-decks) decks)
-		 ($map decks (create-custom-deck "#decks-tab .content" elem))))
+	     (aif (@ *session* cookie :custom-decks)
+		  (let ((decks (string->obj it)))
+		    (setf (@ *session* cookie :custom-decks) decks)
+		    ($map decks (create-custom-deck "#decks-tab .content" elem)))
+		  (setf (@ *session* cookie :custom-decks) (create)))
 
 	     ($on "#deck-editor"
 		  (:click "button.remove" ($ this (parent) (remove)))
