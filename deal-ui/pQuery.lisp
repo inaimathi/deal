@@ -226,7 +226,7 @@
 	       (t (who-ps-html (:div (:p "Face Down") (:span :class "type" type)))))
 	     (let ((content (@ ,crd content)))
 	       (if (stringp content)
-		   (who-ps-html (:div :class (+ type " " content) content))
+		   (who-ps-html (:div :class type (newline->break content)))
 		   (case type
 		     ,@f-up
 		     (t (who-ps-html 
