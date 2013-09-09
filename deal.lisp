@@ -27,8 +27,9 @@
   (assert (session-value :player))
   (let* ((player (session-value :player))
 	 (old (tag player)))
-    (setf (tag player) new-tag)
-    (publish! (aif (current-table player) it *server*) :changed-tag `((old-tag . ,old)))
+    (when (string/= new-tag (tag player))
+      (setf (tag player) new-tag)
+      (publish! (aif (current-table player) it *server*) :changed-tag `((old-tag . ,old))))
     :ok))
 
 ;;;;; Lobby-related
