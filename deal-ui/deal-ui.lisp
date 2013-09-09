@@ -136,6 +136,7 @@
 	       (let ((scrl? (scrolled-to-bottom? selector)))
 		 ($ selector (append msg-html))
 		 (when scrl? (scroll-to-bottom selector))))
+
 	     (defun push-chat-message (message)
 	       (let* ((re (new (-reg-exp "\\s+$")))
 		      (msg (chain message (replace re ""))))
@@ -240,12 +241,9 @@
 	     ($draggable ".backpack-mini" (:revert t))
 	     
 	     ($droppable "#backpack" (:overlapping "#board, .stack")
-			 (:mini 
-			  (play/remove ($ dropped (attr :id))))
-			 (:stack
-			  (play/remove ($ dropped (attr :id))))
-			 (:card
-			  (play/remove ($ dropped (attr :id)))))
+			 (:mini  (play/remove ($ dropped (attr :id))))
+			 (:stack (play/remove ($ dropped (attr :id))))
+			 (:card  (play/remove ($ dropped (attr :id)))))
 	     
 	     ($ "#load-form" (change (fn ($upload "#load-form" "/table/load"))))
 
@@ -641,11 +639,9 @@
 	      (show-lobby "body")
 	      ($on "body"
 		   (:click "#player-info span.player-tag"
-			   ($ this 
-			      (replace-with 
-			       (who-ps-html (:input :class "player-tag" :value (@ *session* tag)))))
+			   ($replace this (:input :class "player-tag" :value (@ *session* tag)))
 			   ($keydown "#player-info input.player-tag"
-				     <esc> ($ this (replace-with (who-ps-html (:span :class "player-tag" (@ *session* tag)))))
+				     <esc> ($replace this (:span :class "player-tag" (@ *session* tag)))
 				     <ret> (rename ($ this (val))))
 			   ($ "#player-info input.player-tag" (focus)))))
 	     
@@ -704,7 +700,7 @@
 		 (setf (@ *session* cookie tag) new-tag)
 		 (set-cookie :tag new-tag))
 	       ($ "#player-info .player-tag" (text new-tag))
-	       ($ "input.player-tag" (replace-with (who-ps-html (:span :class "player-tag" new-tag)))))
+	       ($replace "input.player-tag" (:span :class "player-tag" new-tag)))
 	     
 	     (define-ajax lobby/new-table (tag passphrase)
 	       (log "STARTING TABLE" res)
