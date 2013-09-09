@@ -275,12 +275,9 @@
 			      collect ($ elem (text)))))
 
 	     ($click "#save-board"
-					; TODO 
-		     ;;;; I suspect this won't work in the general case. 
-		     ;;;; Checks out in Chromium, Firefox and Conkeror though.
-		     ;;;; Also, doesn't work if you shouldn't be saving when you click it.
-		     ;;;; Should probably just remove it when there's multiple players in the game
-		     (setf location (+ "/table/save?table=" (@ *table-info* id))))
+		     (with-slots (id tag) *table-info*
+		       ($post "/table/save" (:table id)
+			      ($save-as (name->filename tag) res))))
 	     
 	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
@@ -405,7 +402,7 @@
 	       ($map cards (create-card-in-hand hand-selector elem))))
 
 	   (define-thing stack
-	       (:div :id (self id) :class "stack" :style (self position)
+	       (:div :id (self id) :class "stack" :style (self position)		     
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle")
 		     (:div :class "card-count" (+ "x" (self card-count))))
@@ -506,14 +503,14 @@
 			($save-as (name->filename (self deck-name)) self))
 	       ($button ($child ".edit") (:pencil)
 			(load-deck-for-editing self)
-			($ "#deck-editor" (show))))
+			($ "#deck-editor" (show)))
+	       ($draggable $self (:revert t)))
 	     
 	     ;; get custom decks from cookie
 	     (awhen (@ *session* cookie :custom-decks)
 	       (let ((decks (string->obj it)))
 		 (setf (@ *session* cookie :custom-decks) decks)
-		 ($map decks (create-custom-deck "#decks-tab .content" elem)))
-	       ($draggable "#decks-tab .new-custom-deck" (:revert t)))
+		 ($map decks (create-custom-deck "#decks-tab .content" elem))))
 
 	     ($on "#deck-editor"
 		  (:click "button.remove" ($ this (parent) (remove)))
@@ -541,10 +538,11 @@
 						    collect (let ((txt ($ card-elem (text))))
 							      (try (string->obj txt) (:catch (error) txt)))))))
 		       (setf (aref (@ *session* cookie :custom-decks) deck-name) deck)
-		       ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove))
+		       (cookie-decks)
+		       (when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
+			 ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove)))
 		       (create-custom-deck "#decks-tab .content" deck)
 		       ($draggable "#decks-tab .new-custom-deck:first" (:revert t))
-		       (cookie-decks)
 		       ($ "#deck-editor" (hide)))))))
 
 (to-file "static/js/util.js"

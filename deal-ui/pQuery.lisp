@@ -143,8 +143,10 @@
 		      collect `((= key-code ,(if (stringp key) `(chain ,key (char-code-at 0)) key)) ,body))))))))
 
 (defpsmacro $save-as (filename contents &optional (type "application/json;charset=utf-8"))
-  (with-ps-gensyms (blob)
-    `(let ((,blob (new (-blob (list (obj->string ,contents)) (create :type ,type)))))
+  (with-ps-gensyms (blob cnt content-string)
+    `(let* ((,cnt ,contents)
+	    (,content-string (if (stringp ,cnt) ,cnt (obj->string ,cnt)))
+	    (,blob (new (-blob (list ,content-string) (create :type ,type)))))
        (save-as ,blob ,filename))))
 
 (defpsmacro $upload (target-form uri &rest success)
