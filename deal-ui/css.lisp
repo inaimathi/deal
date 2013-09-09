@@ -47,7 +47,9 @@
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
 	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :height 45px :padding 0px)
-	       (".card .type" :font-size xx-small :text-align right)
+	       (".card .content ul" :list-style-type none :margin 0px :padding 0px)
+	       (".card .content ul .card-field, .card .content ul .label" :display none)
+	       (".card .content ul .card-field.name, .card .content ul .card-field.tag" :display block)
 	       (.card-in-hand :position relative :z-index 10000)
 
 	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)
@@ -58,7 +60,12 @@
 
 	       ("#zoomed-card" :width 250px :height 360px :top 10px :left 10px :display none)
 	       ("#zoomed-card button" :float right)
-	       ("#zoomed-card .content" :padding 10px)
+	       ("#zoomed-card .content" :padding 5px)
+	       ("#zoomed-card .content ul" :list-style-type none :margin 0px :padding 0px)
+	       ("#zoomed-card .content ul li" :margin-bottom 3px)
+	       ("#zoomed-card .content .label" :min-width 60px :text-align right :padding-right 8px :display inline-block :font-weight bold :font-style oblique)
+	       ("#zoomed-card .content .card-field.flavor .label" :display none)
+	       ("#zoomed-card .content .card-field.flavor .text" :font-style oblique)
 
 	       ("#table-toolbar" :left 1230px :top 20px)
 

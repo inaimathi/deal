@@ -233,7 +233,7 @@
 			 (:div :class type
 			       (:ul (chain 
 				     ($map content
-					   (who-ps-html (:li (:span :class "label" i) (:span :class "text" elem))))
+					   (who-ps-html (:li :class (+ "card-field " i) (:span :class "label" i) (:span :class "text" elem))))
 				     (join ""))))))))))))))
 
 (defpsmacro event-source (uri &body name/body-list)
