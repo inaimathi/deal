@@ -223,7 +223,7 @@
 	 (if (= face "down")
 	     (case type
 	       ,@f-down
-	       (t (who-ps-html (:div (:p "Face Down")))))
+	       (t (who-ps-html (:div "Face Down"))))
 	     (let ((content (@ ,crd content)))
 	       (if (stringp content)
 		   (let ((lines (chain content (split #\newline))))
