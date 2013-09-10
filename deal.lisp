@@ -91,7 +91,7 @@
   (publish! table :loaded `((things . ,(length (getj :things file)))))
   :ok)
 
-(define-player-handler (table/tablecloth) ((table :table) (tablecloth-uri :string))
+(define-player-handler (table/tablecloth) ((table :table) (tablecloth-uri :string :max 255))
   (setf (tablecloth table) tablecloth-uri)
   (publish! table :tablecloth `((tablecloth . ,tablecloth-uri)))
   :ok)
@@ -125,12 +125,34 @@
   (publish! table :flipped-coin `((result . ,(pick (list :heads :tails)))))
   :ok)
 
-(define-player-handler (play/mini) ((table :table) (mini-uri :string) (x :int) (y :int) (z :int) (rot :int))
+(define-player-handler (play/mini) ((table :table) (mini-uri :string :max 255) (x :int) (y :int) (z :int) (rot :int))
   (let ((mini (make-instance 'mini :belongs-to (id (session-value :player)))))
     (set-props mini mini-uri x y z rot)
     (insert! table mini)
     (publish! table :placed-mini `((mini . ,(redact mini))))
     :ok))
+
+(define-player-handler (play/ping) ((table :table) (x :int) (y :int) (z :int))
+  (publish! table :pinged `((x . ,x) (y . ,y) (z . ,z))))
+
+(define-player-handler (play/note) ((table :table) (text :string :max 255) (x :int) (y :int) (z :int) (rot :int))
+  (let ((note (make-instance 'note :belongs-to (id (session-value :player)))))
+    (set-props note x y z rot text)
+    (insert! table note)
+    (publish! table :placed-note `((note . ,(redact note))))
+    :ok))
+
+(define-player-handler (play/note-to) ((table :table) (text :string :max 255) (thing :placeable))
+  (let ((note (make-instance 'note :belongs-to (id (session-value :player)) 
+			     :attached-to (id thing) :text text)))
+    (insert! table note)
+    (publish! table :placed-note `((note . ,(redact note))))
+    :ok))
+
+(define-player-handler (play/note-attach) ((table :table) (note :note) (thing :placeable))
+  (setf (attached-to note) (id thing))
+  (publish! table :attached-note `((note . ,(id note)) (thing . ,(id thing))))
+  :ok)
 
 (define-player-handler (play/remove) ((table :table) (thing :placeable))
   (delete! table thing)
@@ -139,6 +161,7 @@
 
 (define-player-handler (play/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
   (set-props thing x y z rot)
+  (when (typep thing 'note) (setf (attached-to thing) nil))
   (publish! table :moved  `((thing . ,(id thing)) (x . ,x) (y . ,y) (z . ,z) (rot . ,rot)))
   :ok)
 
