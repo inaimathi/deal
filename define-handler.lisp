@@ -79,8 +79,8 @@ also need to be treated specially by some of the handler-definition macros."
 (defmacro with-handler-prelude (&body body)
   `(progn
      (assert (symbolp name) nil "`name` must be a symbol")
-     (let* ((uri (if (eq name '/) "/" (concatenate 'string "/" (string-downcase (symbol-name name)))))
-	    (opts (list (if (eq name '/) 'root name) :uri uri)))
+     (let* ((uri (if (eq name 'root) "/" (concatenate 'string "/" (string-downcase (symbol-name name)))))
+	    (opts (list name :uri uri)))
        (setf (gethash uri *handlers*) args)
        (multiple-value-bind (final-args table-lookups table-assertions type-conversions lookup-assertions)
 	   (type-pieces args)
