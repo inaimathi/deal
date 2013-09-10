@@ -118,6 +118,13 @@
 					    (+ "played " (chat-card (@ msg card)) " from " (@ msg stack)))
 					   ("playedToStack"
 					    (+ "played " (chat-card (@ msg card)) " to stack " (@ msg stack)))
+
+					   ("pinged"
+					    (+ "pinged " (@ msg x) "." (@ msg y)))
+					   ("placedNote"
+					    (+ "placed a note"))
+					   ("attachedNote"
+					    (+ "attached note " (@ msg note) " to " (@ msg thing)))
 					   ("addedToStack"
 					    (+ "put " (@ msg card) " on top of " (@ msg stack)))
 					   ("mergedStacks"
@@ -296,6 +303,11 @@
 				 (joined)
 				 (left)
 				 (said)
+				 ;;; todo
+				 (pinged)
+				 (placed-note)
+				 (attached-note)
+
 				 (loaded (look-table))
 				 (tablecloth
 				  ($ "#board" (css "background-image" (+ "url(" (@ ev tablecloth) ")"))))
