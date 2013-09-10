@@ -43,8 +43,9 @@
    (card-count :accessor card-count :initform 0 :initarg :card-count)
    (card-type :accessor card-type :initarg :card-type)))
 
-(defclass counter (placeable)
-  ((counter-value :accessor counter-value :initarg :counter-value)))
+(defclass note (placeable)
+  ((text :accessor text :initarg :text)
+   (attached-to :accessor attached-to :initarg :attached-to)))
 
 (defclass mini (placeable)
   ((mini-uri :accessor mini-uri :initarg :mini-uri)))
@@ -148,8 +149,14 @@ so it made sense to formalize this."
 (defmethod redact ((mini mini))
   (obj->hash mini (:type :mini) id x y z rot belongs-to mini-uri))
 
+(defmethod redact ((note note))
+  (obj->hash note (:type :note) id x y z rot belongs-to text))
+
 ;;;;;;;;;; Serialize methods
 ;;; More or less like redact, but always shows all information (this one's meant for game saving)
+(defmethod serialize ((note note))
+  (obj->hash note (:type :note) id x y z rot belongs-to text))
+
 (defmethod serialize ((mini mini))
   (obj->hash mini (:type :mini) id x y z rot belongs-to mini-uri))
 

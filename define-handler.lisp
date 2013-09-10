@@ -18,7 +18,7 @@
     ((list :list _)
      `(loop for elem in (decode-json-from-string ,arg)
 	 collect (gethash elem (things table))))
-    ((or :stack :flippable :placeable
+    ((or :stack :flippable :placeable :note
 	 (list :card :from-table))
      (lookup-expression arg '(things table)))
     ((list :card :from-hand)
@@ -36,6 +36,7 @@
     (:table `(assert (typep ,arg 'table)))
     (:stack `(assert (typep ,arg 'stack)))
     (:facing `(assert (member ,arg (list :up :down))))
+    (:note `(assert (typep ,arg 'note)))
     (:placeable `(assert (typep ,arg 'placeable)))
     (:flippable `(assert (typep ,arg 'flippable)))
     ((list :string :min min) 
