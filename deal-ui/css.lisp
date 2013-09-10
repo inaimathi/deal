@@ -51,6 +51,7 @@
 	       (".card .content ul" :list-style-type none :margin 0px :padding 0px)
 	       (".card .content ul .card-field, .card .content ul .label" :display none)
 	       (".card .content ul .card-field.name, .card .content ul .card-field.tag" :display block)
+	       (".card .content .rest" :display none)
 	       (.card-in-hand :position relative :z-index 10000)
 
 	       ("#player-info .player-id" :font-size x-small :font-style oblique :vertical-align top)

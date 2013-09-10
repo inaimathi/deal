@@ -226,7 +226,10 @@
 	       (t (who-ps-html (:div (:p "Face Down")))))
 	     (let ((content (@ ,crd content)))
 	       (if (stringp content)
-		   (who-ps-html (:div (newline->break content)))
+		   (let ((lines (chain content (split #\newline))))
+		     (who-ps-html
+		      (:div (@ lines 0) (:br)
+			    (:span :class "rest" (chain lines (slice 1) (join "<br />"))))))
 		   (case type
 		     ,@f-up
 		     (t (who-ps-html 
