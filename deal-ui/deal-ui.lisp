@@ -71,7 +71,7 @@
 			 (push-chat-message txt)
 			 (if (chain txt (match "^@"))
 			     (chat-command txt)
-			     (play/speak txt)))))
+			     (table/speak txt)))))
 
 	     (defun chat-message (msg)
 	       (with-slots (player player-tag time type message) msg
@@ -166,7 +166,7 @@
 	     
 	     (defvar *chat-commands*
 	       (create "@roll"   (lambda (txt) (string->die-roll txt))
-		       "@toss"   (lambda (txt) (play/coin-toss))
+		       "@toss"   (lambda (txt) (table/coin-toss))
 		       "@rename" (lambda (txt) (rename txt))))
 
 	     (defun chat-card (card)
@@ -245,9 +245,9 @@
 	     ($draggable ".backpack-mini" (:revert t))
 
 	     ($droppable "#backpack" (:overlapping "#board, .stack")
-			 (:mini  (play/remove ($ dropped (attr :id))))
-			 (:stack (play/remove ($ dropped (attr :id))))
-			 (:card  (play/remove ($ dropped (attr :id)))))
+			 (:mini  (table/remove ($ dropped (attr :id))))
+			 (:stack (table/remove ($ dropped (attr :id))))
+			 (:card  (table/remove ($ dropped (attr :id)))))
 	     
 	     ($ "#load-form" (change (fn ($upload "#load-form" "/table/load"))))
 
@@ -283,7 +283,7 @@
 	     
 	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
-				  (hand/pick-up ($ dropped (attr :id))))))
+				  (table/pick-up ($ dropped (attr :id))))))
 	     
 	     
 	     
@@ -332,7 +332,7 @@
 		      ($ "#custom-tablecloth-dialog" (dialog :open))
 		      ($ "#backpack" (tabs (create :active 3))))
 
-	     ($click "#leave" (play/leave-table))
+	     ($click "#leave" (table/leave))
 	     
 	     (setf *table-stream*
 		   (event-source (+ "/ev/" (chain (@ *table-info* id) (to-upper-case)))
@@ -347,7 +347,7 @@
 				 (placed-note)
 				 (attached-note)
 
-				 (loaded (look-table))
+				 (loaded (look/table))
 				 (tablecloth
 				  ($ "#board" (css "background-image" (+ "url(" (@ ev tablecloth) ")"))))
 				 (changed-tag)
@@ -412,31 +412,31 @@
 		  (on :click
 		      (lambda (event)
 			(when (@ event ctrl-key)
-			  (play/ping (@ event page-x) (@ event page-y) 0)))))
+			  (table/ping (@ event page-x) (@ event page-y) 0)))))
 
 	       (awhen (@ table tablecloth)
 		 ($ board-selector (css "background-image" (+ "url(" it ")"))))
 	       ($droppable board-selector ()
 			   (:card-in-hand 
-			    (hand/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
+			    (table/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
 			   
 			   (:new-custom-deck
-			    (play/new-stack-from-json
+			    (table/new/stack-from-json
 			     (obj->string (aref (@ *session* cookie :custom-decks) ($ dropped (text))))
 			     ev-x ev-y 0 0))
 			   
 			   (:backpack-mini
-			    (play/mini ($ dropped (attr :src)) ev-x ev-y 0 0))
+			    (table/new/mini ($ dropped (attr :src)) ev-x ev-y 0 0))
 
 			   (:new-deck
-			    (play/new-stack-from-deck ($ dropped (text)) ev-x ev-y 0 0))
+			    (table/new/stack-from-deck ($ dropped (text)) ev-x ev-y 0 0))
 
 			   (:tablecloth (table/tablecloth ($ dropped (attr :title))))
 
 			   (:die-roll-icon
 			    (string->die-roll ($ dropped (text))))
 			   (:coin-flip-icon
-			    (play/coin-toss)))
+			    (table/coin-toss)))
 	       ($ chat-selector 
 		  (empty) 
 		  (append ($map (@ table history)
@@ -458,21 +458,21 @@
 		     (:button :class "shuffle")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
-	     ($draggable $self () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
+	     ($draggable $self () (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
 	     ($droppable $self (:overlapping "#board")
 			 (:card-in-hand
-			  (hand/play-to ($ dropped (attr :id)) (self id)))
+			  (table/stack/play-to ($ dropped (attr :id)) (self id)))
 			 (:card
-			  (stack/add-to (self id) ($ dropped (attr :id))))
+			  (table/stack/add-to (self id) ($ dropped (attr :id))))
 			 (:stack
-			  (stack/merge (self id) ($ dropped (attr :id)))))
-	     ($button ($child ".shuffle") (:shuffle) (stack/shuffle (self id)))
-	     ($click ($child ".draw") (stack/draw (self id) 1)))
+			  (table/stack/merge (self id) ($ dropped (attr :id)))))
+	     ($button ($child ".shuffle") (:shuffle) (table/stack/shuffle (self id)))
+	     ($click ($child ".draw") (table/stack/draw (self id) 1)))
 
 	   (define-thing mini
 	       (:img :id (self id) :class "mini" :style (self position) :src (self mini-uri))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
-	     ($draggable $self () (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
+	     ($draggable $self () (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
 	   (define-thing card 
 	       (:div :id (self id) :class (+ "card " (self card-type)) :style (self position)
@@ -484,8 +484,8 @@
 		      ($ "#zoomed-card" (toggle))
 		      ($ "#zoomed-card .content" (empty) (append (card-html self))))	     
 	     ($draggable $self () 
-			 (play/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
-			 (when shift? (play/flip (self id)))))
+			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
+			 (when shift? (table/card/flip (self id)))))
 
 	   (define-thing card-in-hand
 	       (:div :id (self id) :class "card card-in-hand"
@@ -645,7 +645,7 @@
 			((num-dice "1")
 			 die-size
 			 (modifier "0"))
-			(play/roll num-dice die-size modifier)))
+			(table/roll num-dice die-size modifier)))
 
 	   (defun scrolled-to-bottom? (selector)
 	     (let ((sel ($ selector)))
@@ -700,6 +700,7 @@
 				     <ret> (rename ($ this (val))))
 			   ($ "#player-info input.player-tag" (focus)))))
 	     
+
 	     ;;; Client-side handler definitions
 	     (define-ajax lobby/session ()
 	       (setf *session* res
@@ -720,7 +721,7 @@
 	       (when (@ res current-table)
 		 (setf *table-info* (@ res current-table))
 		 (show-table "body")		  
-		 (my-hand)
+		 (look/hand)
 		 (render-board (@ res current-table))))
 
 	     (define-ajax server-info ()
@@ -761,59 +762,58 @@
 	       (log "STARTING TABLE" res)
 	       (setf *table-info* res)
 	       (show-table "body")
-	       (my-hand)
+	       (look/hand)
 	       (render-board res))
 
 	     (define-ajax lobby/join-table (table passphrase)
 	       (log "JOINING TABLE" res)
 	       (setf *table-info* res)
 	       (show-table "body")		  
-	       (my-hand)
+	       (look/hand)
 	       (render-board res))
 
-	     (define-ajax play/leave-table ()
+	     (define-ajax table/leave ()
 	       (log "LEAVING TABLE")
 	       (show-lobby "body"))
 
-	     (define-ajax play/speak (message)
+	     (define-ajax table/speak (message)
 	       ($ "#chat-input" (val "")))
 
 	     (define-ajax lobby/speak (message)
 	       ($ "#chat-input" (val "")))
 	     
-	     (define-ajax look-table ()
+	     (define-ajax look/table ()
 	       (log "SHOWING BOARD" res)			  
 	       (render-board res))
 
 	     (define-ajax table/tablecloth (tablecloth-uri))
 	     
-	     (define-ajax my-hand ()
-	       (log "SHOWING HAND" res)
+	     (define-ajax look/hand ()
 	       (render-hand res))
-	     (define-ajax hand/pick-up (card)
+	     (define-ajax table/pick-up (card)
 	       ($ (+ "#" card) (remove))
 	       (render-hand res))
-	     (define-ajax stack/draw (stack num)
+	     (define-ajax table/stack/draw (stack num)
 	       (render-hand res))
 
-	     (define-ajax play/coin-toss ())
-	     (define-ajax play/roll (num-dice die-size modifier))
-	     (define-ajax play/flip (card))
-	     (define-ajax play/ping (x y z))
+	     (define-ajax table/coin-toss ())
+	     (define-ajax table/roll (num-dice die-size modifier))
+	     (define-ajax table/card/flip (card))
+	     (define-ajax table/ping (x y z))
 
-	     (define-ajax play/new-stack-from-deck (deck-name x y z rot))
-	     (define-ajax play/new-stack-from-cards (cards))
-	     (define-ajax play/new-stack-from-json (deck x y z rot))
-	     (define-ajax play/mini (mini-uri x y z rot))
-	     (define-ajax stack/merge (stack stack-two))
-	     (define-ajax stack/add-to (stack card))
-	     (define-ajax stack/shuffle (stack))
-	     (define-ajax play/move (thing x y z rot))
-	     (define-ajax play/remove (thing))
+	     (define-ajax table/new/stack-from-deck (deck-name x y z rot))
+	     (define-ajax table/new/stack-from-cards (cards))
+	     (define-ajax table/new/stack-from-json (deck x y z rot))
+	     (define-ajax table/new/mini (mini-uri x y z rot))
+	     (define-ajax table/stack/merge (stack stack-two))
+	     (define-ajax table/stack/add-to (stack card))
+	     (define-ajax table/stack/shuffle (stack))
+	     (define-ajax table/move (thing x y z rot))
+	     (define-ajax table/remove (thing))
 
-	     (define-ajax hand/play (card face x y z rot)
+	     (define-ajax table/play (card face x y z rot)
 	       ($ (+ "#" card) (remove)))
-	     (define-ajax hand/play-to (card stack)
+	     (define-ajax table/stack/play-to (card stack)
 	       ($ (+ "#" card) (remove)))))
 
 ;;;;; HTML
