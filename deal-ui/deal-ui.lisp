@@ -182,7 +182,7 @@
 		(:div :id "zoomed-card" :class "moveable"
 		      (:h3 "Zoomed" (:button :class "hide"))
 		      (:div :class "content"))
-		(:div :id "table-toolbar" :class "moveable"
+		(:div :id "table-toolbar" :class "moveable"		      
 		      (:h3 (:span :class "game-id" (@ *table-info* id))
 			   (:span :class "game-tag" (@ *table-info* tag)))
 		      (:div :id "player-info" :class "control-row"
@@ -292,15 +292,44 @@
 	     ($draggable ".new-deck" (:revert t))
 	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
 
+	     ($append "body" 
+		      (:div :class "dialog" :id "custom-tablecloth-dialog" 
+			    (:input :class "url-input" :placeholder "Tablecloth image URL")
+			    (:input :class "name-input" :placeholder "Tablecloth image URL")
+			    (:button :class "ok" "Ok"))
+		      (:div :class "dialog" :id "custom-mini-dialog" 
+			    (:input :class "url-input" :placeholder "Mini image URL")
+			    (:button :class "ok" "Ok")))
+	     ($click "#custom-tablecloth-dialog .ok" 
+		     (let ((uri ($ "#custom-tablecloth-dialog .url-input" (val)))
+		     	   (name ($ "#custom-tablecloth-dialog .name-input" (val))))
+		       ($append "#tablecloth-tab .content"
+		     		(:div :class "tablecloth" :title uri
+		     		      :style (+ "background-image: url(" uri ");")
+		     		      name))
+		       ($ "#custom-tablecloth-dialog input" (val ""))
+		       ($ "#custom-tablecloth-dialog" (dialog "close"))
+		       ($draggable ".tablecloth:last" (:revert t)))
+		     "#custom-mini-dialog .ok" 
+		     (let ((uri ($ "#custom-mini-dialog .url-input" (val))))
+		       ($append "#minis-tab .content" (:img :class "backpack-mini" :src uri))
+		       ($ "#custom-mini-dialog .url-input" (val ""))
+		       ($ "#custom-mini-dialog" (dialog "close"))
+		       ($draggable ".backpack-mini:last" (:revert t))))
+
+	     ($ ".dialog" (dialog (create "autoOpen" false)))
+
 	     ($ "#backpack" (tabs))
 	     ($button "#custom-deck" (:plus) 
 		      ($ "#deck-editor" (show))
 		      ($ "#backpack" (tabs (create :active 0))))
 	     ($button "#custom-mini" (:plus) 
-		      (log "Custom mini!")
+		      ($ "#deck-editor, .dialog" (hide))
+		      ($ "#custom-mini-dialog" (dialog :open))
 		      ($ "#backpack" (tabs (create :active 2))))
 	     ($button "#custom-tablecloth" (:plus) 
-		      (log "Custom tablecloth!")
+		      ($ "#deck-editor, .dialog" (hide))
+		      ($ "#custom-tablecloth-dialog" (dialog :open))
 		      ($ "#backpack" (tabs (create :active 3))))
 
 	     ($click "#leave" (play/leave-table))
@@ -385,9 +414,7 @@
 			(when (@ event ctrl-key)
 			  (play/ping (@ event page-x) (@ event page-y) 0)))))
 
-	       (log "TABLE" table)
 	       (awhen (@ table tablecloth)
-		 (log "TABLECLOTH" it)
 		 ($ board-selector (css "background-image" (+ "url(" it ")"))))
 	       ($droppable board-selector ()
 			   (:card-in-hand 

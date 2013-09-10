@@ -29,6 +29,7 @@
 	       ("button.control-button:hover" :opacity 1)
 	       
 	       (.ping :z-index 100001 :width 30px :height 30px :position absolute)
+	       (".ui-dialog" :z-index 100001)
 
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
