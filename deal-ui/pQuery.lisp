@@ -77,7 +77,8 @@
        (create 
 	:drop (lambda (event ui)
 		(let (,@mod-keys
-		      (dropped (@ ui helper context)))
+		      (dropped (@ ui helper context))
+		      (ev-x (@ event page-x)) (ev-y (@ event page-y)))
 		  (cond ,@(loop for (class . action) in class/action-list
 			     collect `(($ dropped (has-class ,class)) ,@action)))
 		  ($ ,overlapping (droppable "enable"))))
@@ -95,9 +96,10 @@
 
 (defpsmacro $draggable (target (&key revert handle cancel) &body body)
   `($ ,target (draggable (create :stop (lambda (event ui) 
+					 ($ this (css "z-index" 0))
 					 (let (,@mod-keys)
 					   ,@body))
-				 :start (fn ($ this (css "z-index" 100001) ))
+				 :start (fn ($ this (css "z-index" 100001)))
 				 ,@(when revert `(:revert ,revert))
 				 ,@(when handle `(:handle ,handle))
 				 ,@(when cancel `(:cancel ,cancel))))))

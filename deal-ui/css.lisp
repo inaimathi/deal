@@ -24,10 +24,12 @@
 	       (.clear :clear both)
 
 	       (.floating-menu :font-size x-small :width 150px :position absolute)
-
+	       
 	       (button.control-button :width 22px :height 22px :float right :opacity .7)
 	       ("button.control-button:hover" :opacity 1)
 	       
+	       (.ping :z-index 100001 :width 30px :height 30px :position absolute)
+
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
 	       (".overlay .content" :padding 10px)

@@ -204,8 +204,8 @@
 				  (:ul
 				   (:li (:a :href "#decks-tab" "Decks") (:button :id "custom-deck" "Custom Deck"))
 				   (:li (:a :href "#dice-tab" "Dice"))
-				   (:li (:a :href "#minis-tab" "Minis"))
-				   (:li (:a :href "#tablecloth-tab" "Tablecloths")))
+				   (:li (:a :href "#minis-tab" "Minis") (:button :id "custom-mini" "Custom Tablecloth"))
+				   (:li (:a :href "#tablecloth-tab" "Tablecloths") (:button :id "custom-tablecloth" "Custom Tablecloth")))
 				  (:div :id "decks-tab" 
 					(:div :class "content"
 					      (map-markup (@ *server-info* decks) (:div :class "new-deck" elem)))
@@ -238,15 +238,12 @@
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
-	     
-	     ($button "#custom-deck" (:plus) ($ "#deck-editor" (show)))
 
 	     (show-deck-editor "#table")
 
 	     ($draggable ".tablecloth" (:revert t))
-	     
 	     ($draggable ".backpack-mini" (:revert t))
-	     
+
 	     ($droppable "#backpack" (:overlapping "#board, .stack")
 			 (:mini  (play/remove ($ dropped (attr :id))))
 			 (:stack (play/remove ($ dropped (attr :id))))
@@ -294,7 +291,17 @@
 			 (set-cookie (+ "#" ($ this (attr :id))) ($ this (offset))))
 	     ($draggable ".new-deck" (:revert t))
 	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
+
 	     ($ "#backpack" (tabs))
+	     ($button "#custom-deck" (:plus) 
+		      ($ "#deck-editor" (show))
+		      ($ "#backpack" (tabs (create :active 0))))
+	     ($button "#custom-mini" (:plus) 
+		      (log "Custom mini!")
+		      ($ "#backpack" (tabs (create :active 2))))
+	     ($button "#custom-tablecloth" (:plus) 
+		      (log "Custom tablecloth!")
+		      ($ "#backpack" (tabs (create :active 3))))
 
 	     ($click "#leave" (play/leave-table))
 	     
@@ -303,8 +310,11 @@
 				 (joined)
 				 (left)
 				 (said)
+				 (pinged
+				  ($append "body" (:div :class "ping" :style (+ "left:" (- (@ ev x) 15) "px; top:" (- (@ ev y) 15) "px;")))
+				  ($ ".ping" (stop t t) (effect :highlight nil 500 (fn ($ ".ping" (remove))))))
+
 				 ;;; todo
-				 (pinged)
 				 (placed-note)
 				 (attached-note)
 
@@ -315,7 +325,6 @@
 				 (moved 
 				  (with-slots (thing x y) ev
 				    (let ((elem ($ (+ "#" thing))))
-				      (log "NEW ZINDEX" (+ y ($ elem (height))))
 				      ($ elem 
 					 (offset (create :left x :top y))
 					 (css "z-index" (+ y ($ elem (height))))))))
@@ -324,8 +333,7 @@
 				  ($ (+ "#" (@ ev card id)) (remove))
 				  (case (@ ev card type)
 				    ("card" (create-card "body" (@ ev card)))
-				    ("stack" (create-stack "body" (@ ev card))))
-				  (log "Someone flipped something" ev))
+				    ("stack" (create-stack "body" (@ ev card)))))
 				 (new-deck 
 				  (create-stack "body" (@ ev stack)))
 				 (stacked-up (log "Made a stack from cards"))
@@ -370,25 +378,31 @@
 		   (chat-selector "#chat-history")
 		   (ts (@ table things)))
 	       ($ board-selector (empty))
+
+	       ($ "body"
+		  (on :click
+		      (lambda (event)
+			(when (@ event ctrl-key)
+			  (play/ping (@ event page-x) (@ event page-y) 0)))))
+
 	       (log "TABLE" table)
 	       (awhen (@ table tablecloth)
 		 (log "TABLECLOTH" it)
 		 ($ board-selector (css "background-image" (+ "url(" it ")"))))
 	       ($droppable board-selector ()
 			   (:card-in-hand 
-			    (hand/play ($ dropped (attr :id))
-				       (if shift? :down :up) ($x board-selector event) ($y board-selector event) 0 0))
+			    (hand/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
 			   
 			   (:new-custom-deck
 			    (play/new-stack-from-json
 			     (obj->string (aref (@ *session* cookie :custom-decks) ($ dropped (text))))
-			     ($x board-selector event) ($y board-selector event) 0 0))
+			     ev-x ev-y 0 0))
 			   
 			   (:backpack-mini
-			    (play/mini ($ dropped (attr :src)) ($x board-selector event) ($y board-selector event) 0 0))
+			    (play/mini ($ dropped (attr :src)) ev-x ev-y 0 0))
 
 			   (:new-deck
-			    (play/new-stack-from-deck ($ dropped (text)) ($x board-selector event) ($y board-selector event) 0 0))
+			    (play/new-stack-from-deck ($ dropped (text)) ev-x ev-y 0 0))
 
 			   (:tablecloth (table/tablecloth ($ dropped (attr :title))))
 
@@ -758,6 +772,7 @@
 	     (define-ajax play/coin-toss ())
 	     (define-ajax play/roll (num-dice die-size modifier))
 	     (define-ajax play/flip (card))
+	     (define-ajax play/ping (x y z))
 
 	     (define-ajax play/new-stack-from-deck (deck-name x y z rot))
 	     (define-ajax play/new-stack-from-cards (cards))

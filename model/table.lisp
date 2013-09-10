@@ -150,12 +150,12 @@ so it made sense to formalize this."
   (obj->hash mini (:type :mini) id x y z rot belongs-to mini-uri))
 
 (defmethod redact ((note note))
-  (obj->hash note (:type :note) id x y z rot belongs-to text))
+  (obj->hash note (:type :note) id x y z rot belongs-to attached-to text))
 
 ;;;;;;;;;; Serialize methods
 ;;; More or less like redact, but always shows all information (this one's meant for game saving)
 (defmethod serialize ((note note))
-  (obj->hash note (:type :note) id x y z rot belongs-to text))
+  (obj->hash note (:type :note) id x y z rot belongs-to attached-to text))
 
 (defmethod serialize ((mini mini))
   (obj->hash mini (:type :mini) id x y z rot belongs-to mini-uri))
