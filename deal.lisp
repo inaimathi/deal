@@ -3,6 +3,9 @@
 
 ;;;;;;;;;; Handlers
 ;;;;; Getters
+(define-handler (/) ()
+  :redirect-to-/static/index.html)
+
 (define-handler (server-info) ()
   (hash :handlers *handlers*
 	:public-tables (loop for v being the hash-values of (public-tables *server*)
