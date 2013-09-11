@@ -283,7 +283,7 @@
 	     
 	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
-				  (table/pick-up ($ dropped (attr :id))))))
+				  (table/card/pick-up ($ dropped (attr :id))))))
 	     
 	     
 	     
@@ -701,29 +701,8 @@
 			   ($ "#player-info input.player-tag" (focus)))))
 	     
 
-	     ;;; Client-side handler definitions
-	     (define-ajax lobby/session ()
-	       (setf *session* res
-		     (@ *session* cookie) (get-cookies))
-	       ($ "#player-info .player-id" (text (@ *session* id)))
-
-	       ;; get tag from cookie
-	       (aif (@ *session* cookie tag)
-		    (progn (log "COOKIED TAG: " it)
-			   (rename it))
-		    ($ "#player-info .player-tag" (text (@ *session* tag))))
-
-	       ;; get chat history from cookie
-	       (aif (@ *session* cookie :chat-messages)
-		    (setf (@ *chat-history* messages) (string->obj it)
-			  (@ *chat-history* current-message) (length (@ *chat-history* messages))))
-
-	       (when (@ res current-table)
-		 (setf *table-info* (@ res current-table))
-		 (show-table "body")		  
-		 (look/hand)
-		 (render-board (@ res current-table))))
-
+	     ;;;;;;;;;; Client-side handler definitions
+	     ;;;;; General getters
 	     (define-ajax server-info ()
 	       (with-slots (handlers decks public-tables) res
 		 (setf *server-info* res
@@ -747,19 +726,46 @@
 		 ($map public-tables
 		       (with-slots (player-count max-players) elem
 			 (when (< player-count max-players) (render-table-entry elem)))))
-	       (lobby/session))
+	       (get-session))
+
+	     (define-ajax get-session ()
+	       (setf *session* res
+		     (@ *session* cookie) (get-cookies))
+	       ($ "#player-info .player-id" (text (@ *session* id)))
+
+	       ;; get tag from cookie
+	       (aif (@ *session* cookie tag)
+		    (progn (log "COOKIED TAG: " it)
+			   (rename it))
+		    ($ "#player-info .player-tag" (text (@ *session* tag))))
+
+	       ;; get chat history from cookie
+	       (aif (@ *session* cookie :chat-messages)
+		    (setf (@ *chat-history* messages) (string->obj it)
+			  (@ *chat-history* current-message) (length (@ *chat-history* messages))))
+
+	       (when (@ res current-table)
+		 (setf *table-info* (@ res current-table))
+		 (show-table "body")		  
+		 (look/hand)
+		 (render-board (@ res current-table))))
+
+	     (define-ajax look/table () (render-board res))
+	     (define-ajax look/hand () (render-hand res))
 	     
 	     (define-ajax rename (new-tag)
-	       (log "RENAMING!")
 	       (setf (@ *session* tag) new-tag)
 	       (unless (= new-tag (@ *session* cookie tag))
 		 (setf (@ *session* cookie tag) new-tag)
 		 (set-cookie :tag new-tag))
 	       ($ "#player-info .player-tag" (text new-tag))
 	       ($replace "input.player-tag" (:span :class "player-tag" new-tag)))
-	     
+
+	     ;;;;; Lobby actions
+	     (define-ajax lobby/speak (message)
+	       ($ "#chat-input" (val "")))
+
 	     (define-ajax lobby/new-table (tag passphrase)
-	       (log "STARTING TABLE" res)
 	       (setf *table-info* res)
 	       (show-table "body")
 	       (look/hand)
@@ -772,49 +778,50 @@
 	       (look/hand)
 	       (render-board res))
 
+	     ;;;;; Table actions
+	     ;;; General table actions (load/save involve uploading, so must be inlined)
 	     (define-ajax table/leave ()
 	       (log "LEAVING TABLE")
 	       (show-lobby "body"))
-
-	     (define-ajax table/speak (message)
-	       ($ "#chat-input" (val "")))
-
-	     (define-ajax lobby/speak (message)
-	       ($ "#chat-input" (val "")))
 	     
-	     (define-ajax look/table ()
-	       (log "SHOWING BOARD" res)			  
-	       (render-board res))
-
 	     (define-ajax table/tablecloth (tablecloth-uri))
-	     
-	     (define-ajax look/hand ()
-	       (render-hand res))
-	     (define-ajax table/pick-up (card)
-	       ($ (+ "#" card) (remove))
-	       (render-hand res))
-	     (define-ajax table/stack/draw (stack num)
-	       (render-hand res))
-
-	     (define-ajax table/coin-toss ())
+	     (define-ajax table/speak (message) ($ "#chat-input" (val "")))
 	     (define-ajax table/roll (num-dice die-size modifier))
-	     (define-ajax table/card/flip (card))
+	     (define-ajax table/coin-toss ())
 	     (define-ajax table/ping (x y z))
 
+	     ;;; Table element placement actions
+	     (define-ajax table/new/mini (mini-uri x y z rot))
+	     ;; TODO table/new/note
+	     ;; TODO table/new/note-on
 	     (define-ajax table/new/stack-from-deck (deck-name x y z rot))
 	     (define-ajax table/new/stack-from-cards (cards))
 	     (define-ajax table/new/stack-from-json (deck x y z rot))
-	     (define-ajax table/new/mini (mini-uri x y z rot))
-	     (define-ajax table/stack/merge (stack stack-two))
-	     (define-ajax table/stack/add-to (stack card))
-	     (define-ajax table/stack/shuffle (stack))
-	     (define-ajax table/move (thing x y z rot))
+	     (define-ajax table/play (card face x y z rot) ($ (+ "#" card) (remove)))
+	     
+	     ;;; General element actions
 	     (define-ajax table/remove (thing))
+	     (define-ajax table/move (thing x y z rot))
+	     ;; TODO table/take
 
-	     (define-ajax table/play (card face x y z rot)
-	       ($ (+ "#" card) (remove)))
-	     (define-ajax table/stack/play-to (card stack)
-	       ($ (+ "#" card) (remove)))))
+	     ;;; Stack-related actions
+	     ;; TODO table/stack/play
+	     (define-ajax table/stack/add-to (stack card))
+	     (define-ajax table/stack/merge (stack stack-two))
+	     (define-ajax table/stack/shuffle (stack))
+	     (define-ajax table/stack/play-to (card stack) ($ (+ "#" card) (remove)))
+	     (define-ajax table/stack/draw (stack num) (render-hand res))
+	     ;; TODO table/stack/peek
+	     ;; TODO table/stack/show
+
+	     ;;; Note-related actions
+	     ;; TODO table/note/attach
+
+	     ;;; Card-related actions
+	     (define-ajax table/card/flip (card))
+	     (define-ajax table/card/pick-up (card)
+	       ($ (+ "#" card) (remove))
+	       (render-hand res))))
 
 ;;;;; HTML
 (to-file "static/index.html"

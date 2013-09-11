@@ -10,7 +10,7 @@
 (define-handler (load-deck) ((deck :json-file))
   deck)
 
-;;;;;;;;;; Basics
+;;;;;;;;;; Player-info related
 (define-handler (server-info) ()
   (hash :handlers *handlers*
 	:public-tables (loop for tbl being the hash-values of (public-tables *server*)
@@ -18,6 +18,15 @@
 	:decks (mapcar #'deck-name (decks *server*))
 	:minis *mini-uris*
 	:tablecloths *tablecloth-uris*))
+
+(define-handler (get-session) ()
+  (if (session-value :player)
+      (with-slots (id tag current-table hand) (session-value :player)
+	(hash :id id :tag tag :current-table (aif current-table (redact it)) :hand hand))
+      (let ((player (make-instance 'player :tag "Anonymous Coward")))
+	(setf (session-value :player) player)
+	(with-slots (id tag) player
+	  (hash :id id :tag tag :current-table nil :hand nil)))))
 
 (define-handler (look/table) ((table :table)) 
   (redact table))
@@ -34,16 +43,7 @@
       (publish! (aif (current-table player) it *server*) :changed-tag `((old-tag . ,old))))
     :ok))
 
-;;;;; Lobby-related
-(define-handler (lobby/session) ()
-  (if (session-value :player)
-      (with-slots (id tag current-table hand) (session-value :player)
-	(hash :id id :tag tag :current-table (aif current-table (redact it)) :hand hand))
-      (let ((player (make-instance 'player :tag "Anonymous Coward")))
-	(setf (session-value :player) player)
-	(with-slots (id tag) player
-	  (hash :id id :tag tag :current-table nil :hand nil)))))
-
+;;;;;;;;;; Lobby actions
 (define-handler (lobby/speak) ((message (:string :min 2 :max 255)))
   (assert (session-value :player))
   (publish! *server* :said `((message . ,(escape-string message))))
@@ -74,7 +74,8 @@
 		  `((id . ,id))))
       (redact table))))
 
-;;;; Game related (once you're already at a table)
+;;;;;;;;;; Table related
+;;;;; Direct table actions
 (define-player-handler (table/save) ((table :table))
   (assert (= (player-count table) 1) nil "You can't save a table once the game has started.")
   (setf (header-out :content-type) "application/json"
@@ -93,11 +94,6 @@
   (publish! table :loaded `((things . ,(length (getj :things file)))))
   :ok)
 
-(define-player-handler (table/tablecloth) ((table :table) (tablecloth-uri :string :max 255))
-  (setf (tablecloth table) tablecloth-uri)
-  (publish! table :tablecloth `((tablecloth . ,tablecloth-uri)))
-  :ok)
-
 (define-player-handler (table/leave) ((table :table))
   (let ((player (session-value :player)))
     (delete! table player)
@@ -107,6 +103,11 @@
       (publish! *server* :left 
 		`((table ((id . ,(id table)) (tag . ,(tag table)) (seated . ,(player-count table)) (of . ,(max-players table)))))))
     :ok))
+
+(define-player-handler (table/tablecloth) ((table :table) (tablecloth-uri :string :max 255))
+  (setf (tablecloth table) tablecloth-uri)
+  (publish! table :tablecloth `((tablecloth . ,tablecloth-uri)))
+  :ok)
 
 (define-player-handler (table/speak) ((table :table) (message (:string :min 2 :max 255)))
   (publish! table :said `((message . ,(escape-string message))))
@@ -127,15 +128,16 @@
   (publish! table :flipped-coin `((result . ,(pick (list :heads :tails)))))
   :ok)
 
+(define-player-handler (table/ping) ((table :table) (x :int) (y :int) (z :int))
+  (publish! table :pinged `((x . ,x) (y . ,y) (z . ,z))))
+
+;;;;; Table element creation handlers
 (define-player-handler (table/new/mini) ((table :table) (mini-uri :string :max 255) (x :int) (y :int) (z :int) (rot :int))
   (let ((mini (make-instance 'mini :belongs-to (id (session-value :player)))))
     (set-props mini mini-uri x y z rot)
     (insert! table mini)
     (publish! table :placed-mini `((mini . ,(redact mini))))
     :ok))
-
-(define-player-handler (table/ping) ((table :table) (x :int) (y :int) (z :int))
-  (publish! table :pinged `((x . ,x) (y . ,y) (z . ,z))))
 
 (define-player-handler (table/new/note) ((table :table) (text :string :max 255) (x :int) (y :int) (z :int) (rot :int))
   (let ((note (make-instance 'note :belongs-to (id (session-value :player)))))
@@ -150,32 +152,6 @@
     (insert! table note)
     (publish! table :placed-note `((note . ,(redact note))))
     :ok))
-
-(define-player-handler (table/note/attach) ((table :table) (note :note) (thing :placeable))
-  (setf (attached-to note) (id thing))
-  (publish! table :attached-note `((note . ,(id note)) (thing . ,(id thing))))
-  :ok)
-
-(define-player-handler (table/remove) ((table :table) (thing :placeable))
-  (delete! table thing)
-  (publish! table :removed `((thing . ,(id thing))))
-  :ok)
-
-(define-player-handler (table/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
-  (set-props thing x y z rot)
-  (when (typep thing 'note) (setf (attached-to thing) nil))
-  (publish! table :moved  `((thing . ,(id thing)) (x . ,x) (y . ,y) (z . ,z) (rot . ,rot)))
-  :ok)
-
-(define-player-handler (table/take) ((table :table) (thing :placeable))
-  (setf (belongs-to thing) (id (session-value :player)))
-  (publish! table :took-control `((thing . ,(id thing))))
-  :ok)
-
-(define-player-handler (table/card/flip) ((table :table) (card (:card :from-table)))
-  (setf (face card) (if (eq (face card) :up) :down :up))
-  (publish! table :flipped `((card . ,(redact card))))
-  :ok)
 
 (define-player-handler (table/new/stack-from-cards) ((table :table) (cards (:list card)))
   (let* ((c (first cards))
@@ -200,7 +176,30 @@
     (publish! table :new-deck `((name . ,(getj :deck-name deck)) (stack . ,(redact stack))))
     :ok))
 
-;;;;; Stacks
+(define-player-handler (table/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
+  (set-props card face x y z rot)
+  (move! card (session-value :player) table)
+  (publish! table :played-from-hand `((card . ,(redact card))))
+  :ok)
+
+;;;;; General element actions
+(define-player-handler (table/remove) ((table :table) (thing :placeable))
+  (delete! table thing)
+  (publish! table :removed `((thing . ,(id thing))))
+  :ok)
+
+(define-player-handler (table/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
+  (set-props thing x y z rot)
+  (when (typep thing 'note) (setf (attached-to thing) nil))
+  (publish! table :moved  `((thing . ,(id thing)) (x . ,x) (y . ,y) (z . ,z) (rot . ,rot)))
+  :ok)
+
+(define-player-handler (table/take) ((table :table) (thing :placeable))
+  (setf (belongs-to thing) (id (session-value :player)))
+  (publish! table :took-control `((thing . ,(id thing))))
+  :ok)
+
+;;;;; Stack-specific actions
 (define-player-handler (table/stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
   (let ((card (pop! stack)))
     (set-props card x y z rot)
@@ -224,13 +223,6 @@
   (publish! table :shuffled `((stack . ,(id stack))))
   :ok)
 
-;;;;; Hand
-(define-player-handler (table/play) ((table :table) (card (:card :from-hand)) (face :facing) (x :int) (y :int) (z :int) (rot :int))
-  (set-props card face x y z rot)
-  (move! card (session-value :player) table)
-  (publish! table :played-from-hand `((card . ,(redact card))))
-  :ok)
-
 (define-player-handler (table/stack/play-to) ((table :table) (card (:card :from-hand)) (stack :stack))
   (setf (face card) :down)
   (move! card (session-value :player) stack)
@@ -247,11 +239,6 @@
   (publish! table :drew-from `((stack . ,(id stack)) (count . ,num)))
   (hash-values (hand (session-value :player))))
 
-(define-player-handler (table/pick-up) ((table :table) (card (:card :from-table)))
-  (move! card table (session-value :player))
-  (publish! table :picked-up `((card . ,(id card))))
-  (hash-values (hand (session-value :player))))
- 
 (define-player-handler (table/stack/peek) ((table :table) (stack :stack) (min :int) (max :int))
   (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))
   (take (- max min) (drop (+ min 1) (cards stack))))
@@ -263,3 +250,20 @@
 ;; (define-handler (table/stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))
 ;;   ;; TODO
 ;;   (list :reordering-cards min :to max :from stack))
+
+;;;;; Note-specific actions
+(define-player-handler (table/note/attach) ((table :table) (note :note) (thing :placeable))
+  (setf (attached-to note) (id thing))
+  (publish! table :attached-note `((note . ,(id note)) (thing . ,(id thing))))
+  :ok)
+
+;;;;; Card-specific actions
+(define-player-handler (table/card/flip) ((table :table) (card (:card :from-table)))
+  (setf (face card) (if (eq (face card) :up) :down :up))
+  (publish! table :flipped `((card . ,(redact card))))
+  :ok)
+
+(define-player-handler (table/card/pick-up) ((table :table) (card (:card :from-table)))
+  (move! card table (session-value :player))
+  (publish! table :picked-up `((card . ,(id card))))
+  (hash-values (hand (session-value :player))))
