@@ -2,7 +2,7 @@
 
 (proclaim '(inline sym->keyword))
 
-;;;;; Simple anaphors/custom flow control constructs
+;;;;; Simple anaphora
 (defmacro aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
@@ -10,16 +10,7 @@
 (defmacro awhen (test-form &body then-form)
   `(aif ,test-form (progn ,@then-form)))
 
-(defmacro if-up (thing up down)
-  `(if (eq :up (face ,thing))
-       ,up
-       ,down))
-
 ;;;;; Basic macros
-(defmacro with-gensyms ((&rest names) &body body)
-  `(let ,(loop for n in names collect `(,n (gensym)))
-     ,@body))
-
 (defmacro set-props (target &rest props)
   (assert (every #'symbolp props))
   (with-gensyms (tgt)
@@ -83,9 +74,6 @@ This works where it's used inside of Deal, but probably isn't what you want exte
 
 (defmethod take ((count integer) (seq string))
   (if (> (length seq) count) (subseq seq 0 count) seq))
-
-(defun trivial-range (min max)
-  (loop for i from min to max collect i))
 
 (defmethod drop ((count integer) (seq list))
   (loop for (elem . rest) on seq repeat (- count 1)

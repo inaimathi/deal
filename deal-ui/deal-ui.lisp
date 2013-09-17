@@ -19,6 +19,13 @@
 				 (:input :class "game-tag")
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
+
+	     ($on "#open-tables" 
+		  (:click ".join" 
+			  (let ((table-id ($ this (siblings ".id") (text)))
+				(passphrase ""))
+			    (lobby/join-table table-id passphrase))))
+
 	     (when *table-stream* 
 	       (chain *table-stream* (close))
 	       (setf *table-stream* nil))
@@ -31,7 +38,7 @@
 		       <ret> ($ "#new-table-setup .ok" (click))
 		       <esc> ($ "#new-table-setup .cancel" (click)))
 	     (server-info))
-	   
+
 	   (defun render-table-entry (tbl-entry)
 	     (with-slots (id tag player-count max-players) tbl-entry
 	       ($prepend "#open-tables"
@@ -39,8 +46,7 @@
 			      (:span :class "tag" tag)
 			      (:span :class "id" id) 
 			      (:span :class "players" (:span :class "count" player-count) "/" max-players)
-			      (:button :class "join" "Join")))
-	       ($click (+ "#game-" id " .join") (lobby/join-table id ""))))))
+			      (:button :class "join" "Join")))))))
 
 (to-file "static/js/chat.js"
 	 (ps (define-component (chat)
@@ -327,7 +333,7 @@
 		      ($ "#deck-editor, .dialog" (hide))
 		      ($ "#custom-mini-dialog" (dialog :open))
 		      ($ "#backpack" (tabs (create :active 2))))
-	     ($button "#custom-tablecloth" (:plus) 
+	     ($button "#custom-tablecloth" (:plus)
 		      ($ "#deck-editor, .dialog" (hide))
 		      ($ "#custom-tablecloth-dialog" (dialog :open))
 		      ($ "#backpack" (tabs (create :active 3))))
@@ -458,7 +464,8 @@
 		     (:button :class "shuffle")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
-	     ($draggable $self () (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
+	     ($draggable $self (:start ($ this (css :z-index ""))) 
+			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
 	     ($droppable $self (:overlapping "#board")
 			 (:card-in-hand
 			  (table/stack/play-to ($ dropped (attr :id)) (self id)))
@@ -472,7 +479,8 @@
 	   (define-thing mini
 	       (:img :id (self id) :class "mini" :style (self position) :src (self mini-uri))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
-	     ($draggable $self () (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
+	     ($draggable $self (:start ($ this (css :z-index "")))
+			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
 
 	   (define-thing card 
 	       (:div :id (self id) :class (+ "card " (self card-type)) :style (self position)
@@ -483,7 +491,7 @@
 	     ($button ($child ".zoom") (:zoomin)
 		      ($ "#zoomed-card" (toggle))
 		      ($ "#zoomed-card .content" (empty) (append (card-html self))))	     
-	     ($draggable $self () 
+	     ($draggable $self (:start ($ this (css :z-index ""))) 
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
 			 (when shift? (table/card/flip (self id)))))
 

@@ -2,10 +2,11 @@
 
 (defpackage #:deal 
   (:use #:cl #:optima #:json #:hunchentoot)
-  (:import-from #:cl-ppcre #:regex-replace-all)
-  (:import-from #:cl-fad #:list-directory)
-  (:import-from #:bordeaux-threads #:make-lock #:with-lock-held)
-  (:import-from #:drakma #:http-request))
+  (:import-from :cl-ppcre #:regex-replace-all)
+  (:import-from :cl-fad #:list-directory)
+  (:import-from :bordeaux-threads #:make-lock #:with-lock-held)
+  (:import-from :drakma #:http-request)
+  (:import-from :alexandria #:with-gensyms))
 
 (in-package #:deal)
 ;;;;;;;;;; Config variables

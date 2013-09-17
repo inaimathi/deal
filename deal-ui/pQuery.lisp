@@ -94,12 +94,11 @@
   `(- (+ (@ ,ev client-y) ($ window (scroll-top)))
       (parse-int ($ ,elem (css :margin)))))
 
-(defpsmacro $draggable (target (&key revert handle cancel) &body body)
-  `($ ,target (draggable (create :stop (lambda (event ui) 
-					 ($ this (css "z-index" 0))
-					 (let (,@mod-keys)
-					   ,@body))
-				 :start (fn ($ this (css "z-index" 100001)))
+(defpsmacro $draggable (target (&key revert handle cancel start) &body body)
+  `($ ,target (draggable (create :start (fn ,start)
+				 :stop (lambda (event ui) 
+					 (let (,@mod-keys) ,@body))
+				 
 				 ,@(when revert `(:revert ,revert))
 				 ,@(when handle `(:handle ,handle))
 				 ,@(when cancel `(:cancel ,cancel))))))
@@ -125,6 +124,9 @@
       (button (create :icons (create :primary ,(format nil "ui-icon-~(~a~)" icon-name)) :text ,text?))
       (click (lambda (event) ,@on-click))
       ,@(when class `((add-class ,class)))))
+
+(defpsmacro $dialog (selector (&key auto-open?))
+  `($ ,selector (dialog (create "autoOpen" ,auto-open?))))
 
 (defpsmacro $append (target &rest html)
   `($ ,target (append (who-ps-html ,@html))))
@@ -252,6 +254,7 @@
 	     (@ ,stream onerror) (lambda (e) (log "Stream ERRORED!" e))
 	     (@ ,stream onmessage)
 	     (lambda (e)
+	       (log "MESSAGE" e)
 	       (let ((,ev (string->obj (@ e data))))
 		 ((@ ,handlers (@ ,ev type)) ,ev))))
        ,stream)))
