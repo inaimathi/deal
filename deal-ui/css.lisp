@@ -28,7 +28,7 @@
 	       (button.control-button :width 22px :height 22px :float right :opacity .7)
 	       ("button.control-button:hover" :opacity 1)
 	       
-	       (.ping :z-index 100001 :width 30px :height 30px :position absolute)
+	       (.ping :z-index 100001 :width 30px :height 30px :position absolute :border "1px solid black")
 	       (".ui-dialog" :z-index 100001)
 
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
@@ -48,7 +48,7 @@
 
 	       (.tablecloth ,@(css-box) :width 50px :height 50px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left :cursor move)
 	       
-	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move)
+	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move :background-size "100% 100%")
 	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :padding 0px)
 	       (".card .card-type" :font-size xx-small :white-space nowrap)
 	       (".card .content ul" :list-style-type none :margin 0px :padding 0px)
@@ -61,9 +61,9 @@
 	       ("#player-info .player-tag" :font-weight bold :cursor pointer :min-width 20px :border-bottom "1px solid #eee" :display inline-block)
 	       ("#lobby #player-info" :border "1px solid #ddd" :padding 8px :border-radius 5px)
 	       
-	       ("#board" :margin 20px :width 1200px :height 800px :border "1px solid #ccc" :background-repeat no-repeat)
+	       ("#board" :margin 20px :width 1800px :height 1200px :border "1px solid #ccc" :background-repeat no-repeat)
 
-	       ("#zoomed-card" :width 250px :height 360px :top 10px :left 10px :display none)
+	       ("#zoomed-card" :width 250px :height 360px :top 10px :left 10px :display none :background-size "100% 100%")
 	       ("#zoomed-card button" :float right)
 	       ("#zoomed-card .content" :padding 5px)
 	       ("#zoomed-card .content ul" :list-style-type none :margin 0px :padding 0px)
@@ -138,6 +138,8 @@
 	       (".ui-tabs .ui-tabs-panel" :padding 5px)
 	       
 	       (".new-deck" ,@(css-box :filled) ,@css-card-size :font-size small :float left :margin-right 2px :cursor move)
+
+	       (.ui-rotatable-handle :border "1px solid #fff" :background orange :border-radius 5px :width 10px :height 10px :position absolute :top -5px :margin "0 0 0 -5px" :cursor pointer :z-index 10001)
 
 	       (.ui-draggable-dragging :z-index 100001)
 

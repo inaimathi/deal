@@ -157,7 +157,7 @@
 		   (setf current-message (length messages))
 		   (unless (= msg (aref messages (- current-message 1)))
 		     (chain messages (push msg))
-		     (set-cookie :chat-messages messages)
+		     (setf (@ window local-storage :chat-messages) (obj->string messages))
 		     (if (> (length messages) 50)
 			 (chain messages (splice 0 1))
 			 (incf current-message))))))
@@ -257,9 +257,12 @@
 	     
 	     ($ "#load-form" (change (fn ($upload "#load-form" "/table/load"))))
 
-	     ($map (@ *session* cookie)
-		   (when (chain i (match "^#"))
-		     ($ i (offset (string->obj elem)))))
+	     ;; load moveable element locations from local storage
+	     (aif (@ window local-storage :element-locations)
+		  (let ((locs (string->obj it)))
+		    (setf (@ *session* :element-locations) locs)
+		    ($map locs ($ i (offset elem))))
+		  (setf (@ *session* :element-locations) (create)))
 
 	     ($button "#zoomed-card button.hide" (:zoomout) ($ "#zoomed-card" (hide)))
 
@@ -267,20 +270,21 @@
 	     ($button ".die-roll-icon .increment" (:plus)
 		      (let ((trg ($ this (siblings ".num-dice"))))
 			($ trg (text (min 4096 (+ 1 ($int trg)))))
-			(set-dice-cookie)))
+			(store-dice)))
 	     ($button ".die-roll-icon .decrement" (:minus)
 		      (let ((trg ($ this (siblings ".num-dice"))))
 			($ trg (text (max 1 (- ($int trg) 1))))
-			(set-dice-cookie)))
+			(store-dice)))
 
-	     (aif (@ *session* cookie :dice)
+	     ;; get dice from local storage
+	     (aif (@ window local-storage :dice)
 		  (loop for elem in ($ "#dice-tab .num-dice") for num-dice in (string->obj it)
 		     do ($ elem (text num-dice))))
 
-	     (defun set-dice-cookie ()
-	       (set-cookie :dice
-			   (loop for elem in ($ "#dice-tab .num-dice")
-			      collect ($ elem (text)))))
+	     (defun store-dice ()
+	       (setf (@ window local-storage :dice)
+		     (obj->string (loop for elem in ($ "#dice-tab .num-dice")
+				     collect ($ elem (text))))))
 
 	     ($click "#save-board"
 		     (with-slots (id tag) *table-info*
@@ -289,19 +293,18 @@
 	     
 	     ($droppable "#hand" (:overlapping "#board, .stack")
 			 (:card (unless ($ dropped (has-class :card-in-hand))
-				  (table/card/pick-up ($ dropped (attr :id))))))
-	     
-	     
+				  (table/card/pick-up ($ dropped (attr :id))))))	     
 	     
 	     ($draggable ".moveable" (:handle "h3")
-			 (set-cookie (+ "#" ($ this (attr :id))) ($ this (offset))))
+			 (setf (@ *session* :element-locations (+ "#" ($ this (attr :id)))) ($ this (offset))
+			       (@ window local-storage :element-locations) (obj->string (@ *session* :element-locations))))
 	     ($draggable ".new-deck" (:revert t))
 	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
 
 	     ($append "body" 
 		      (:div :class "dialog" :id "custom-tablecloth-dialog" 
 			    (:input :class "url-input" :placeholder "Tablecloth image URL")
-			    (:input :class "name-input" :placeholder "Tablecloth image URL")
+			    (:input :class "name-input" :placeholder "Tablecloth Name")
 			    (:button :class "ok" "Ok"))
 		      (:div :class "dialog" :id "custom-mini-dialog" 
 			    (:input :class "url-input" :placeholder "Mini image URL")
@@ -358,10 +361,12 @@
 				  ($ "#board" (css "background-image" (+ "url(" (@ ev tablecloth) ")"))))
 				 (changed-tag)
 				 (moved 
-				  (with-slots (thing x y) ev
+				  (with-slots (thing x y rot) ev
 				    (let ((elem ($ (+ "#" thing))))
 				      ($ elem 
 					 (offset (create :left x :top y))
+					 (css "transform" (+ "rotate(" rot "deg)"))
+					 (css "-webkit-transform" (+ "rotate(" rot "deg)"))
 					 (css "z-index" (+ y ($ elem (height))))))))
 				 (took-control (log "Someone took something"))
 				 (flipped 
@@ -428,7 +433,7 @@
 			   
 			   (:new-custom-deck
 			    (table/new/stack-from-json
-			     (obj->string (aref (@ *session* cookie :custom-decks) ($ dropped (text))))
+			     (obj->string (aref (@ *session* :custom-decks) ($ dropped (text))))
 			     ev-x ev-y 0 0))
 			   
 			   (:backpack-mini
@@ -465,7 +470,10 @@
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
-			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0))
+			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
+	     ($rotatable $self
+			 (let ((off ($ $self (offset))))
+			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self))))
 	     ($droppable $self (:overlapping "#board")
 			 (:card-in-hand
 			  (table/stack/play-to ($ dropped (attr :id)) (self id)))
@@ -473,14 +481,18 @@
 			  (table/stack/add-to (self id) ($ dropped (attr :id))))
 			 (:stack
 			  (table/stack/merge (self id) ($ dropped (attr :id)))))
-	     ($button ($child ".shuffle") (:shuffle) (table/stack/shuffle (self id)))
+	     ($button ($child ".shuffle") (:shuffle) (table/stack/shuffle (self id)))	     
 	     ($click ($child ".draw") (table/stack/draw (self id) 1)))
 
 	   (define-thing mini
-	       (:img :id (self id) :class "mini" :style (self position) :src (self mini-uri))
+	       (:div :id (self id) :class "mini" :style (self position)
+		     (:img :src (self mini-uri)))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index "")))
-			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0)))
+			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
+	     ($rotatable $self
+			 (let ((off ($ $self (offset))))
+			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self)))))
 
 	   (define-thing card 
 	       (:div :id (self id) :class (+ "card " (self card-type)) :style (self position)
@@ -490,10 +502,13 @@
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($button ($child ".zoom") (:zoomin)
 		      ($ "#zoomed-card" (toggle))
-		      ($ "#zoomed-card .content" (empty) (append (card-html self))))	     
+		      ($ "#zoomed-card .content" (empty) (append (card-html self))))
+	     ($rotatable $self
+			 (let ((off ($ $self (offset))))
+			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
-			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 0)
-			 (when shift? (table/card/flip (self id)))))
+	     		 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self))
+	     		 (when shift? (table/card/flip (self id)))))
 
 	   (define-thing card-in-hand
 	       (:div :id (self id) :class "card card-in-hand"
@@ -529,8 +544,9 @@
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
 	     
-	     (defun cookie-decks ()
-	       (set-cookie :custom-decks (@ *session* cookie :custom-decks)))
+	     (defun store-decks ()
+	       (setf (@ window local-storage :custom-decks) 
+		     (obj->string (@ *session* :custom-decks))))
 
 	     (defun load-deck-for-editing (deck)
 	       (with-slots (deck-name card-type cards) deck
@@ -556,8 +572,8 @@
 		       (:button :class "edit")
 		       (:button :class "download"))
 	       ($button ($child ".delete") (:cancel)
-			(delete (aref (@ *session* cookie :custom-decks) (self deck-name)))
-			;; (cookie-decks)
+			(delete (aref (@ *session* :custom-decks) (self deck-name)))
+			(store-decks)
 			($ $self (remove)))
 	       ($button ($child ".download") (:arrowthick-1-s)
 			($save-as (name->filename (self deck-name)) self))
@@ -566,12 +582,12 @@
 			($ "#deck-editor" (show)))
 	       ($draggable $self (:revert t)))
 	     
-	     ;; get custom decks from cookie
-	     (aif (@ *session* cookie :custom-decks)
+	     ;; get custom decks from local storage
+	     (aif (@ window local-storage :custom-decks)
 		  (let ((decks (string->obj it)))
-		    (setf (@ *session* cookie :custom-decks) decks)
+		    (setf (@ *session* :custom-decks) decks)
 		    ($map decks (create-custom-deck "#decks-tab .content" elem)))
-		  (setf (@ *session* cookie :custom-decks) (create)))
+		  (setf (@ *session* :custom-decks) (create)))
 
 	     ($on "#deck-editor"
 		  (:click "button.remove" ($ this (parent) (remove)))
@@ -598,8 +614,8 @@
 					  'cards (loop for card-elem in ($ "#deck-editor .cards .content")
 						    collect (let ((txt ($ card-elem (text))))
 							      (try (string->obj txt) (:catch (error) txt)))))))
-		       (setf (aref (@ *session* cookie :custom-decks) deck-name) deck)
-;;		       (cookie-decks)
+		       (setf (aref (@ *session* :custom-decks) deck-name) deck)
+		       (store-decks)
 		       (when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
 			 ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove)))
 		       (create-custom-deck "#decks-tab .content" deck)
@@ -620,25 +636,19 @@
 	   (defun capitalize (string)
 	     (+ (chain string (char-at 0) (to-upper-case))
 		(chain string (slice 1))))
-	   
-	   (defun set-cookie (name value &optional (expires 120))
-	     (setf (@ document cookie) (encode-cookie name value expires)))
-	   
-	   (defun get-cookies ()
-	     (decode-cookies (@ document cookie)))
 
-	   (defun encode-cookie (name value &optional (expires 120))
-	     (let ((d (new (-date))))
-	       (chain d (set-date (+ (chain d (get-date)) expires)))
-	       (+ "" name "=" (escape (if (stringp value) value (obj->string value)))
-		  "; expires=" (chain d (to-u-t-c-string)))))
-
-	   (defun decode-cookies (cookie)
-	     (let ((props (chain cookie (split "; ")))
-		   (res (create)))
-	       (loop for p in props for sp = (chain p (split "="))
-		  do (setf (aref res (@ sp 0)) (unescape (@ sp 1))))
-	       res))
+	   (defun get-degrees (elem)
+	     (let ((matrix (or ($ elem (css "-webkit-transform")) 
+			       ($ elem (css "-moz-transform"))
+			       ($ elem (css "-o-transform"))
+			       ($ elem (css "transform")))))
+	       (if (eql matrix :none)
+		   0
+		   (let* ((values (chain matrix (split "(") 1 (split ")") 0 (split ",")))
+			  (a (aref values 0))
+			  (b (aref values 1))
+			  (angle (round (* (chain -math (atan2 b a)) (/ 180 pi)))))
+		     (if (< angle 0) (+ 360 angle) angle)))))
 	   
 	   (defun change-stack-count (stack-id by)
 	     (let* ((id (+ "#" stack-id))
@@ -737,18 +747,16 @@
 	       (get-session))
 
 	     (define-ajax get-session ()
-	       (setf *session* res
-		     (@ *session* cookie) (get-cookies))
+	       (setf *session* res)
 	       ($ "#player-info .player-id" (text (@ *session* id)))
 
-	       ;; get tag from cookie
-	       (aif (@ *session* cookie tag)
-		    (progn (log "COOKIED TAG: " it)
-			   (rename it))
+	       ;; get tag from local storage
+	       (aif (@ window local-storage :tag)
+		    (rename it)
 		    ($ "#player-info .player-tag" (text (@ *session* tag))))
 
-	       ;; get chat history from cookie
-	       (aif (@ *session* cookie :chat-messages)
+	       ;; get chat history from local storage
+	       (aif (@ window local-storage :chat-messages)
 		    (setf (@ *chat-history* messages) (string->obj it)
 			  (@ *chat-history* current-message) (length (@ *chat-history* messages))))
 
@@ -763,9 +771,8 @@
 	     
 	     (define-ajax rename (new-tag)
 	       (setf (@ *session* tag) new-tag)
-	       (unless (= new-tag (@ *session* cookie tag))
-		 (setf (@ *session* cookie tag) new-tag)
-		 (set-cookie :tag new-tag))
+	       (unless (= new-tag (@ window local-storage :tag))
+		 (setf (@ window local-storage :tag) new-tag))
 	       ($ "#player-info .player-tag" (text new-tag))
 	       ($replace "input.player-tag" (:span :class "player-tag" new-tag)))
 
@@ -837,7 +844,7 @@
 	   (:html :xmlns "http://www.w3.org/1999/xhtml" :lang "en"
 		  (:head (:title "Tabletop Prototyping System - Deal")
 			 (styles "jquery-ui.css" "main.css")
-			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" 
+			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "jquery.ui.rotatable.js"
 				  "Blob.js" "FileSaver.js" 
 				  "util.js" "chat.js" "lobby.js" "deck-editor.js" "table.js" "deal.js"))
 		  (:body))))

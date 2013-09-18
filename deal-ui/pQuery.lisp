@@ -103,6 +103,9 @@
 				 ,@(when handle `(:handle ,handle))
 				 ,@(when cancel `(:cancel ,cancel))))))
 
+(defpsmacro $rotatable (target &body body)
+  `($ ,target (rotatable (create :stop (lambda (event) ,@body)))))
+
 (defpsmacro $click (&rest target/body-list)
   `(progn ,@(loop for (target body) on target/body-list by #'cddr
 	       collect `($ ,target (click (lambda (event) ,body))))))
@@ -189,7 +192,10 @@
 	  ((atom form) form)
 	  ((and (eq 'self (car form)) (eq (second form) 'position))
 	   (recur '(+ "top:" (self y) "px;" "left:" (self x) "px;" ;; "z-index:" (self z)
-		    ";" "transform:rotate(" (self rot) "deg)")))
+		    "transform:rotate(" (self rot) "deg);"
+		    "-o-transform:rotate(" (self rot) "deg);"
+		    "-moz-transform:rotate(" (self rot) "deg);"
+		    "-webkit-transform: rotate(" (self rot) "deg);")))
 	  ((and (eq 'self (car form)) (cdr form))
 	   `(@ ,self-elem ,@(cdr form)))
 	  ((eq 'self (car form))
@@ -203,6 +209,7 @@
 (defpsmacro define-thing (name markup &body behavior)
   (with-ps-gensyms (thing container)
     `(defun ,(intern (format nil "create-~a" name)) (,container ,thing)
+       (log (who-ps-html ,(expand-self-expression markup thing)))
        ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
        (let (($self (aif (@ ,thing id) ($ (+ "#" it)) ($ ,container (children) (last)))))
 	 (flet (($child (selector) (chain $self (children selector))))
@@ -254,7 +261,6 @@
 	     (@ ,stream onerror) (lambda (e) (log "Stream ERRORED!" e))
 	     (@ ,stream onmessage)
 	     (lambda (e)
-	       (log "MESSAGE" e)
 	       (let ((,ev (string->obj (@ e data))))
 		 ((@ ,handlers (@ ,ev type)) ,ev))))
        ,stream)))

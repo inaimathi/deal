@@ -42,6 +42,7 @@ Deal bundles some javascript libraries.
 
 - Minified copies of [jQuery](http://jquery.com/) and [jQueryUI](http://jqueryui.com/); both are dual-licensed under the [GPL and Expat licenses](http://jquery.org/license/). Readable source can be found at respective project pages.
 - [FileSaver.js](https://github.com/eligrey/FileSaver.js) and [Blob.js](https://github.com/eligrey/Blob.js) for JS-based file saving; both dual-licensed under [Expat and X11 licenses](https://github.com/eligrey/FileSaver.js/blob/master/LICENSE.md)
+- A modified version of [jquery.ui.rotatable](http://vremenno.net/js/jquery-ui-rotation-using-css-transform/) duel-licensed under the [Expat](http://opensource.org/licenses/MIT) and [GPL](http://www.gnu.org/licenses/gpl.html) licenses
 
 Deal bundles some images from [OpenGameArt.org](http://opengameart.org/). This includes
 
