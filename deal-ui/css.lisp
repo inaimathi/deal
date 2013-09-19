@@ -118,7 +118,7 @@
 	       ("#deck-editor .cards .add" :float left)
 	       ("#deck-editor .cards .content" :max-width 220px :max-height 40px :overflow auto :padding-top 3px :display inline-block)
 
-	       (".backpack-mini" :max-height 75px :max-width 75px :cursor move)
+	       (".backpack-mini" :display inline-block :max-height 75px :max-width 75px :cursor move)
 
 	       ("#table-toolbar #chat-history" :height 200px :font-size small)
 	       ("#table-toolbar #chat-history .time" :display none)

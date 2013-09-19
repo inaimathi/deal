@@ -230,7 +230,7 @@
 					(:div :class "content"
 					      (map-markup 
 					       (@ *server-info* minis)
-					       (:img :class "backpack-mini" :src elem)))
+					       (:div :class "backpack-mini" :title elem (:img :src elem))))
 					(:br :class "clear"))
 				  (:div :id "tablecloth-tab" 
 					(:div :class "content"
@@ -300,7 +300,7 @@
 			       (@ window local-storage :element-locations) (obj->string (@ *session* :element-locations))))
 	     ($draggable ".new-deck" (:revert t))
 	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
-
+	     
 	     ($append "body" 
 		      (:div :class "dialog" :id "custom-tablecloth-dialog" 
 			    (:input :class "url-input" :placeholder "Tablecloth image URL")
@@ -309,22 +309,68 @@
 		      (:div :class "dialog" :id "custom-mini-dialog" 
 			    (:input :class "url-input" :placeholder "Mini image URL")
 			    (:button :class "ok" "Ok")))
+
+	     ;; get tablecloths from local storage
+	     (aif (@ window local-storage :custom-tablecloths)
+		  (let ((tbls (string->obj it)))
+		    (setf (@ *session* :custom-tablecloths) tbls)
+		    ($map tbls (create-custom-tablecloth "#tablecloth-tab .content" elem)))
+		  (setf (@ *session* :custom-tablecloths) (create)))
+
+	     (aif (@ window local-storage :custom-minis)
+		  (let ((ms (string->obj it)))
+		    (setf (@ *session* :custom-minis) ms)
+		    ($map ms (create-custom-mini "#minis-tab .content" (create :uri elem)))))
+
+	     (defun store-custom-tablecloths ()
+	       (setf (@ window local-storage :custom-tablecloths) 
+		     (obj->string (@ *session* :custom-tablecloths))))
+	     
+	     (defun store-custom-minis ()
+	       (setf (@ window local-storage :custom-minis)
+		     (obj->string (@ *session* :custom-minis))))
+
 	     ($click "#custom-tablecloth-dialog .ok" 
-		     (let ((uri ($ "#custom-tablecloth-dialog .url-input" (val)))
-		     	   (name ($ "#custom-tablecloth-dialog .name-input" (val))))
-		       ($append "#tablecloth-tab .content"
-		     		(:div :class "tablecloth" :title uri
-		     		      :style (+ "background-image: url(" uri ");")
-		     		      name))
+		     (let* ((uri ($ "#custom-tablecloth-dialog .url-input" (val)))
+			    (name ($ "#custom-tablecloth-dialog .name-input" (val)))
+			    (tblc (create :uri uri :name name)))
+		       (create-custom-tablecloth "#tablecloth-tab .content" tblc)
+		       (setf (aref *session* :custom-tablecloths name) tblc)
+		       (store-custom-tablecloths)
 		       ($ "#custom-tablecloth-dialog input" (val ""))
-		       ($ "#custom-tablecloth-dialog" (dialog "close"))
-		       ($draggable ".tablecloth:last" (:revert t)))
+		       ($ "#custom-tablecloth-dialog" (dialog "close")))
 		     "#custom-mini-dialog .ok" 
 		     (let ((uri ($ "#custom-mini-dialog .url-input" (val))))
-		       ($append "#minis-tab .content" (:img :class "backpack-mini" :src uri))
+		       (create-custom-mini "#minis-tab .content" (create :uri uri))
+		       (aif (aref *session* :custom-minis)
+			    (chain it (push uri))
+			    (setf (aref *session* :custom-minis) (list uri)))
+		       (store-custom-minis)
 		       ($ "#custom-mini-dialog .url-input" (val ""))
-		       ($ "#custom-mini-dialog" (dialog "close"))
-		       ($draggable ".backpack-mini:last" (:revert t))))
+		       ($ "#custom-mini-dialog" (dialog "close"))))
+
+	     (define-thing custom-mini
+		 (:div :class "backpack-mini" :title (self uri) 
+		       (:img :src (self uri))
+		       (:button :class "remove"))
+	       ($button ($child ".remove") (:minus)
+			(let* ((c-ms (aref *session* :custom-minis)) 
+			       (ix (chain c-ms (index-of (self uri))))))
+			(chain c-ms (splice ix 1))
+			(store-custom-minis)
+			($ this (parent) (remove)))
+	       ($draggable $self (:revert t)))
+
+	     (define-thing custom-tablecloth
+		 (:div :class "tablecloth" :title (self uri)
+		       :style (+ "background-image: url(" (self uri) ");")
+		       (self name)
+		       (:button :class "remove"))
+	       ($button ($child ".remove") (:minus)
+			(delete (aref *session* :custom-tablecloths (self name)))
+			(store-custom-tablecloths)
+			($ this (parent) (remove)))
+	       ($draggable $self (:revert t)))
 
 	     ($ ".dialog" (dialog (create "autoOpen" false)))
 
@@ -433,11 +479,11 @@
 			   
 			   (:new-custom-deck
 			    (table/new/stack-from-json
-			     (obj->string (aref (@ *session* :custom-decks) ($ dropped (text))))
+			     (obj->string (aref *session* :custom-decks ($ dropped (text))))
 			     ev-x ev-y 0 0))
 			   
 			   (:backpack-mini
-			    (table/new/mini ($ dropped (attr :src)) ev-x ev-y 0 0))
+			    (table/new/mini ($ dropped (attr :title)) ev-x ev-y 0 0))
 
 			   (:new-deck
 			    (table/new/stack-from-deck ($ dropped (text)) ev-x ev-y 0 0))
@@ -572,7 +618,7 @@
 		       (:button :class "edit")
 		       (:button :class "download"))
 	       ($button ($child ".delete") (:cancel)
-			(delete (aref (@ *session* :custom-decks) (self deck-name)))
+			(delete (aref *session* :custom-decks (self deck-name)))
 			(store-decks)
 			($ $self (remove)))
 	       ($button ($child ".download") (:arrowthick-1-s)
@@ -614,7 +660,7 @@
 					  'cards (loop for card-elem in ($ "#deck-editor .cards .content")
 						    collect (let ((txt ($ card-elem (text))))
 							      (try (string->obj txt) (:catch (error) txt)))))))
-		       (setf (aref (@ *session* :custom-decks) deck-name) deck)
+		       (setf (aref *session* :custom-decks deck-name) deck)
 		       (store-decks)
 		       (when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
 			 ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove)))
