@@ -646,7 +646,7 @@
 
 	     ($click "#deck-editor button.add-card"
 		     (let ((txt ($ "#deck-editor .new-card" (val))))
-		       (create-card-record "#deck-editor .cards" (try (string->obj txt) (:catch (error) txt)))
+		       (create-card-record "#deck-editor .cards" (string->obj txt))
 		       ($ "#deck-editor .new-card" (val "")))
 
 		     "#deck-editor button.cancel"

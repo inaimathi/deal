@@ -17,7 +17,10 @@
   `(chain -j-s-o-n (stringify ,thing)))
 
 (defpsmacro string->obj (thing)
-  `(chain j-query (parse-j-s-o-n ,thing)))
+  (with-ps-gensyms (txt)
+    `(let ((,txt ,thing))
+       (try (chain j-query (parse-j-s-o-n ,txt))
+	    (:catch (error) ,txt)))))
 
 (defpsmacro fn (&body body) `(lambda () ,@body))
 
