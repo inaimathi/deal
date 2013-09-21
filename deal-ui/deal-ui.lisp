@@ -583,28 +583,24 @@
 			   (:div :class "row"
 				 (:ul :class "cards"))
 			   (:div :class "row"
-				 (:textarea :class "new-card"))
+				 (:ul :class "card-properties"
+				      (:li (:input :class "card-property-name" :value "Name")
+					   (:input :class "card-property-value" :value "Card Name")))
+				 (:button :class "add-card-property"))
 			   (:div :class "row"
 				 (:button :class "add-card" "Add Card"))
 			   (:div :class "row"
 				 (:button :class "ok" "Ok")
 				 (:button :class "cancel" "Cancel"))))
-	     
-	     (defun store-decks ()
-	       (setf (@ window local-storage :custom-decks) 
-		     (obj->string (@ *session* :custom-decks))))
 
-	     (defun load-deck-for-editing (deck)
-	       (with-slots (deck-name card-type cards) deck
-		 ($ "#deck-editor .deck-name" (val deck-name))
-		 ($ "#deck-editor .card-type" (val card-type))
-		 (loop for c in cards do (create-card-record "#deck-editor .cards" c))))
+	     ($button ".add-card-property" (:plus))
 	     
-	     ($ "#load-deck-form" 
-		(change 
-		 (fn ($upload "#load-deck-form" "/load-deck"
-			      (load-deck-for-editing res)))))
-	     
+	     (define-thing card-property
+		 (:li (:button :class "remove")
+		      (:input :class "card-property-name" :value (aif (self name) it ""))
+		      (:textarea :class "card-property-value" (aif (self value) it "")))
+	       ($button ($child ".remove") (:cancel)))
+
 	     (define-thing card-record
 		 (:li (:button :class "add")(:button :class "remove")
 		      (:span :class "content" (obj->string self)))
@@ -628,6 +624,26 @@
 			($ "#deck-editor" (show)))
 	       ($draggable $self (:revert t)))
 	     
+	     (create-card-property "#deck-editor .card-properties" 
+				   (create :name "Rules" :value "Card Rules Text"))
+	     (create-card-property "#deck-editor .card-properties" 
+				   (create :name "Flavor" :value "Card Flavor Text"))
+
+	     (defun store-decks ()
+	       (setf (@ window local-storage :custom-decks) 
+		     (obj->string (@ *session* :custom-decks))))
+
+	     (defun load-deck-for-editing (deck)
+	       (with-slots (deck-name card-type cards) deck
+		 ($ "#deck-editor .deck-name" (val deck-name))
+		 ($ "#deck-editor .card-type" (val card-type))
+		 (loop for c in cards do (create-card-record "#deck-editor .cards" c))))
+	     
+	     ($ "#load-deck-form" 
+		(change 
+		 (fn ($upload "#load-deck-form" "/load-deck"
+			      (load-deck-for-editing res)))))
+	     
 	     ;; get custom decks from local storage
 	     (aif (@ window local-storage :custom-decks)
 		  (let ((decks (string->obj it)))
@@ -638,6 +654,7 @@
 	     ($on "#deck-editor"
 		  (:click "button.remove" ($ this (parent) (remove)))
 		  (:click "button.add" ($ "#deck-editor .cards" (append ($ this (parent) (clone)))))
+		  (:click "button.add-card-property" (create-card-property "#deck-editor .card-properties" (create)))
 		  (:keydown ".new-card"
 			    <ret> (unless shift?
 				    (chain event (prevent-default))
@@ -645,9 +662,12 @@
 			    <esc> ($ "#deck-editor .new-card" (val ""))))
 
 	     ($click "#deck-editor button.add-card"
-		     (let ((txt ($ "#deck-editor .new-card" (val))))
-		       (create-card-record "#deck-editor .cards" (string->obj txt))
-		       ($ "#deck-editor .new-card" (val "")))
+		     (let ((res (create)))
+		       ($ "#deck-editor .card-properties li"
+			  (each (lambda (elem i)
+				  (setf (aref res (chain ($ this (children ".card-property-name") (val)) (to-lower-case)))
+					($ this (children ".card-property-value") (val))))))
+		       (create-card-record "#deck-editor .cards" res))
 
 		     "#deck-editor button.cancel"
 		     ($ "#deck-editor" (hide))
@@ -658,8 +678,7 @@
 			    (deck (create 'deck-name deck-name 
 					  'card-type card-type 
 					  'cards (loop for card-elem in ($ "#deck-editor .cards .content")
-						    collect (let ((txt ($ card-elem (text))))
-							      (try (string->obj txt) (:catch (error) txt)))))))
+						    collect (string->obj ($ card-elem (text)))))))
 		       (setf (aref *session* :custom-decks deck-name) deck)
 		       (store-decks)
 		       (when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))

@@ -84,7 +84,7 @@
 		      (ev-x (@ event page-x)) (ev-y (@ event page-y)))
 		  (cond ,@(loop for (class . action) in class/action-list
 			     collect `(($ dropped (has-class ,class)) ,@action)))
-		  ($ ,overlapping (droppable "enable"))))
+		  ,@(when overlapping `(($ ,overlapping (droppable "enable"))))))
 	,@(when overlapping
 		`(:over (fn ($ ,overlapping (droppable "disable")))
 		  :out (fn ($ ,overlapping (droppable "enable")))))))))
@@ -212,7 +212,6 @@
 (defpsmacro define-thing (name markup &body behavior)
   (with-ps-gensyms (thing container)
     `(defun ,(intern (format nil "create-~a" name)) (,container ,thing)
-       (log (who-ps-html ,(expand-self-expression markup thing)))
        ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
        (let (($self (aif (@ ,thing id) ($ (+ "#" it)) ($ ,container (children) (last)))))
 	 (flet (($child (selector) (chain $self (children selector))))
@@ -239,18 +238,16 @@
 	       ,@f-down
 	       (t (who-ps-html (:div "Face Down"))))
 	     (let ((content (@ ,crd content)))
-	       (if (stringp content)
-		   (let ((lines (chain content (split #\newline))))
-		     (who-ps-html
-		      (:div (@ lines 0) (:br)
-			    (:span :class "rest" (chain lines (slice 1) (join "<br />"))))))
-		   (case type
-		     ,@f-up
-		     (t (who-ps-html 
-			 (:div (:ul (chain 
-				     ($map content
-					   (who-ps-html (:li :class (+ "card-field " i) (:span :class "label" i) (:span :class "text" elem))))
-				     (join ""))))))))))))))
+	       (case type
+		 ,@f-up
+		 (t (who-ps-html 
+		     (:div (:ul (chain 
+				 ($map content
+				       (let ((lines (chain elem (split #\newline))))
+					 (who-ps-html 
+					  (:li :class (+ "card-field " i) (:span :class "label" i)
+					       (:span :class "text" (map-markup lines (:p elem)))))))
+				 (join "")))))))))))))
 
 (defpsmacro event-source (uri &body name/body-list)
   (with-ps-gensyms (stream handlers ev)

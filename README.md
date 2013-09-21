@@ -1,6 +1,5 @@
 # DEAL
-##### Lisp-based tabletop game playtesting tool 
-###### (we don't quite have "prototyping" up and running yet)
+##### Lisp-based tabletop game prototyping and playtesting tool 
 
 ## Requirements
 

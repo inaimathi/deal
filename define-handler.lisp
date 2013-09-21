@@ -117,10 +117,11 @@ needs to establish a lock on the named table, AND must deal with players who are
   (assert (eq :table (second (first args))) nil "First argument in a player handler must be a table.")
   (with-handler-prelude
     `(define-easy-handler ,opts ,final-args
+       (assert (session-value :player))
        (assert (and ,@final-args))
        (let* ,table-lookups
 	 ,@table-assertions
-	 (assert (and (session-value :player) (member (session-value :player) (players ,(first (first args))))))
+	 (assert (member (session-value :player) (players ,(first (first args)))))
 	 (with-lock-held ((lock ,(caar table-lookups)))
 	   (let* ,type-conversions
 	     ,@lookup-assertions

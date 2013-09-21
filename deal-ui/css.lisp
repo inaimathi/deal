@@ -28,7 +28,7 @@
 	       (button.control-button :width 22px :height 22px :float right :opacity .7)
 	       ("button.control-button:hover" :opacity 1)
 	       
-	       (.ping :z-index 100001 :width 30px :height 30px :position absolute :border "1px solid black")
+	       (.ping :z-index 100001 :width 30px :height 30px :border-radius 15px :position absolute :border "1px solid black")
 	       (".ui-dialog" :z-index 100001)
 
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
@@ -54,6 +54,7 @@
 	       (".card .content ul" :list-style-type none :margin 0px :padding 0px)
 	       (".card .content ul .card-field, .card .content ul .label" :display none)
 	       (".card .content ul .card-field.name, .card .content ul .card-field.tag" :display block)
+	       (".card .content p" :margin 0px)
 	       (".card .content .rest" :display none)
 	       (.card-in-hand :position relative :z-index 10000)
 
@@ -69,8 +70,16 @@
 	       ("#zoomed-card .content ul" :list-style-type none :margin 0px :padding 0px)
 	       ("#zoomed-card .content ul li" :margin-bottom 3px)
 	       ("#zoomed-card .content .label" :min-width 60px :text-align right :padding-right 8px :display inline-block :font-weight bold :font-style oblique)
+	       ("#zoomed-card .content .text p" :padding 0px :margin 0px :margin-bottom 3px)
+	       
+	       ("#zoomed-card .content .card-field.name .label" :display none)
+	       ("#zoomed-card .content .card-field.name .text" :font-weight bold :margin-bottom 15px :text-align center :display block)
+;;	       ("#zoomed-card .content .card-field.name .text p" :padding 0px)
+
 	       ("#zoomed-card .content .card-field.flavor .label" :display none)
-	       ("#zoomed-card .content .card-field.flavor .text" :font-style oblique)
+	       ("#zoomed-card .content .card-field.flavor .text" :font-style oblique :margin-top 15px :display block)
+	       ("#zoomed-card .content .card-field.flavor .text p" :padding "0px 20px")
+	       
 
 	       ("#table-toolbar" :left 1230px :top 20px)
 
@@ -112,7 +121,7 @@
 
 	       ("#deck-editor" :display none :left 30px :top 30px :position absolute)
 	       ("#deck-editor .label" :display inline-block :min-width 100px)
-	       ("#deck-editor textarea" ,@css-text-block)
+	       ("#deck-editor textarea" ,@css-text-block :height 30px)
 	       ("#deck-editor .cards" :height 100px :overflow auto :list-style-type none)
 	       ("#deck-editor .cards li" :width 300px)
 	       ("#deck-editor .cards .add" :float left)
