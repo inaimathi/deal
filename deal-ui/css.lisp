@@ -122,16 +122,18 @@
 	       ("#deck-editor" :display none :left 30px :top 30px :position absolute)
 	       ("#deck-editor .label" :display inline-block :min-width 100px)
 	       ("#deck-editor textarea" ,@css-text-block :height 30px)
-	       ("#deck-editor .cards" :height 100px :overflow auto :list-style-type none)
-	       ("#deck-editor .cards li" :width 300px)
-	       ("#deck-editor .cards .add" :float left)
-	       ("#deck-editor .cards .content" :max-width 220px :max-height 40px :overflow auto :padding-top 3px :display inline-block)
+	       ("#deck-editor .cards" :height 100px :overflow auto :list-style-type none :width 100%)
+	       ("#deck-editor .cards .card-content" :display none)
+	       ("#deck-editor .card .content .label" :display none)
 	       
 	       ("#deck-editor input" :width 190px)
-	       ("#deck-editor input.url-input" :width 380px)
+	       ;;; TODO make sure these work properly with the back-end
+	       ("#deck-editor input.url-input" :width 380px :display none)
 	       ("#deck-editor .card-properties" :list-style-type none :padding 0px)
 	       ("#deck-editor .card-properties li" :border-bottom "1px dashed #ccc" :padding "8px 0px")
 	       ("#deck-editor button.add-card, #deck-editor button.create-deck" :width 120px :height 30px :font-size small)
+	       ("#deck-editor .card" :position relative :display inline-block :float none :cursor auto)
+	       ("#deck-editor .card .type" :margin-top 20px)
 
 	       (".backpack-mini" :display inline-block :max-height 75px :max-width 75px :cursor move)
 

@@ -176,9 +176,8 @@
 		       "@rename" (lambda (txt) (rename txt))))
 
 	     (defun chat-card (card)
-	       (who-ps-html
-		(who-ps-html (:div :class "card in-chat" 
-				   (:span :class "content" (card-html card))))))))
+	       (who-ps-html (:div :class "card in-chat" 
+				  (:span :class "content" (card-html card)))))))
 
 (to-file "static/js/table.js"
 	 (ps
@@ -580,7 +579,8 @@
 			   (:div :class "row"
 				 (:input :class "card-back-image url-input" :placeholder "Card Back Image Url"))
 			   (:div :class "row"
-				 (:ul :class "cards")
+				 (:div :class "cards")
+				 (:br :class "clear")
 				 (:button :class "create-deck" "Create Deck")
 				 (:br :class "clear"))
 			   (:div :class "row"
@@ -591,11 +591,12 @@
 					   (:input :class "card-property-value" :value "Card Name")))
 				 (:button :class "add-card-property")
 				 (:br :class "clear"))
-			   (:div :class "row" (:button :class "add-card" "Add Card"))))
+			   (:div :class "row" (:button :class "add-card" "Add Card"))
+			   (:br :class "clear")))
 
 	     ($button "#deck-editor .add-card-property" (:plus))
 	     ($button "#deck-editor button.add-card" (:check :text? t)
-		      (let ((res (create)))
+		      (let ((res (create)))			
 			($ "#deck-editor .card-property"
 			   (each (lambda (elem i)
 				   (setf (aref res (chain ($ this (children ".card-property-name") (val)) (to-lower-case)))
@@ -607,7 +608,7 @@
 			    (card-type ($ "#deck-editor .card-type" (val)))
 			    (deck (create 'deck-name deck-name 
 					  'card-type card-type 
-					  'cards (loop for card-elem in ($ "#deck-editor .cards .content")
+					  'cards (loop for card-elem in ($ "#deck-editor .cards .card-content")
 						    collect (string->obj ($ card-elem (text)))))))
 		       (setf (aref *session* :custom-decks deck-name) deck)
 		       (store-decks)
@@ -625,12 +626,20 @@
 		      (:input :class "card-property-name" :value (aif (self name) it ""))
 		      (:textarea :class "card-property-value" (aif (self value) it "")))
 	       ($button ($child ".remove") (:cancel))) 
-
+	     
 	     (define-thing card-record
-		 (:li (:button :class "add")(:button :class "remove")
-		      (:span :class "content" (obj->string self)))
+		 (:div :class "card in-chat" 
+		       (:span :class "content" (card-html (create :card-type "" :face :up :content self)))
+		       (:button :class "add") 
+		       (:button :class "zoom") 
+		       (:button :class "remove")
+		       (:span :class "card-content" (obj->string self)))
 	       ($button ($child ".remove") (:minus))
-	       ($button ($child ".add") (:plus)))
+	       ($button ($child ".add") (:plus))
+	       ($button ($child ".zoom") (:zoomin)
+			($ "#zoomed-card" (toggle))
+			($ "#zoomed-card .content" (empty) 
+			   (append (card-html (create :card-type "" :face :up :content self))))))
 
 	     (define-thing custom-deck
 		 (:div :class "new-deck new-custom-deck"
