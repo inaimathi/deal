@@ -126,6 +126,12 @@
 	       ("#deck-editor .cards li" :width 300px)
 	       ("#deck-editor .cards .add" :float left)
 	       ("#deck-editor .cards .content" :max-width 220px :max-height 40px :overflow auto :padding-top 3px :display inline-block)
+	       
+	       ("#deck-editor input" :width 190px)
+	       ("#deck-editor input.url-input" :width 380px)
+	       ("#deck-editor .card-properties" :list-style-type none :padding 0px)
+	       ("#deck-editor .card-properties li" :border-bottom "1px dashed #ccc" :padding "8px 0px")
+	       ("#deck-editor button.add-card, #deck-editor button.create-deck" :width 120px :height 30px :font-size small)
 
 	       (".backpack-mini" :display inline-block :max-height 75px :max-width 75px :cursor move)
 

@@ -338,7 +338,7 @@
 		       (setf (aref *session* :custom-tablecloths name) tblc)
 		       (store-custom-tablecloths)
 		       ($ "#custom-tablecloth-dialog input" (val ""))
-		       ($ "#custom-tablecloth-dialog" (dialog "close")))
+		       ($ "#custom-tablecloth-dialog" (dialog :close)))
 		     "#custom-mini-dialog .ok" 
 		     (let ((uri ($ "#custom-mini-dialog .url-input" (val))))
 		       (create-custom-mini "#minis-tab .content" (create :uri uri))
@@ -347,7 +347,7 @@
 			    (setf (aref *session* :custom-minis) (list uri)))
 		       (store-custom-minis)
 		       ($ "#custom-mini-dialog .url-input" (val ""))
-		       ($ "#custom-mini-dialog" (dialog "close"))))
+		       ($ "#custom-mini-dialog" (dialog :close))))
 
 	     (define-thing custom-mini
 		 (:div :class "backpack-mini" :title (self uri) 
@@ -569,37 +569,62 @@
 	 (ps 
 	   (define-component (deck-editor :empty? nil)
 	       (:div :id "deck-editor" :class "moveable"
-		     (:h3 "Deck Editor")
+		     (:h3 "Deck Editor" (:button :class "exit") (:button :class "load"))
+		     (:div :class "dialog" :id "load-deck-dialog" :title "Load Deck"
+			   (:form :id "load-deck-form" :enctype "multipart/form-data"
+				  (:input :name "deck" :type "file")))
 		     (:div :class "content"
 			   (:div :class "row"
-				 (:form :id "load-deck-form" :enctype "multipart/form-data"
-					(:span :class "label" "Load: ") (:input :name "deck" :type "file")))
+				 (:input :class "deck-name" :value "New Deck Name")
+				 (:input :class "card-type" :placeholder "Card Type"))
 			   (:div :class "row"
-				 (:span :class "label" "Deck Name: ")
-				 (:input :class "deck-name"))
+				 (:input :class "card-back-image url-input" :placeholder "Card Back Image Url"))
 			   (:div :class "row"
-				 (:span :class "label" "Card Type: ")
-				 (:input :class "card-type"))
-			   (:div :class "row"
-				 (:ul :class "cards"))
+				 (:ul :class "cards")
+				 (:button :class "create-deck" "Create Deck")
+				 (:br :class "clear"))
 			   (:div :class "row"
 				 (:ul :class "card-properties"
-				      (:li (:input :class "card-property-name" :value "Name")
+				      (:li (:input :class "card-property-image url-input" :placeholder "Card Image Url"))
+				      (:li :class "card-property"
+					   (:input :class "card-property-name" :value "Name")
 					   (:input :class "card-property-value" :value "Card Name")))
-				 (:button :class "add-card-property"))
-			   (:div :class "row"
-				 (:button :class "add-card" "Add Card"))
-			   (:div :class "row"
-				 (:button :class "ok" "Ok")
-				 (:button :class "cancel" "Cancel"))))
+				 (:button :class "add-card-property")
+				 (:br :class "clear"))
+			   (:div :class "row" (:button :class "add-card" "Add Card"))))
 
-	     ($button ".add-card-property" (:plus))
+	     ($button "#deck-editor .add-card-property" (:plus))
+	     ($button "#deck-editor button.add-card" (:check :text? t)
+		      (let ((res (create)))
+			($ "#deck-editor .card-property"
+			   (each (lambda (elem i)
+				   (setf (aref res (chain ($ this (children ".card-property-name") (val)) (to-lower-case)))
+					 ($ this (children ".card-property-value") (val))))))
+			(create-card-record "#deck-editor .cards" res)))
+	     ($button "#deck-editor button.exit" (:close) ($ "#deck-editor" (hide)))
+	     ($button "#deck-editor button.create-deck" (:check :text? t)
+		     (let* ((deck-name ($ "#deck-editor .deck-name" (val)))
+			    (card-type ($ "#deck-editor .card-type" (val)))
+			    (deck (create 'deck-name deck-name 
+					  'card-type card-type 
+					  'cards (loop for card-elem in ($ "#deck-editor .cards .content")
+						    collect (string->obj ($ card-elem (text)))))))
+		       (setf (aref *session* :custom-decks deck-name) deck)
+		       (store-decks)
+		       (when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
+			 ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove)))
+		       (create-custom-deck "#decks-tab .content" deck)
+		       ($draggable "#decks-tab .new-custom-deck:first" (:revert t))
+		       ($ "#deck-editor" (hide))))
+	     ($button "#deck-editor button.load" (:arrowthick-1-n)
+		      ($ "#load-deck-dialog" (dialog :open)))
 	     
 	     (define-thing card-property
-		 (:li (:button :class "remove")
+		 (:li :class "card-property"
+		      (:button :class "remove")
 		      (:input :class "card-property-name" :value (aif (self name) it ""))
 		      (:textarea :class "card-property-value" (aif (self value) it "")))
-	       ($button ($child ".remove") (:cancel)))
+	       ($button ($child ".remove") (:cancel))) 
 
 	     (define-thing card-record
 		 (:li (:button :class "add")(:button :class "remove")
@@ -654,38 +679,7 @@
 	     ($on "#deck-editor"
 		  (:click "button.remove" ($ this (parent) (remove)))
 		  (:click "button.add" ($ "#deck-editor .cards" (append ($ this (parent) (clone)))))
-		  (:click "button.add-card-property" (create-card-property "#deck-editor .card-properties" (create)))
-		  (:keydown ".new-card"
-			    <ret> (unless shift?
-				    (chain event (prevent-default))
-				    ($ "#deck-editor button.add-card" (click)))
-			    <esc> ($ "#deck-editor .new-card" (val ""))))
-
-	     ($click "#deck-editor button.add-card"
-		     (let ((res (create)))
-		       ($ "#deck-editor .card-properties li"
-			  (each (lambda (elem i)
-				  (setf (aref res (chain ($ this (children ".card-property-name") (val)) (to-lower-case)))
-					($ this (children ".card-property-value") (val))))))
-		       (create-card-record "#deck-editor .cards" res))
-
-		     "#deck-editor button.cancel"
-		     ($ "#deck-editor" (hide))
-
-		     "#deck-editor button.ok"
-		     (let* ((deck-name ($ "#deck-editor .deck-name" (val)))
-			    (card-type ($ "#deck-editor .card-type" (val)))
-			    (deck (create 'deck-name deck-name 
-					  'card-type card-type 
-					  'cards (loop for card-elem in ($ "#deck-editor .cards .content")
-						    collect (string->obj ($ card-elem (text)))))))
-		       (setf (aref *session* :custom-decks deck-name) deck)
-		       (store-decks)
-		       (when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
-			 ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove)))
-		       (create-custom-deck "#decks-tab .content" deck)
-		       ($draggable "#decks-tab .new-custom-deck:first" (:revert t))
-		       ($ "#deck-editor" (hide)))))))
+		  (:click "button.add-card-property" (create-card-property "#deck-editor .card-properties" (create)))))))
 
 (to-file "static/js/util.js"
 	 (ps 
