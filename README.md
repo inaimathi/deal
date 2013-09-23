@@ -35,7 +35,7 @@ In any case, you should now be able to visit `[your-server]/static/index.html` a
 
 ## License
 
-This program is released under the GNU AGPL (License text can be found in the LICENSE.md file, or at <http://www.gnu.org/licenses/>)
+This program is released under the GNU AGPL (License text can be found in the [LICENSE.md](https://github.com/Inaimathi/deal/blob/master/LICENSE.md) file, or at <http://www.gnu.org/licenses/agpl-3.0.html>)
 
 Deal bundles some javascript libraries.
 

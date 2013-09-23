@@ -23,7 +23,8 @@
 (defclass deck ()
   ((deck-name :reader deck-name :initarg :deck-name)
    (card-type :reader card-type :initarg :card-type)
-   (cards :reader cards :initarg :cards)))
+   (cards :reader cards :initarg :cards)
+   (image-uri :accessor image-uri :initarg :image-uri)))
 
 (defclass placeable ()
   ((id :accessor id :initform (make-id))
@@ -31,12 +32,16 @@
    (y :accessor y :initform 0 :initarg :y)
    (z :accessor z :initform 0 :initarg :z)
    (rot :accessor rot :initform 0 :initarg :rot)
+   (width :accessor width :initarg :width :initform nil)
+   (height :accessor height :initarg :height :initform nil)
+   (depth :accessor depth :initarg :depth :initform nil)
    (belongs-to :accessor belongs-to :initarg :belongs-to)))
 
 (defclass card (placeable)
   ((content :accessor content :initarg :content)
    (face :accessor face :initform :up :initarg :face)
-   (card-type :accessor card-type :initarg :card-type)))
+   (card-type :accessor card-type :initarg :card-type)
+   (image-uri :accessor image-uri :initarg :image-uri)))
 
 (defclass stack (placeable)
   ((cards :accessor cards :initform nil :initarg :cards)
@@ -48,7 +53,7 @@
    (attached-to :accessor attached-to :initarg :attached-to)))
 
 (defclass mini (placeable)
-  ((mini-uri :accessor mini-uri :initarg :mini-uri)))
+  ((image-uri :accessor image-uri :initarg :image-uri)))
 
 (defun make-card (content card-type belongs-to &optional (x 0) (y 0) (z 0) (rot 0))
   (make-instance 'card :content content :face :down 
@@ -147,7 +152,7 @@ so it made sense to formalize this."
 	     id x y z rot belongs-to face content card-type))
 
 (defmethod redact ((mini mini))
-  (obj->hash mini (:type :mini) id x y z rot belongs-to mini-uri))
+  (obj->hash mini (:type :mini) id x y z rot belongs-to image-uri))
 
 (defmethod redact ((note note))
   (obj->hash note (:type :note) id x y z rot belongs-to attached-to text))
@@ -158,7 +163,7 @@ so it made sense to formalize this."
   (obj->hash note (:type :note) id x y z rot belongs-to attached-to text))
 
 (defmethod serialize ((mini mini))
-  (obj->hash mini (:type :mini) id x y z rot belongs-to mini-uri))
+  (obj->hash mini (:type :mini) id x y z rot belongs-to image-uri))
 
 (defmethod serialize ((card card))
   (obj->hash card (:type :card) content face card-type x y z rot))

@@ -132,9 +132,9 @@
   (publish! table :pinged `((x . ,x) (y . ,y) (z . ,z))))
 
 ;;;;; Table element creation handlers
-(define-player-handler (table/new/mini) ((table :table) (mini-uri :string :max 255) (x :int) (y :int) (z :int) (rot :int))
+(define-player-handler (table/new/mini) ((table :table) (image-uri :string :max 255) (x :int) (y :int) (z :int) (rot :int))
   (let ((mini (make-instance 'mini :belongs-to (id (session-value :player)))))
-    (set-props mini mini-uri x y z rot)
+    (set-props mini image-uri x y z rot)
     (insert! table mini)
     (publish! table :placed-mini `((mini . ,(redact mini))))
     :ok))

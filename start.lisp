@@ -8,7 +8,8 @@
    'deck
    :deck-name deck-name :card-type card-type
    :cards (append
-	   extra-cards
+	   (loop for c in extra-cards 
+	      collect `((name . ,c)))
 	   (loop for s in suits 
 	      append (loop for r in ranks 
 			collect `((suit . ,s) (rank . ,r)))))))

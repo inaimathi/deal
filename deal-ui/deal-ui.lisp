@@ -512,6 +512,8 @@
 	       (:div :id (self id) :class "stack" :style (self position)		     
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle")
+		     (:button :class "peek" "Peek")
+		     (:button :class "show" "Show")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
@@ -526,12 +528,13 @@
 			  (table/stack/add-to (self id) ($ dropped (attr :id))))
 			 (:stack
 			  (table/stack/merge (self id) ($ dropped (attr :id)))))
-	     ($button ($child ".shuffle") (:shuffle) (table/stack/shuffle (self id)))	     
-	     ($click ($child ".draw") (table/stack/draw (self id) 1)))
-
+	     ($button ($child ".shuffle") (:shuffle) (table/stack/shuffle (self id)))
+	     ($button ($child ".peek") (:search) (table/stack/peek (self id) 0 1))
+	     ($button ($child ".draw") (:document) (table/stack/draw (self id) 1)))
+	   
 	   (define-thing mini
 	       (:div :id (self id) :class "mini" :style (self position)
-		     (:img :src (self mini-uri)))
+		     (:img :src (self image-uri)))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index "")))
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
@@ -748,21 +751,29 @@
 	       (chain message (replace re "<br />"))))	   
 
 	   (defun card-html (card)
-	     (markup-by-card-type card
-				  ("french"
-				   (:div (@ content rank)
-					 (case (@ content suit)
-					   ("hearts" (who-ps-html (:span :style "color: red;" "&#9829;")))
-					   ("spades" (who-ps-html (:span :style "color: black;" "&#9824;")))
-					   ("diamonds" (who-ps-html (:span :style "color: red;" "&#9830;")))
-					   ("clubs" (who-ps-html (:span :style "color: black;" "&#9827;")))))
-				   (:div "Face-Down French"))
-				  ("nItalian"
-				   (:div (@ content rank) " - " (@ content suit))
-				   (:div "Face-Down Italian"))
-				  ("occultTarot"
-				   (:div (@ content rank) " T " (@ content suit))
-				   (:div "Face-Down Tarot"))))))
+	     (markup-by-card-type 
+	      card
+	      ("french"
+	       (:div (aif (@ content name)
+			  it
+			  (who-ps-html
+			   (@ content rank)
+			   (case (@ content suit)
+			     ("hearts" (who-ps-html (:span :style "color: red;" "&#9829;")))
+			     ("spades" (who-ps-html (:span :style "color: black;" "&#9824;")))
+			     ("diamonds" (who-ps-html (:span :style "color: red;" "&#9830;")))
+			     ("clubs" (who-ps-html (:span :style "color: black;" "&#9827;")))))))
+	       (:div "Face-Down French"))
+	      ("nItalian"
+	       (:div (aif (@ content name)
+			  it
+			  (who-ps-html (@ content rank) " - " (@ content suit))))
+	       (:div "Face-Down Italian"))
+	      ("occultTarot"
+	       (:div (aif (@ content name)
+			  it
+			  (who-ps-html (@ content rank) " T " (@ content suit))))
+	       (:div "Face-Down Tarot"))))))
 
 (to-file "static/js/deal.js"
 	 (ps (defvar *server-info* nil)
@@ -874,7 +885,7 @@
 	     (define-ajax table/ping (x y z))
 
 	     ;;; Table element placement actions
-	     (define-ajax table/new/mini (mini-uri x y z rot))
+	     (define-ajax table/new/mini (image-uri x y z rot))
 	     ;; TODO table/new/note
 	     ;; TODO table/new/note-on
 	     (define-ajax table/new/stack-from-deck (deck-name x y z rot))
@@ -894,8 +905,10 @@
 	     (define-ajax table/stack/shuffle (stack))
 	     (define-ajax table/stack/play-to (card stack) ($ (+ "#" card) (remove)))
 	     (define-ajax table/stack/draw (stack num) (render-hand res))
-	     ;; TODO table/stack/peek
-	     ;; TODO table/stack/show
+	     (define-ajax table/stack/peek (stack min max)
+	       (log res))
+	     (define-ajax table/stack/show (stack min max)
+	       (log res))
 
 	     ;;; Note-related actions
 	     ;; TODO table/note/attach
