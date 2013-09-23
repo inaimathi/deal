@@ -112,7 +112,12 @@
 					   ("peeked"
 					    (+ "peeked at " (@ msg count) " cards from " (@ msg stack)))
 					   ("revealed"
-					    (+ "revealed some cards"))
+					    (+ "revealed " 
+					       (chain ($map (@ msg cards)
+							    (log "REVEALED" msg)
+							    (setf (@ elem face) "up")
+							    (chat-card elem)))
+					       " from " (@ msg stack)))
 					   ("flipped"
 					    (+ "flipped over " (chat-card (@ msg card))))
 					   ("placedMini" "placed a mini")
@@ -512,7 +517,7 @@
 	       (:div :id (self id) :class "stack" :style (self position)		     
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle")
-		     (:button :class "peek" "Peek")
+;;		     (:button :class "peek" "Peek")
 		     (:button :class "show" "Show")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
@@ -529,7 +534,8 @@
 			 (:stack
 			  (table/stack/merge (self id) ($ dropped (attr :id)))))
 	     ($button ($child ".shuffle") (:shuffle) (table/stack/shuffle (self id)))
-	     ($button ($child ".peek") (:search) (table/stack/peek (self id) 0 1))
+	     ($button ($child ".show") (:search) (table/stack/show (self id) 0 1))
+	     ;; ($button ($child ".peek") (:search) (table/stack/peek (self id) 0 1))
 	     ($button ($child ".draw") (:document) (table/stack/draw (self id) 1)))
 	   
 	   (define-thing mini

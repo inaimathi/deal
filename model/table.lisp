@@ -41,6 +41,7 @@
   ((content :accessor content :initarg :content)
    (face :accessor face :initform :up :initarg :face)
    (card-type :accessor card-type :initarg :card-type)
+   (back-image-uri :accessor back-image-uri :initarg :back-image-uri :initform nil)
    (image-uri :accessor image-uri :initarg :image-uri)))
 
 (defclass stack (placeable)

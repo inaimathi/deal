@@ -74,7 +74,6 @@
 	       
 	       ("#zoomed-card .content .card-field.name .label" :display none)
 	       ("#zoomed-card .content .card-field.name .text" :font-weight bold :margin-bottom 15px :text-align center :display block)
-;;	       ("#zoomed-card .content .card-field.name .text p" :padding 0px)
 
 	       ("#zoomed-card .content .card-field.flavor .label" :display none)
 	       ("#zoomed-card .content .card-field.flavor .text" :font-style oblique :margin-top 15px :display block)
@@ -118,6 +117,8 @@
 	       ("#chat-history li .message" :height auto :max-width 400px :word-break break-all :margin-left 5px)
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
 	       ("#chat-controls textarea" ,@css-text-block)
+	       ("#chat-history .card.in-chat .content ul .card-field, #chat-history .card.in-chat .content ul .label" :display none)
+	       ("#chat-history .card.in-chat .content ul .card-field.name, #chat-history .card.in-chat .content ul .card-field.tag" :display block)	       
 
 	       ("#deck-editor" :display none :left 30px :top 30px :position absolute)
 	       ("#deck-editor .label" :display inline-block :min-width 100px)

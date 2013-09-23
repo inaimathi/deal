@@ -244,7 +244,9 @@
   (take (- max min) (drop (+ min 1) (cards stack))))
 
 (define-player-handler (table/stack/show) ((table :table) (stack :stack) (min :int) (max :int))
-  (publish! table :revealed `((stack . ,(id stack)) (cards ,@(take (- max min) (drop (+ min 1) (cards stack))))))
+  (publish! 
+   table :revealed 
+   `((stack . ,(id stack)) (cards ,@(take (- max min) (drop (+ min 1) (cards stack))))))
   :ok)
 
 ;; (define-handler (table/stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))
