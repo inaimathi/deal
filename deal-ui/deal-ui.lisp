@@ -680,6 +680,7 @@
 	       (with-slots (deck-name card-type cards) deck
 		 ($ "#deck-editor .deck-name" (val deck-name))
 		 ($ "#deck-editor .card-type" (val card-type))
+		 ($ "#deck-editor .cards" (empty))
 		 (loop for c in cards do (create-card-record "#deck-editor .cards" c))))
 	     
 	     ($ "#load-deck-form" 
