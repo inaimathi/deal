@@ -63,13 +63,13 @@
 
 (defun card<-json (player json)
   (macrolet ((gets (k) `(getj ,k json))
-	     (get0 (k) `(or (getj ,k json) 0)))
+	     (getd (k &optional (default 0)) `(or (getj ,k json) ,default)))
     (let ((face (intern (string-upcase (getj :face json)) :keyword)))
       (assert (member face (list :up :down)))
       (make-instance 
        'card :belongs-to (id player) 
        :content (gets :content) :face (intern (string-upcase (getj :face json)) :keyword)
-       :x (get0 :x) :y (get0 :y) :z (get0 :z) :rot (get0 :rot)))))
+       :x (getd :x) :y (getd :y) :z (getd :z) :rot (getd :rot)))))
 
 (defmethod stack<-deck (player (deck deck))
   "Takes a deck and creates a stack (a bag of cards suitable for placing on a table)"
@@ -82,14 +82,16 @@
 (defun stack<-json (player json)
   "Takes a JSON representation of a deck and creates a stack (a bag of cards suitable for placing on a table)"
   (macrolet ((gets (k) `(getj ,k json))
-	     (get0 (k) `(or (getj ,k json) 0)))
+	     (getd (k &optional (default 0)) `(or (getj ,k json) ,default)))
     (let ((cards (gets :cards))
 	  (card-type (gets :card-type))
 	  (id (id player)))
       (make-instance
        'stack :belongs-to id :card-type card-type :card-count (length cards)
-       :x (get0 :x) :y (gets :y) :z (gets :z) :rot (gets :rot)
-       :cards (mapcar (lambda (c) (make-card c card-type id)) cards)))))
+       :x (getd :x) :y (getd :y) :z (getd :z) :rot (getd :rot)
+       :cards (loop for content in cards
+		 append (loop repeat (getd :count 1)
+			   collect (make-card (remove :count content :key #'car) card-type id)))))))
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
   (let* ((player (session-value :player))

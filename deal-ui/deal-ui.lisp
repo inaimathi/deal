@@ -603,29 +603,35 @@
 			   (:div :class "row" (:button :class "add-card" "Add Card"))
 			   (:br :class "clear")))
 
-	     ($button "#deck-editor .add-card-property" (:plus))
+	     ($button "#deck-editor .add-card-property" (:plus)
+		      (create-card-property "#deck-editor .card-properties" (create)))
 	     ($button "#deck-editor button.add-card" (:check :text? t)
 		      (let ((res (create)))			
 			($ "#deck-editor .card-property"
 			   (each (lambda (elem i)
 				   (setf (aref res (chain ($ this (children ".card-property-name") (val)) (to-lower-case)))
 					 ($ this (children ".card-property-value") (val))))))
-			(create-card-record "#deck-editor .cards" res)))
+			(if ($exists? (+ "#deck-editor .cards .card[title='" (@ res name) "']"))
+			    (let (($ct ($ (+ "#deck-editor .cards .card[title='" (@ res name) "'] .count"))))
+			      ($ $ct (val (+ 1 ($int $ct)))))
+			    (create-card-record "#deck-editor .cards" res))))
 	     ($button "#deck-editor button.exit" (:close) ($ "#deck-editor" (hide)))
 	     ($button "#deck-editor button.create-deck" (:check :text? t)
-		     (let* ((deck-name ($ "#deck-editor .deck-name" (val)))
-			    (card-type ($ "#deck-editor .card-type" (val)))
-			    (deck (create 'deck-name deck-name 
-					  'card-type card-type 
-					  'cards (loop for card-elem in ($ "#deck-editor .cards .card-content")
-						    collect (string->obj ($ card-elem (text)))))))
-		       (setf (aref *session* :custom-decks deck-name) deck)
-		       (store-decks)
-		       (when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
-			 ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove)))
-		       (create-custom-deck "#decks-tab .content" deck)
-		       ($draggable "#decks-tab .new-custom-deck:first" (:revert t))
-		       ($ "#deck-editor" (hide))))
+		      (let* ((deck-name ($ "#deck-editor .deck-name" (val)))
+			     (card-type ($ "#deck-editor .card-type" (val)))
+			     (deck (create 'deck-name deck-name 
+					   'card-type card-type 
+					   'cards (loop for card-elem in ($ "#deck-editor .cards .card")
+						     append (let ((count (or ($int ($ card-elem (children ".count"))) 1)))
+							      (loop repeat count
+								 collect (string->obj ($ card-elem (children ".card-content") (text)))))))))
+			(setf (aref *session* :custom-decks deck-name) deck)
+			(store-decks)
+			(when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
+			  ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove)))
+			(create-custom-deck "#decks-tab .content" deck)
+			($draggable "#decks-tab .new-custom-deck:first" (:revert t))
+			($ "#deck-editor" (hide))))
 	     ($button "#deck-editor button.load" (:arrowthick-1-n)
 		      ($ "#load-deck-dialog" (dialog :open)))
 	     
@@ -634,17 +640,16 @@
 		      (:button :class "remove")
 		      (:input :class "card-property-name" :value (aif (self name) it ""))
 		      (:textarea :class "card-property-value" (aif (self value) it "")))
-	       ($button ($child ".remove") (:cancel))) 
+	       ($button ($child ".remove") (:cancel) ($ $self (remove)))) 
 	     
 	     (define-thing card-record
-		 (:div :class "card in-chat" 
+		 (:div :class "card in-chat" :title (self name)
 		       (:span :class "content" (card-html (create :card-type "" :face :up :content self)))
-		       (:button :class "add") 
-		       (:button :class "zoom") 
+		       (:input :class "count" :value (or (self count) 1))
+		       (:button :class "zoom")
 		       (:button :class "remove")
 		       (:span :class "card-content" (obj->string self)))
-	       ($button ($child ".remove") (:minus))
-	       ($button ($child ".add") (:plus))
+	       ($button ($child ".remove") (:cancel) ($ $self (remove)))
 	       ($button ($child ".zoom") (:zoomin)
 			($ "#zoomed-card" (toggle))
 			($ "#zoomed-card .content" (empty) 
@@ -681,29 +686,28 @@
 		 ($ "#deck-editor .deck-name" (val deck-name))
 		 ($ "#deck-editor .card-type" (val card-type))
 		 ($ "#deck-editor .cards" (empty))
-		 (loop for c in cards do (create-card-record "#deck-editor .cards" c))))
+		 (loop for c in cards 
+		    do (if ($exists? (+ "#deck-editor .cards .card[title='" (@ c name) "']"))
+			   (let (($ct ($ (+ "#deck-editor .cards .card[title='" (@ c name) "'] .count"))))
+			     ($ $ct (val (+ 1 ($int $ct)))))
+			   (create-card-record "#deck-editor .cards" c)))))
 	     
 	     ($ "#load-deck-form" 
-		(change 
-		 (fn ($upload "#load-deck-form" "/load-deck"
-			      (load-deck-for-editing res)))))
+		(change (fn ($upload "#load-deck-form" "/load-deck"
+				     (load-deck-for-editing res)))))
 	     
 	     ;; get custom decks from local storage
 	     (aif (@ window local-storage :custom-decks)
 		  (let ((decks (string->obj it)))
 		    (setf (@ *session* :custom-decks) decks)
 		    ($map decks (create-custom-deck "#decks-tab .content" elem)))
-		  (setf (@ *session* :custom-decks) (create)))
-
-	     ($on "#deck-editor"
-		  (:click "button.remove" ($ this (parent) (remove)))
-		  (:click "button.add" ($ "#deck-editor .cards" (append ($ this (parent) (clone)))))
-		  (:click "button.add-card-property" (create-card-property "#deck-editor .card-properties" (create)))))))
+		  (setf (@ *session* :custom-decks) (create))))))
 
 (to-file "static/js/util.js"
 	 (ps 
 	   (defun name->filename (name &optional (extension ".json"))
-	     (+ (chain name (replace " " "-") (to-lower-case)) extension))
+	     (let ((reg (new (-reg-exp " " :g))))
+	       (+ (chain name (replace reg "-") (to-lower-case)) extension)))
 	   
 	   (defun uri->name (uri)
 	     (chain 

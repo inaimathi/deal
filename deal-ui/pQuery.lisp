@@ -49,7 +49,8 @@
     `(> (@ ($ ,selector) length) 0))
 
 (defpsmacro $int (selector &optional (start 0))
-  `(parse-int (chain ($ ,selector (text)) (substring ,start))))
+  `(parse-int (or (chain ($ ,selector (text)) (substring ,start))
+		  (chain ($ ,selector (val)) (substring ,start)))))
 
 (defpsmacro doc-ready (&body body) 
   `($ document (ready (fn ,@body))))

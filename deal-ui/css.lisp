@@ -128,6 +128,7 @@
 	       ("#deck-editor .card .content .label" :display none)
 	       
 	       ("#deck-editor input" :width 190px)
+	       ("#deck-editor .card input" :width 23px)
 	       ;;; TODO make sure these work properly with the back-end
 	       ("#deck-editor input.url-input" :width 380px :display none)
 	       ("#deck-editor .card-properties" :list-style-type none :padding 0px)
