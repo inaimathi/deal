@@ -35,7 +35,8 @@
    (width :accessor width :initarg :width :initform nil)
    (height :accessor height :initarg :height :initform nil)
    (depth :accessor depth :initarg :depth :initform nil)
-   (belongs-to :accessor belongs-to :initarg :belongs-to)))
+   (belongs-to :accessor belongs-to :initarg :belongs-to)
+   (attached-to :accessor attached-to :initarg :attached-to :initform nil)))
 
 (defclass card (placeable)
   ((content :accessor content :initarg :content)
@@ -50,8 +51,7 @@
    (card-type :accessor card-type :initarg :card-type)))
 
 (defclass note (placeable)
-  ((text :accessor text :initarg :text)
-   (attached-to :accessor attached-to :initarg :attached-to)))
+  ((text :accessor text :initarg :text)))
 
 (defclass mini (placeable)
   ((image-uri :accessor image-uri :initarg :image-uri)))
@@ -107,6 +107,7 @@
 ;;;;;;;;;; delete/insert methods (more in model/server.lisp)
 (defmethod delete! ((table table) (thing placeable))
   "Removes a thing from the given table"
+  (setf (attached-to thing) nil)
   (remhash (id thing) (things table)))
 
 (defmethod insert! ((table table) (card card))

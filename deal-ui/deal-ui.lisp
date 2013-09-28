@@ -134,8 +134,12 @@
 					    (+ "pinged " (@ msg x) "." (@ msg y)))
 					   ("placedNote"
 					    (+ "placed a note"))
-					   ("attachedNote"
-					    (+ "attached note " (@ msg note) " to " (@ msg thing)))
+					   ("attached"
+					    (+ "attached " (@ msg child) " to " (@ msg parent)))
+					   ("detachedFrom"
+					    (+ "detached " (@ msg child) " from " (@ msg parent)))
+					   ("detached"
+					    (+ "detached " (@ msg child) " from everything"))
 					   ("addedToStack"
 					    (+ "put " (@ msg card) " on top of " (@ msg stack)))
 					   ("mergedStacks"
@@ -404,7 +408,9 @@
 
 				 ;;; todo
 				 (placed-note)
-				 (attached-note)
+				 (attached)
+				 (detached-from)
+				 (detached)
 
 				 (loaded (look/table))
 				 (tablecloth

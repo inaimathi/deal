@@ -184,13 +184,27 @@
 
 (define-player-handler (table/move) ((table :table) (thing :placeable) (x :int) (y :int) (z :int) (rot :int))
   (set-props thing x y z rot)
-  (when (typep thing 'note) (setf (attached-to thing) nil))
   (publish! table :moved  `((thing . ,(id thing)) (x . ,x) (y . ,y) (z . ,z) (rot . ,rot)))
   :ok)
 
 (define-player-handler (table/take) ((table :table) (thing :placeable))
   (setf (belongs-to thing) (id (session-value :player)))
   (publish! table :took-control `((thing . ,(id thing))))
+  :ok)
+
+(define-player-handler (table/attach) ((table :table) (child :placeable) (parent :placeable))
+  (pushnew (id parent) (attached-to child))
+  (publish! table :attached `((child . ,(id child)) (parent . ,(id parent))))
+  :ok)
+
+(define-player-handler (table/detach-from) ((table :table) (child :placeable) (parent :placeable))
+  (setf (attached-to child) (remove (id parent) (attached-to child)))
+  (publish! table :detached-from `((child . ,(id child)) (parent . ,(id parent))))
+  :ok)
+
+(define-player-handler (table/detach) ((table :table) (child :placeable))
+  (setf (attached-to child) nil)
+  (publish! table :detached `((child . ,(id child))))
   :ok)
 
 ;;;;; Stack-specific actions
@@ -246,12 +260,6 @@
 ;; (define-handler (table/stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))
 ;;   ;; TODO
 ;;   (list :reordering-cards min :to max :from stack))
-
-;;;;; Note-specific actions
-(define-player-handler (table/note/attach) ((table :table) (note :note) (thing :placeable))
-  (setf (attached-to note) (id thing))
-  (publish! table :attached-note `((note . ,(id note)) (thing . ,(id thing))))
-  :ok)
 
 ;;;;; Card-specific actions
 (define-player-handler (table/card/flip) ((table :table) (card (:card :from-table)))
