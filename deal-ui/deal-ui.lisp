@@ -475,7 +475,6 @@
 				  (create-card "body" (@ ev card)))
 
 				 (played-from-stack 
-				  (log "Played the top card from a stack")
 				  (change-stack-count (@ ev stack) -1)
 				  (create-card "body" (@ ev card)))
 				 (played-to-stack
@@ -505,6 +504,12 @@
 	       ($droppable board-selector ()
 			   (:card-in-hand 
 			    (table/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
+			   (:peek-card
+			    (let ((id ($ dropped (attr :id))))
+			      ($ "#peek-window .cards" (sortable :cancel))
+			      ($ (+ "#" id) (remove))
+			      (table/stack/play ($ "#peek-window .stack-id" (text)) id
+						(if shift? :down :up) ev-x ev-y 0 0)))
 			   
 			   (:new-custom-deck
 			    (table/new/stack-from-json
@@ -961,7 +966,8 @@
 	     ;; TODO table/take
 
 	     ;;; Stack-related actions
-	     (define-ajax table/stack/play (stack face x y z rot))
+	     (define-ajax table/stack/play-top-card (stack face x y z rot))
+	     (define-ajax table/stack/play (stack card-id face x y z rot))
 	     (define-ajax table/stack/add-to (stack card))
 	     (define-ajax table/stack/merge (stack stack-two))
 	     (define-ajax table/stack/shuffle (stack))

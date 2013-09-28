@@ -208,11 +208,19 @@
   :ok)
 
 ;;;;; Stack-specific actions
-(define-player-handler (table/stack/play) ((table :table) (stack :stack) (face :facing) (x :int) (y :int) (z :int) (rot :int))
+(define-player-handler (table/stack/play-top-card) ((table :table) (stack :stack) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (let ((card (pop! stack)))
     (set-props card x y z rot)
     (insert! table card)
     (publish! table :played-from-stack `((stack . ,(id stack)) (card . ,(redact card))))
+    :ok))
+
+(define-player-handler (table/stack/play) ((table :table) (stack :stack) (card-id :keyword) (face :facing) (x :int) (y :int) (z :int) (rot :int))
+  (let ((card (find card-id (cards stack) :key #'id)))
+    (assert card)
+    (set-props card face x y z rot)
+    (publish! table :played-from-stack `((stack . ,(id stack)) (card . ,(redact card))))
+    (move! card stack table)
     :ok))
 
 (define-player-handler (table/stack/add-to) ((table :table) (stack :stack) (card (:card :from-table)))
@@ -278,19 +286,3 @@
   (move! card table (session-value :player))
   (publish! table :picked-up `((card . ,(id card))))
   (hash-values (hand (session-value :player))))
-
-:table2238
-:stack2293
-:CARD2241
-:CARD2250
-:CARD2255
-:CARD2247
-:CARD2256
-
-:STACK2334
-
-:CARD2295
-:CARD2297
-:CARD2298
-:CARD2296
-:CARD2299

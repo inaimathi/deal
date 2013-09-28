@@ -125,16 +125,13 @@
 
 (defmethod insert! ((table table) (card card))
   "Place a new card on the given table. Re-assigns (id card) to maintain secrecy about card properties."
-  (setf (id card) (make-id "CARD")
-	(gethash (id card) (things table)) card))
+  (let ((new-id (make-id "CARD")))
+    (setf (id card) new-id
+	  (gethash new-id (things table)) card)))
 
 (defmethod insert! ((table table) (thing placeable))
   "Places a new thing on the given table."
   (setf (gethash (id thing) (things table)) thing))
-
-(defmethod insert! ((table table) (card card))
-  (setf (id card) (make-id "CARD")
-	(gethash (id card) (things table)) card))
 
 (defmethod insert! ((stack stack) (card card))
   "Inserts the given card into the given stack."
