@@ -559,8 +559,7 @@
 			  (table/stack/merge (self id) ($ dropped (attr :id)))))
 	     ($button ($child ".shuffle") (:shuffle) (table/stack/shuffle (self id)))
 	     ($button ($child ".peek") (:search)
-		      (when shift? (setf (@ *session* peek-count) (or (parse-int (prompt "How many?")) 1)))
-		      (table/stack/peek (self id) 0 (or (@ *session* peek-count) 1)))
+		      (table/stack/peek (self id) 0 (parse-int (prompt "How many?"))))
 	     ($button ($child ".draw") (:document) (table/stack/draw (self id) 1)))
 	   
 	   (define-thing mini
@@ -976,10 +975,7 @@
 	     (define-ajax table/stack/take (stack card-id)
 	       ($ (+ "#" card-id) (remove))
 	       (create-card-in-hand "#hand" res))
-	     ;; TODO
-	     (define-ajax table/stack/reorder (stack card-order)
-	       (log "SUCCESSFUL REORDER" res))
-	     ;; END TODO
+	     (define-ajax table/stack/reorder (stack card-order))
 
 	     ;;; Note-related actions
 	     ;; TODO table/note/attach
