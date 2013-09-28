@@ -210,7 +210,7 @@
 ;;;;; Stack-specific actions
 (define-player-handler (table/stack/play-top-card) ((table :table) (stack :stack) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (let ((card (pop! stack)))
-    (set-props card x y z rot)
+    (set-props card face x y z rot)
     (insert! table card)
     (publish! table :played-from-stack `((stack . ,(id stack)) (card . ,(redact card))))
     :ok))
