@@ -246,9 +246,9 @@
   (publish! table :drew-from `((stack . ,(id stack)) (count . ,num)))
   (hash-values (hand (session-value :player))))
 
-(define-player-handler (table/stack/peek) ((table :table) (stack :stack) (min :int) (max :int))
+(define-player-handler (table/stack/peek) ((table :table) (stack :stack) (min (:int :min 0)) (max :int))
   (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))
-  (take (- max min) (drop (+ min 1) (cards stack))))
+  (take (- max min) (drop min (cards stack))))
 
 (define-player-handler (table/stack/take) ((table :table) (stack :stack) (card-id :keyword))
   (let ((card (find card-id (cards stack) :key #'id)))
@@ -258,13 +258,13 @@
     card))
 
 (define-handler (table/stack/reorder) ((table :table) (stack :stack) (card-order (:list :keyword)))
-  ;; TODO
-  ;; (let ((count (length card-order)))
-  ;;   (with-slots (cards) stack
-  ;;     (setf cards
-  ;; 	    (append
-  ;; 	     (drop count cards)))))
-  (hunchentoot:log-message* :warn "RE-ORDERING ~s ::> ~s" stack card-order)
+  (with-slots (cards) stack
+    (let* ((count (length card-order))
+	   (head (take count cards))
+	   (changed (loop for c-id in card-order
+		       for card = (find c-id head :key #'id)
+		       do (assert card) collect card)))
+      (setf cards (append changed (drop count cards)))))
   (publish! table :reordered `((stack . ,(id stack)) (count . ,(length card-order))))
   :ok)
 
@@ -278,3 +278,19 @@
   (move! card table (session-value :player))
   (publish! table :picked-up `((card . ,(id card))))
   (hash-values (hand (session-value :player))))
+
+:table2238
+:stack2293
+:CARD2241
+:CARD2250
+:CARD2255
+:CARD2247
+:CARD2256
+
+:STACK2334
+
+:CARD2295
+:CARD2297
+:CARD2298
+:CARD2296
+:CARD2299

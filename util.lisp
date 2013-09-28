@@ -76,8 +76,10 @@ This works where it's used inside of Deal, but probably isn't what you want exte
   (if (> (length seq) count) (subseq seq 0 count) seq))
 
 (defmethod drop ((count integer) (seq list))
-  (loop for (elem . rest) on seq repeat (- count 1)
-     finally (return rest)))
+  (if (>= 0 count)
+      seq
+      (loop repeat (- count 1) for (elem . rest) on seq
+	 finally (return rest))))
 
 (defun make-id (&optional (prefix "G")) (sym->keyword (gensym prefix)))
 
