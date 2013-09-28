@@ -134,7 +134,7 @@
 	       ("#deck-editor .card-properties" :list-style-type none :padding 0px)
 	       ("#deck-editor .card-properties li" :border-bottom "1px dashed #ccc" :padding "8px 0px")
 	       ("#deck-editor button.add-card, #deck-editor button.create-deck" :width 120px :height 30px :font-size small)
-	       ("#deck-editor .card" :position relative :display inline-block :float none :cursor auto)
+	       ("#deck-editor .card" :vertical-align top :position relative :display inline-block :float none :cursor auto)
 	       ("#deck-editor .card .type" :margin-top 20px)
 
 	       (".backpack-mini" :display inline-block :max-height 75px :max-width 75px :cursor move)
