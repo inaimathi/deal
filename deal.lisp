@@ -4,12 +4,6 @@
 (define-handler (root) ()
   (redirect "/static/index.html"))
 
-;;;;;;;;;; Stupid hacks around in-browser JS limitations
-;;; TODO: figure out a way to do this entirely on the client side. 
-;;; Why should I have to give a rats' ass what they want to load?
-(define-handler (load-deck) ((deck :json-file))
-  deck)
-
 ;;;;;;;;;; Player-info related
 (define-handler (server-info) ()
   (hash :handlers *handlers*

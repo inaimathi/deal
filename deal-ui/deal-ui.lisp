@@ -555,7 +555,7 @@
 		     (:button :class "zoom"))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($button ($child ".zoom") (:zoomin)
-		      ($ "#zoomed-card" (toggle))
+		      ($ "#zoomed-card" (show))
 		      ($ "#zoomed-card .content" (empty) (append (card-html self))))
 	     ($rotatable $self
 			 (let ((off ($ $self (offset))))
@@ -580,7 +580,7 @@
 		     (:h3 "Deck Editor" (:button :class "exit") (:button :class "load"))
 		     (:div :class "dialog" :id "load-deck-dialog" :title "Load Deck"
 			   (:form :id "load-deck-form" :enctype "multipart/form-data"
-				  (:input :name "deck" :type "file")))
+				  (:input :id "load-deck-file" :name "deck" :type "file")))
 		     (:div :class "content"
 			   (:div :class "row"
 				 (:input :class "deck-name" :value "New Deck Name")
@@ -651,7 +651,7 @@
 		       (:span :class "card-content" (obj->string self)))
 	       ($button ($child ".remove") (:cancel) ($ $self (remove)))
 	       ($button ($child ".zoom") (:zoomin)
-			($ "#zoomed-card" (toggle))
+			($ "#zoomed-card" (show))
 			($ "#zoomed-card .content" (empty) 
 			   (append (card-html (create :card-type "" :face :up :content self))))))
 
@@ -693,8 +693,9 @@
 			   (create-card-record "#deck-editor .cards" c)))))
 	     
 	     ($ "#load-deck-form" 
-		(change (fn ($upload "#load-deck-form" "/load-deck"
-				     (load-deck-for-editing res)))))
+		(change (fn 
+			 ($load "load-deck-file" (load-deck-for-editing res))
+			 ($ "#load-deck-dialog" (dialog :close)))))
 	     
 	     ;; get custom decks from local storage
 	     (aif (@ window local-storage :custom-decks)

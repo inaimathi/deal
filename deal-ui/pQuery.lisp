@@ -160,6 +160,17 @@
 	    (,blob (new (-blob (list ,content-string) (create :type ,type)))))
        (save-as ,blob ,filename))))
 
+(defpsmacro $load (elem-id &body body)
+  (with-ps-gensyms (f-list)
+    `(let ((reader (new -file-reader))
+	   (,f-list (chain document (get-element-by-id ,elem-id) files)))
+       (setf (@ reader onloadend)
+	     (lambda (event)
+	       (let ((res (string->obj (@ event target result)))) 
+		 ,@body)))
+       (when ,f-list
+	 (chain reader (read-as-text (@ ,f-list 0)))))))
+
 (defpsmacro $upload (target-form uri &rest success)
   (with-ps-gensyms (form-data)
     `(let ((,form-data (new (-form-data (aref ($ ,target-form) 0)))))
