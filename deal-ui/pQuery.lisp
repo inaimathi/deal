@@ -52,6 +52,9 @@
   `(parse-int (or (chain ($ ,selector (text)) (substring ,start))
 		  (chain ($ ,selector (val)) (substring ,start)))))
 
+(defpsmacro $extend (&body objects)
+  `(chain j-query (extend (create) ,@objects)))
+
 (defpsmacro doc-ready (&body body) 
   `($ document (ready (fn ,@body))))
 
@@ -129,7 +132,7 @@
 (defpsmacro $button (selector (icon-name &key text? (class "control-button")) &body on-click)
   `($ ,selector
       (button (create :icons (create :primary ,(format nil "ui-icon-~(~a~)" icon-name)) :text ,text?))
-      (click (lambda (event) ,@on-click))
+      (click (lambda (event) (let (,@mod-keys) ,@on-click)))
       ,@(when class `((add-class ,class)))))
 
 (defpsmacro $dialog (selector (&key auto-open?))
@@ -222,13 +225,14 @@
 		 (recur (cdr form)))))))
 
 (defpsmacro define-thing (name markup &body behavior)
-  (with-ps-gensyms (thing container)
-    `(defun ,(intern (format nil "create-~a" name)) (,container ,thing)
-       ($ ,container (append (who-ps-html ,(expand-self-expression markup thing))))
-       (let (($self (aif (@ ,thing id) ($ (+ "#" it)) ($ ,container (children) (last)))))
-	 (flet (($child (selector) (chain $self (children selector))))
+  (with-ps-gensyms (container)
+    `(defun ,(intern (format nil "create-~a" name)) (,container thing)
+       ($ ,container (append (who-ps-html ,(expand-self-expression markup 'thing))))
+       (let (($self (aif (@ thing id) ($ (+ "#" it)) ($ ,container (children) (last)))))
+	 (flet (($child (selector) (chain $self (children selector)))
+		($find (selector) (chain $self (find selector))))
 	   ,@(loop for clause in behavior
-		collect (expand-self-expression clause thing)))))))
+		collect (expand-self-expression clause 'thing)))))))
 
 (defpsmacro define-component ((name &key (empty? t)) markup &body behavior)
   `(defun ,(intern (format nil "show-~a" name)) (container)

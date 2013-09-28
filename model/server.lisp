@@ -12,7 +12,7 @@
    (lock :accessor lock :initform (make-lock))))
 
 (defclass player ()
-  ((id :reader id :initform (make-id))
+  ((id :reader id :initform (make-id "PLAYER"))
    (tag :accessor tag :initform nil :initarg :tag)
    (current-table :accessor current-table :initform nil)
    (last-seen :accessor last-seen :initform (get-universal-time))
@@ -36,7 +36,8 @@
 
 (defmethod insert! ((player player) (card card))
   "Adds the given card to the given players' hand"
-  (setf (id card) (make-id)
+  (setf (id card) (make-id "CARD")
+	(face card) :up
 	(gethash (id card) (hand player)) card))
 
 (defmethod insert! ((server server) (table table))

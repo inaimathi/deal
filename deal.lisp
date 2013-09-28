@@ -147,7 +147,7 @@
     (publish! table :placed-note `((note . ,(redact note))))
     :ok))
 
-(define-player-handler (table/new/stack-from-cards) ((table :table) (cards (:list card)))
+(define-player-handler (table/new/stack-from-cards) ((table :table) (cards (:list :card)))
   (let* ((c (first cards))
 	 (stack (make-instance 'stack :belongs-to (id (session-value :player)) :x (x c) :y (y c) :z (z c) :rot (rot c))))
     (loop for card in cards 
@@ -208,7 +208,7 @@
   :ok)
 
 ;;;;; Stack-specific actions
-(define-player-handler (table/stack/play) ((table :table) (stack :stack) (x :int) (y :int) (z :int) (rot :int))
+(define-player-handler (table/stack/play) ((table :table) (stack :stack) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (let ((card (pop! stack)))
     (set-props card x y z rot)
     (insert! table card)
@@ -240,7 +240,6 @@
 (define-player-handler (table/stack/draw) ((table :table) (stack :stack) (num :int))
   (loop with rep = (min num (card-count stack)) repeat rep
      do (let ((card (pop! stack)))
-	  (setf (face card) :up)
 	  (insert! (session-value :player) card)))
   (when (zerop (card-count stack))
     (delete! table stack))
@@ -251,15 +250,23 @@
   (publish! table :peeked `((stack . ,(id stack)) (count . ,(- max min))))
   (take (- max min) (drop (+ min 1) (cards stack))))
 
-(define-player-handler (table/stack/show) ((table :table) (stack :stack) (min :int) (max :int))
-  (publish! 
-   table :revealed 
-   `((stack . ,(id stack)) (cards ,@(take (- max min) (drop (+ min 1) (cards stack))))))
-  :ok)
+(define-player-handler (table/stack/take) ((table :table) (stack :stack) (card-id :keyword))
+  (let ((card (find card-id (cards stack) :key #'id)))
+    (assert card)
+    (move! card stack (session-value :player))
+    (publish! table :took-from `((stack . ,(id stack))))
+    card))
 
-;; (define-handler (table/stack/reorder) ((table :table) (stack :stack) (min :int) (max :int))
-;;   ;; TODO
-;;   (list :reordering-cards min :to max :from stack))
+(define-handler (table/stack/reorder) ((table :table) (stack :stack) (card-order (:list :keyword)))
+  ;; TODO
+  ;; (let ((count (length card-order)))
+  ;;   (with-slots (cards) stack
+  ;;     (setf cards
+  ;; 	    (append
+  ;; 	     (drop count cards)))))
+  (hunchentoot:log-message* :warn "RE-ORDERING ~s ::> ~s" stack card-order)
+  (publish! table :reordered `((stack . ,(id stack)) (count . ,(length card-order))))
+  :ok)
 
 ;;;;; Card-specific actions
 (define-player-handler (table/card/flip) ((table :table) (card (:card :from-table)))

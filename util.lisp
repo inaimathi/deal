@@ -79,7 +79,7 @@ This works where it's used inside of Deal, but probably isn't what you want exte
   (loop for (elem . rest) on seq repeat (- count 1)
      finally (return rest)))
 
-(defun make-id () (sym->keyword (gensym)))
+(defun make-id (&optional (prefix "G")) (sym->keyword (gensym prefix)))
 
 (defun sym->keyword (symbol)
   (intern (symbol-name symbol) :keyword))

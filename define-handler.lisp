@@ -15,7 +15,10 @@
      `(intern (string-upcase ,arg) :keyword))
     (:table 
      (lookup-expression arg '(private-tables *server*) '(public-tables *server*)))
-    ((list :list _)
+    ((list :list :keyword)
+     `(loop for elem in (decode-json-from-string ,arg)
+	 collect (intern (string-upcase elem) :keyword)))
+    ((list :list :card)
      `(loop for elem in (decode-json-from-string ,arg)
 	 collect (gethash elem (things table))))
     ((or :stack :flippable :placeable :note
@@ -52,8 +55,8 @@
     ((list :int :min min :max max)
      `(assert (>= ,max ,arg ,min)))
     ((list :card _) `(assert (typep ,arg 'card)))
-    ((list :list lst-type)
-     `(assert (every (lambda (a) (typep a ',lst-type)) ,arg)))
+    ((list :list :card)
+     `(assert (every (lambda (a) (typep a 'card)) ,arg)))
     (_ nil)))
 
 (defun type-pieces (args)

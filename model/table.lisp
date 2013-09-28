@@ -1,7 +1,7 @@
 (in-package :deal)
 
 (defclass table ()
-  ((id :reader id :initform (make-id))
+  ((id :reader id :initform (make-id "TABLE"))
    (tag :accessor tag :initform "" :initarg :tag)
    (started :reader started :initform (get-universal-time))
    (max-players :accessor max-players :initform 12 :initarg :max-players)
@@ -39,22 +39,26 @@
    (attached-to :accessor attached-to :initarg :attached-to :initform nil)))
 
 (defclass card (placeable)
-  ((content :accessor content :initarg :content)
+  ((id :initform (make-id "CARD"))
+   (content :accessor content :initarg :content)
    (face :accessor face :initform :up :initarg :face)
    (card-type :accessor card-type :initarg :card-type)
    (back-image-uri :accessor back-image-uri :initarg :back-image-uri :initform nil)
    (image-uri :accessor image-uri :initarg :image-uri)))
 
 (defclass stack (placeable)
-  ((cards :accessor cards :initform nil :initarg :cards)
+  ((id :initform (make-id "STACK"))
+   (cards :accessor cards :initform nil :initarg :cards)
    (card-count :accessor card-count :initform 0 :initarg :card-count)
    (card-type :accessor card-type :initarg :card-type)))
 
 (defclass note (placeable)
-  ((text :accessor text :initarg :text)))
+  ((id :initform (make-id "NOTE"))
+   (text :accessor text :initarg :text)))
 
 (defclass mini (placeable)
-  ((image-uri :accessor image-uri :initarg :image-uri)))
+  ((id :initform (make-id "MINI"))
+   (image-uri :accessor image-uri :initarg :image-uri)))
 
 (defun make-card (content card-type belongs-to &optional (x 0) (y 0) (z 0) (rot 0))
   (make-instance 'card :content content :face :down 
@@ -115,18 +119,26 @@
   (setf (attached-to thing) nil)
   (remhash (id thing) (things table)))
 
+(defmethod delete! ((stack stack) (card card))
+  (setf (cards stack) (remove card (cards stack)))
+  (decf (card-count stack)))
+
 (defmethod insert! ((table table) (card card))
   "Place a new card on the given table. Re-assigns (id card) to maintain secrecy about card properties."
-  (setf (id card) (make-id)
+  (setf (id card) (make-id "CARD")
 	(gethash (id card) (things table)) card))
 
 (defmethod insert! ((table table) (thing placeable))
   "Places a new thing on the given table."
   (setf (gethash (id thing) (things table)) thing))
 
+(defmethod insert! ((table table) (card card))
+  (setf (id card) (make-id "CARD")
+	(gethash (id card) (things table)) card))
+
 (defmethod insert! ((stack stack) (card card))
   "Inserts the given card into the given stack."
-  (setf (id card) (make-id))
+  (setf (id card) (make-id "CARD"))
   (incf (card-count stack))
   (push card (cards stack)))
 

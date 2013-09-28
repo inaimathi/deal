@@ -63,6 +63,9 @@
 	       ("#lobby #player-info" :border "1px solid #ddd" :padding 8px :border-radius 5px)
 	       
 	       ("#board" :margin 20px :width 1800px :height 1200px :border "1px solid #ccc" :background-repeat no-repeat)
+	       
+	       ("#peek-window" :top 10px :left 10px :display none)
+	       ("#peek-window .cards .card" :position relative :vertical-align top :display inline-block :margin-right 3px)
 
 	       ("#zoomed-card" :width 250px :height 360px :top 10px :left 10px :display none :background-size "100% 100%")
 	       ("#zoomed-card button" :float right)
@@ -103,7 +106,7 @@
 	       ("#open-tables" ,@css-sub-window :height 300px)
 	       ("#open-tables li" ,@(css-box :filled) :padding 5px :margin-bottom 5px)
 	       ("#open-tables li span" ,@css-display-line)
-	       ("#open-tables li .tag" :width 150px :text-align left)
+	       ("#open-tables li .tag" :width 130px :text-align left)
 	       ("#open-tables li .id" :font-size x-small)
 	       ("#open-tables li .players" :width 50px :padding-right 5px :text-align right)
 	       ("#open-tables button, #new-table" :float right)

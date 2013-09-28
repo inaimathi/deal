@@ -111,13 +111,10 @@
 					    (+ "drew " (@ msg count) " from " (@ msg stack)))
 					   ("peeked"
 					    (+ "peeked at " (@ msg count) " cards from " (@ msg stack)))
-					   ("revealed"
-					    (+ "revealed " 
-					       (chain ($map (@ msg cards)
-							    (log "REVEALED" msg)
-							    (setf (@ elem face) "up")
-							    (chat-card elem)))
-					       " from " (@ msg stack)))
+					   ("tookFrom"
+					    (+ "took a card from " (@ msg stack)))
+					   ("reordered"
+					    (+ "reordered the top " (@ msg count) " cards in " (@ msg stack)))
 					   ("flipped"
 					    (+ "flipped over " (chat-card (@ msg card))))
 					   ("placedMini" "placed a mini")
@@ -254,6 +251,7 @@
 	       (setf *lobby-stream* nil))
 
 	     (show-deck-editor "#table")
+	     (show-peek-window "#table")
 
 	     ($draggable ".tablecloth" (:revert t))
 	     ($draggable ".backpack-mini" (:revert t))
@@ -300,8 +298,12 @@
 			      ($save-as (name->filename tag) res))))
 	     
 	     ($droppable "#hand" (:overlapping "#board, .stack")
-			 (:card (unless ($ dropped (has-class :card-in-hand))
-				  (table/card/pick-up ($ dropped (attr :id))))))	     
+			 (:peek-card
+			  (table/stack/take ($ "#peek-window .stack-id" (text)) ($ dropped (attr :id)))
+			  ($ "#peek-window .cards" (sortable :cancel)))
+			 (:card 
+			  (unless ($ dropped (has-class :card-in-hand))
+			    (table/card/pick-up ($ dropped (attr :id))))))	     
 	     
 	     ($draggable ".moveable" (:handle "h3")
 			 (setf (@ *session* :element-locations (+ "#" ($ this (attr :id)))) ($ this (offset))
@@ -435,6 +437,7 @@
 				  (create-stack "body" (@ ev stack)))
 				 (stacked-up (log "Made a stack from cards"))
 				 (merged-stacks 
+				  
 				  ($ (+ "#" (@ ev merged)) (remove))
 				  ($ (+ "#" (@ ev stack id)) (remove))
 				  (create-stack "body" (@ ev stack)))
@@ -444,13 +447,25 @@
 				  ($ (+ "#" (@ ev stack)) (highlight))
 				  (log "Put a card onto a stack"))
 				 (drew-from 
+				  (when (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
+				    (clear-peek-window))
 				  (change-stack-count (@ ev stack) -1)
 				  ($highlight (+ "#" (@ ev stack))))
 				 (shuffled
+				  (when (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
+				    (clear-peek-window))
 				  ($highlight (+ "#" (@ ev stack))))
 
-				 (peeked (log "Peeked at cards from a stack"))
-				 (revealed (log "Showed everyone cards from a stack"))
+				 (peeked)
+				 (took-from
+				  (when (and (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
+					     (not (= (@ ev player) (@ *session* id))))
+				    (clear-peek-window))
+				  (change-stack-count (@ ev stack) -1))
+				 (reordered
+				  (when (and (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
+					     (not (= (@ ev player) (@ *session* id))))
+				    (clear-peek-window)))
 
 				 (placed-mini
 				  (create-mini "body" (@ ev mini)))
@@ -459,7 +474,10 @@
 				 (played-from-hand 
 				  (create-card "body" (@ ev card)))
 
-				 (played-from-stack (log "Played the top card from a stack"))
+				 (played-from-stack 
+				  (log "Played the top card from a stack")
+				  (change-stack-count (@ ev stack) -1)
+				  (create-card "body" (@ ev card)))
 				 (played-to-stack
 				  (change-stack-count (@ ev stack) +1)
 				  (log "Played to the top of a stack"))
@@ -469,7 +487,7 @@
 
 				 (rolled (log "Rolled"))
 				 (flipped-coin (log "Flipped a coin")))))
-
+	   
 	   (defun render-board (table)
 	     (let ((board-selector "#board")
 		   (chat-selector "#chat-history")
@@ -489,7 +507,6 @@
 			    (table/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
 			   
 			   (:new-custom-deck
-			    (log "CREATING DECK" (obj->string (aref *session* :custom-decks ($ dropped (text)))))
 			    (table/new/stack-from-json
 			     (obj->string (aref *session* :custom-decks ($ dropped (text))))
 			     ev-x ev-y 0 0))
@@ -525,8 +542,7 @@
 	       (:div :id (self id) :class "stack" :style (self position)		     
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle")
-;;		     (:button :class "peek" "Peek")
-;;		     (:button :class "show" "Show")
+		     (:button :class "peek" "Peek")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
@@ -542,8 +558,9 @@
 			 (:stack
 			  (table/stack/merge (self id) ($ dropped (attr :id)))))
 	     ($button ($child ".shuffle") (:shuffle) (table/stack/shuffle (self id)))
-	     ($button ($child ".show") (:search) (table/stack/show (self id) 0 1))
-	     ;; ($button ($child ".peek") (:search) (table/stack/peek (self id) 0 1))
+	     ($button ($child ".peek") (:search)
+		      (when shift? (setf (@ *session* peek-count) (or (parse-int (prompt "How many?")) 1)))
+		      (table/stack/peek (self id) 0 (or (@ *session* peek-count) 1)))
 	     ($button ($child ".draw") (:document) (table/stack/draw (self id) 1)))
 	   
 	   (define-thing mini
@@ -580,6 +597,34 @@
 		      ($ "#zoomed-card" (show))
 		      ($ "#zoomed-card .content" (empty) (append (card-html self))))
 	     ($draggable $self (:revert t)))))
+
+(to-file "static/js/peeking.js"
+	 (ps
+	   (defun clear-peek-window ()
+	     ($ "#peek-window" (hide))
+	     ($ "#peek-window .cards" (empty)))
+	   
+	   (define-component (peek-window :empty? nil)
+	       (:div :id "peek-window" :class "moveable"
+		     (:h3 "Peeking at " (:span :class "stack-id") "..." (:button :class "hide"))
+		     (:div :class "cards"))
+	     ($button "#peek-window button.hide" (:zoomout) (clear-peek-window))
+	     ($ "#peek-window .cards" 
+		(sortable (create :update (lambda (event ui)
+					    (table/stack/reorder 
+					     ($ "#peek-window h3 .stack-id" (text))
+					     (obj->string (loop for elem in ($ "#peek-window .peek-card")
+							     collect ($ elem (attr :id))))))))))
+
+	   (define-thing peek-card
+	       (:div :id (self id) :class "card in-chat peek-card"
+		     (:span :class "content" 
+			    (card-html ($extend thing (create :face :up))))
+		     (:button :class "zoom"))
+	     ($button ($child ".zoom") (:zoomin)
+		      ($ "#zoomed-card" (show))
+		      ($ "#zoomed-card .content" (empty) 
+			 (append (card-html ($extend thing (create :face :up)))))))))
 
 (to-file "static/js/deck-editor.js"
 	 (ps 
@@ -917,16 +962,24 @@
 	     ;; TODO table/take
 
 	     ;;; Stack-related actions
-	     ;; TODO table/stack/play
+	     (define-ajax table/stack/play (stack face x y z rot))
 	     (define-ajax table/stack/add-to (stack card))
 	     (define-ajax table/stack/merge (stack stack-two))
 	     (define-ajax table/stack/shuffle (stack))
 	     (define-ajax table/stack/play-to (card stack) ($ (+ "#" card) (remove)))
 	     (define-ajax table/stack/draw (stack num) (render-hand res))
 	     (define-ajax table/stack/peek (stack min max)
-	       (log res))
-	     (define-ajax table/stack/show (stack min max)
-	       (log res))
+	       (clear-peek-window)
+	       ($ "#peek-window" (show))
+	       ($ "#peek-window .stack-id" (text stack))
+	       (loop for card in res do (create-peek-card "#peek-window .cards" card)))
+	     (define-ajax table/stack/take (stack card-id)
+	       ($ (+ "#" card-id) (remove))
+	       (create-card-in-hand "#hand" res))
+	     ;; TODO
+	     (define-ajax table/stack/reorder (stack card-order)
+	       (log "SUCCESSFUL REORDER" res))
+	     ;; END TODO
 
 	     ;;; Note-related actions
 	     ;; TODO table/note/attach
@@ -945,5 +998,6 @@
 			 (styles "jquery-ui.css" "main.css")
 			 (scripts "jquery-2.0.3.min.js" "jquery-ui-1.10.3.custom.min.js" "jquery.ui.rotatable.js"
 				  "Blob.js" "FileSaver.js" 
-				  "util.js" "chat.js" "lobby.js" "deck-editor.js" "table.js" "deal.js"))
+				  "util.js" "chat.js" "lobby.js" "peeking.js" "deck-editor.js" "table.js"
+				  "deal.js"))
 		  (:body))))
