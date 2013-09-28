@@ -85,13 +85,18 @@
 	     (getd (k &optional (default 0)) `(or (getj ,k json) ,default)))
     (let ((cards (gets :cards))
 	  (card-type (gets :card-type))
-	  (id (id player)))
-      (make-instance
-       'stack :belongs-to id :card-type card-type :card-count (length cards)
-       :x (getd :x) :y (getd :y) :z (getd :z) :rot (getd :rot)
-       :cards (loop for content in cards
-		 append (loop repeat (getd :count 1)
-			   collect (make-card (remove :count content :key #'car) card-type id)))))))
+	  (id (id player))
+	  (card-count 0))
+      (let ((stack
+	     (make-instance
+	      'stack :belongs-to id :card-type card-type
+	      :x (getd :x) :y (getd :y) :z (getd :z) :rot (getd :rot)
+	      :cards (loop for content in cards
+			append (loop repeat (or (getj :count content) 1)
+				  do (incf card-count)
+				  collect (make-card (remove :count content :key #'car) card-type id))))))
+	(setf (card-count stack) card-count)
+	stack))))
 
 (defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
   (let* ((player (session-value :player))

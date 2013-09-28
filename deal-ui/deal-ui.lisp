@@ -430,7 +430,8 @@
 				  (case (@ ev card type)
 				    ("card" (create-card "body" (@ ev card)))
 				    ("stack" (create-stack "body" (@ ev card)))))
-				 (new-deck 
+				 (new-deck
+				  (log "NEW STACK" (@ ev stack))
 				  (create-stack "body" (@ ev stack)))
 				 (stacked-up (log "Made a stack from cards"))
 				 (merged-stacks 
@@ -488,6 +489,7 @@
 			    (table/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
 			   
 			   (:new-custom-deck
+			    (log "CREATING DECK" (obj->string (aref *session* :custom-decks ($ dropped (text)))))
 			    (table/new/stack-from-json
 			     (obj->string (aref *session* :custom-decks ($ dropped (text))))
 			     ev-x ev-y 0 0))
@@ -524,7 +526,7 @@
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle")
 ;;		     (:button :class "peek" "Peek")
-		     (:button :class "show" "Show")
+;;		     (:button :class "show" "Show")
 		     (:div :class "card-count" (+ "x" (self card-count))))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
@@ -628,9 +630,10 @@
 			     (deck (create 'deck-name deck-name 
 					   'card-type card-type 
 					   'cards (loop for card-elem in ($ "#deck-editor .cards .card")
-						     append (let ((count (or ($int ($ card-elem (children ".count"))) 1)))
-							      (loop repeat count
-								 collect (string->obj ($ card-elem (children ".card-content") (text)))))))))
+						     collect (let ((count (or ($int ($ card-elem (children ".count"))) 1))
+								   (card (string->obj ($ card-elem (children ".card-content") (text)))))
+							       (setf (@ card count) count)
+							       card)))))
 			(setf (aref *session* :custom-decks deck-name) deck)
 			(store-decks)
 			(when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
@@ -693,10 +696,7 @@
 		 ($ "#deck-editor .card-type" (val card-type))
 		 ($ "#deck-editor .cards" (empty))
 		 (loop for c in cards 
-		    do (if ($exists? (+ "#deck-editor .cards .card[title='" (@ c name) "']"))
-			   (let (($ct ($ (+ "#deck-editor .cards .card[title='" (@ c name) "'] .count"))))
-			     ($ $ct (val (+ 1 ($int $ct)))))
-			   (create-card-record "#deck-editor .cards" c)))))
+		    do (create-card-record "#deck-editor .cards" c))))
 	     
 	     ($ "#load-deck-form" 
 		(change (fn 
