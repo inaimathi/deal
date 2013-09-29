@@ -85,6 +85,14 @@
 
 	       ("#table-toolbar" :left 1230px :top 20px)
 
+	       ("#table-players" :padding 5px :margin 0px :list-style-type none)
+	       ("#table-players .header-row" :font-size xx-small :font-style oblique :color "#aaa")
+	       ("#table-players li" :border-bottom "1px solid #aaa")
+	       ("#table-players span" :display inline-block)
+	       ("#table-players li .id" :width 80px :font-size xx-small :font-style oblique :color "#aaa" )
+	       ("#table-players li .tag" :width 210px)
+	       ("#table-players li .hand-size")
+
 	       ("#table-toolbar h3 span" :font-size small :vertical-align top)
 	       ("#table-toolbar h3 .game-id" :font-size x-small)
 	       ("#table-toolbar .control-row" :padding 5px :font-size small)

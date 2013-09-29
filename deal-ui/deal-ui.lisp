@@ -206,6 +206,12 @@
 				   (:span :class "label" "Load: ") 
 				   (:input :type "hidden" :name "table" :value (@ *table-info* id))
 				   (:input :name "file" :type "file")))
+		      (:div :class "control-row" 
+			    (:ul :id "table-players"
+				 (:li :class "header-row"
+				      (:span :class "id" "Id")
+				      (:span :class "tag" "Tag")
+				      (:span :class "hand-size" "Cards"))))
 		      (:div :class "content"
 			    (:h2 "Hand")
 			    (:div :id "hand")
@@ -263,6 +269,13 @@
 	     
 	     ($ "#load-form" (change (fn ($upload "#load-form" "/table/load"))))
 
+	     ($map (@ *table-info* players)
+		   ($append "#table-players"
+			    (:li :id (@ elem id)
+				 (:span :class "id" (+ (if (= (@ elem id) (@ *session* id)) "(you)" "") (@ elem id)))
+				 (:span :class "tag" (@ elem tag))
+				 (:span :class "hand-size" (@ elem hand)))))
+	     
 	     ;; load moveable element locations from local storage
 	     (aif (@ window local-storage :element-locations)
 		  (let ((locs (string->obj it)))
@@ -417,7 +430,8 @@
 				 (loaded (look/table))
 				 (tablecloth
 				  ($ "#board" (css "background-image" (+ "url(" (@ ev tablecloth) ")"))))
-				 (changed-tag)
+				 (changed-tag
+				  ($ (+ "#" (@ ev player) " .tag") (text (@ ev player-tag))))
 				 (moved 
 				  (with-slots (thing x y rot) ev
 				    (let ((elem ($ (+ "#" thing))))
@@ -444,12 +458,12 @@
 				 (added-to-stack 
 				  ($ (+ "#" (@ ev card)) (remove))
 				  (change-stack-count (@ ev stack) +1)
-				  ($ (+ "#" (@ ev stack)) (highlight))
-				  (log "Put a card onto a stack"))
+				  ($ (+ "#" (@ ev stack)) (highlight)))
 				 (drew-from 
 				  (when (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
 				    (clear-peek-window))
 				  (change-stack-count (@ ev stack) -1)
+				  (change-hand-count (@ ev player) +1)
 				  ($highlight (+ "#" (@ ev stack))))
 				 (shuffled
 				  (when (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
@@ -461,6 +475,7 @@
 				  (when (and (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
 					     (not (= (@ ev player) (@ *session* id))))
 				    (clear-peek-window))
+				  (change-hand-count (@ ev player) +1)
 				  (change-stack-count (@ ev stack) -1))
 				 (reordered
 				  (when (and (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
@@ -472,20 +487,21 @@
 				 (removed
 				  ($ (+ "#" (@ ev thing)) (remove)))
 				 (played-from-hand 
+				  (change-hand-count (@ ev player) -1)
 				  (create-card "body" (@ ev card)))
-
+				 
 				 (played-from-stack 
 				  (change-stack-count (@ ev stack) -1)
 				  (create-card "body" (@ ev card)))
 				 (played-to-stack
 				  (change-stack-count (@ ev stack) +1)
-				  (log "Played to the top of a stack"))
+				  (change-hand-count (@ ev player) -1))
 				 (picked-up 
 				  ($ (+ "#" (@ ev card)) (remove))
-				  (log "Picked up a card"))
+				  (change-hand-count (@ ev player) +1))
 
-				 (rolled (log "Rolled"))
-				 (flipped-coin (log "Flipped a coin")))))
+				 (rolled)
+				 (flipped-coin))))
 	   
 	   (defun render-board (table)
 	     (let ((board-selector "#board")
@@ -802,6 +818,10 @@
 			  (angle (round (* (chain -math (atan2 b a)) (/ 180 pi)))))
 		     (if (< angle 0) (+ 360 angle) angle)))))
 	   
+	   (defun change-hand-count (player-id by)
+	     (let (($ct (+ "#" player-id " .hand-size")))
+	       ($ $ct (text (+ by ($int $ct))))))
+
 	   (defun change-stack-count (stack-id by)
 	     (let* ((id (+ "#" stack-id))
 		    (ct-class (+ id " .card-count"))
