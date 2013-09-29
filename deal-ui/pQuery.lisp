@@ -48,9 +48,33 @@
 (defpsmacro $exists? (selector)
     `(> (@ ($ ,selector) length) 0))
 
-(defpsmacro $int (selector &optional (start 0))
-  `(parse-int (or (chain ($ ,selector (text)) (substring ,start))
-		  (chain ($ ,selector (val)) (substring ,start)))))
+(defpsmacro $val (selector &optional new-value)
+  (with-ps-gensyms (sel type elem)
+    (let* ((!exp (when new-value `(,new-value)))
+	   (val-exp `(chain ,elem (val ,@!exp))))
+      `(let* ((,sel ,selector)
+	      (,elem ($ ,sel))
+	      (,type (chain ,elem (get 0) tag-name)))
+	 (case ,type
+	   ("INPUT" ,val-exp) ("BUTTON" ,val-exp) ("TEXTAREA" ,val-exp)
+	   (t (chain ,elem (text ,@!exp))))))))
+
+(defpsmacro $int (selector)
+  `(parse-int ($val ,selector)))
+
+(defpsmacro $incf (selector &optional (delta +1) &key min max)
+  (with-ps-gensyms (elem)
+    (let* ((val-exp `(+ ,delta ($int ,elem)))
+	   (new-val (cond ((and min max)
+			   `(max (min ,max ,val-exp) ,min))
+			  (max `(min ,max ,val-exp))
+			  (min `(max ,val-exp ,min))
+			  (t val-exp))))
+      `(let ((,elem ,selector))
+	 ($val ,elem ,new-val)))))
+
+(defpsmacro $decf (selector &optional (delta -1) &key min max)
+  `($incf ,selector ,delta :min ,min :max ,max))
 
 (defpsmacro $extend (&body objects)
   `(chain j-query (extend (create) ,@objects)))

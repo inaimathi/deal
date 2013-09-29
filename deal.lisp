@@ -227,6 +227,9 @@
     (publish! table :played-from-stack `((stack . ,(id stack)) (card . ,(redact card))))
     :ok))
 
+;; TODO -- there's a few places where I take card-id inputs. Really, those should be :card :in-stack <name of stack>, which should then
+;;         look up cards in the named stack and assert that they all exist after the lock. It should be possible to have a list of these too.
+;;         This happens in three places, so it'd be worth pulling out into the define-handler language
 (define-player-handler (table/stack/play) ((table :table) (stack :stack) (card-id :keyword) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (let ((card (find card-id (cards stack) :key #'id)))
     (assert card)

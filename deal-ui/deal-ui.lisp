@@ -39,6 +39,17 @@
 		       <esc> ($ "#new-table-setup .cancel" (click)))
 	     (server-info))
 
+	   ;; (define-thing table-entry
+	   ;;     (:li :id (self id)
+	   ;; 	    (:span :class "tag" (self tag))
+	   ;; 	    (:span :class "id" (self id))
+	   ;; 	    (:span :class "players" (:span :class "count" (self player-count)) "/" (self max-players))
+	   ;; 	    (:button :class "join" "Join"))
+	   ;;   ($highlight $self)
+	   ;;   ($button ($child ".join") (:check :text t) 
+	   ;; 	      (let ((passphrase ""))
+	   ;; 		(lobby/join-table (self id) passphrase))))
+
 	   (defun render-table-entry (tbl-entry)
 	     (with-slots (id tag player-count max-players) tbl-entry
 	       ($prepend "#open-tables"
@@ -287,13 +298,11 @@
 
 	     (show-chat "#game-chat")
 	     ($button ".die-roll-icon .increment" (:plus)
-		      (let ((trg ($ this (siblings ".num-dice"))))
-			($ trg (text (min 4096 (+ 1 ($int trg)))))
-			(store-dice)))
+		      ($incf ($ this (siblings ".num-dice")) +1 :max 4096)
+		      (store-dice))
 	     ($button ".die-roll-icon .decrement" (:minus)
-		      (let ((trg ($ this (siblings ".num-dice"))))
-			($ trg (text (max 1 (- ($int trg) 1))))
-			(store-dice)))
+		      ($decf ($ this (siblings ".num-dice")) -1 :min 1)
+		      (store-dice))
 
 	     ;; get dice from local storage
 	     (aif (@ window local-storage :dice)
@@ -566,7 +575,7 @@
 		     (:button :class "shuffle")
 		     (:button :class "peek" "Peek")
 		     (:button :class "play-top")
-		     (:div :class "card-count" (+ "x" (self card-count))))
+		     (:div :class "card-count" (self card-count)))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
@@ -697,8 +706,7 @@
 			(when image (setf (@ res :image-uri) image))
 			
 			(if ($exists? (+ "#deck-editor .cards .card[title='" (@ res name) "']"))
-			    (let (($ct ($ (+ "#deck-editor .cards .card[title='" (@ res name) "'] .count"))))
-			      ($ $ct (val (+ 1 ($int $ct)))))
+			    ($incf (+ "#deck-editor .cards .card[title='" (@ res name) "'] .count"))
 			    (create-card-record "#deck-editor .cards" res))))
 	     ($button "#deck-editor button.exit" (:close) ($ "#deck-editor" (hide)))
 	     ($button "#deck-editor button.create-deck" (:check :text? t)
@@ -819,16 +827,13 @@
 		     (if (< angle 0) (+ 360 angle) angle)))))
 	   
 	   (defun change-hand-count (player-id by)
-	     (let (($ct (+ "#" player-id " .hand-size")))
-	       ($ $ct (text (+ by ($int $ct))))))
+	     ($incf (+ "#" player-id " .hand-size") by))
 
 	   (defun change-stack-count (stack-id by)
-	     (let* ((id (+ "#" stack-id))
-		    (ct-class (+ id " .card-count"))
-		    (count ($int ct-class 1)))
-	       (if (= count (- by))
-		   ($ id (remove))
-		   ($ ct-class (html (+ "x" (+ count by)))))))
+	     (let ((stack-count (+ "#" stack-id " .card-count")))
+	       ($incf stack-count by)
+	       (when (>= 0 ($int stack-count)) 
+		 ($ (+ "#" stack-id) (remove)))))
 
 	   (defun string->die-roll (die-string)
 	     (let-match die-string "(\\d*)d(\\d+)([-+]\\d+)?"
@@ -909,13 +914,12 @@
 				     (said)
 				     (changed-tag)
 				     (started-table
+				      ;; (create-table-entry "#open-tables" (@ ev table))
 				      (render-table-entry (@ ev table)))
 				     (filled-table
 				      ($ (+ "#game-" (@ ev id)) (remove)))
 				     (joined
-				      (let* ((elem ($ (+ "#game-" (@ ev id) " .players .count")))
-					     (new-count (+ 1 ($int elem))))
-					(chain elem (text (+ 1 ($int elem))))))
+				      ($incf (+ "#game-" (@ ev id) " .players .count")))
 				     (left
 				      (let ((sel (+ "#game-" (@ ev id))))
 					(if ($exists? sel)
