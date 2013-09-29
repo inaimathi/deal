@@ -90,10 +90,22 @@
 
 (define-player-handler (table/leave) ((table :table))
   (let ((player (session-value :player)))
+
+    ;;; TODO -- really, where the orphaned hand is placed should be decided by the front end.
+    ;;;         give it some thought.
+    (when (> (hash-table-count (hand player)) 0)
+      (let ((stack (make-instance 'stack :belongs-to (id player) :x 10 :y 10)))
+	(loop for card being the hash-values of (hand player) for count from 1
+	   do (setf (card-type stack) (card-type card))
+	   do (move! card player stack)
+	   finally (setf (card-count stack) count))
+	(insert! table stack)))
+    ;;;;;;;;;;;;
+    
     (delete! table player)
     (setf (current-table player) nil)
+    (publish! table :left)
     (unless (passphrase table)
-      (publish! table :left)
       (publish! *server* :left 
 		`((table ((id . ,(id table)) (tag . ,(tag table)) (seated . ,(player-count table)) (of . ,(max-players table)))))))
     :ok))
