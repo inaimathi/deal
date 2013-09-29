@@ -544,7 +544,8 @@
 	       ($map cards (create-card-in-hand hand-selector elem))))
 
 	   (define-thing stack
-	       (:div :id (self id) :class "stack" :style (self position)		     
+	       (:div :id (self id) :class "stack" 
+		     :style (+ (self position) (aif (self image-uri) (+ "background-image:url(" it ");") ""))		     
 		     (:button :class "draw" "Draw")
 		     (:button :class "shuffle")
 		     (:button :class "peek" "Peek")
@@ -584,7 +585,8 @@
 			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self)))))
 
 	   (define-thing card 
-	       (:div :id (self id) :class (+ "card " (self card-type)) :style (self position)
+	       (:div :id (self id) :class (+ "card " (self card-type)) 
+		     :style (+ (self position) (if (= (self face) :down) (+ "background-image:url(" (self back-image-uri) ");") ""))
 		     (:span :class "content" (card-html self))
 		     (:span :class "card-type" (self card-type))
 		     (:button :class "zoom"))
@@ -669,11 +671,15 @@
 	     ($button "#deck-editor .add-card-property" (:plus)
 		      (create-card-property "#deck-editor .card-properties" (create)))
 	     ($button "#deck-editor button.add-card" (:check :text? t)
-		      (let ((res (create)))			
+		      (let ((res (create))
+			    (back-image ($ "#deck-editor .card-back-image" (val)))
+			    (image ($ "#deck-editor .card-property-image" (val))))
 			($ "#deck-editor .card-property"
 			   (each (lambda (elem i)
 				   (setf (aref res (chain ($ this (children ".card-property-name") (val)) (to-lower-case)))
 					 ($ this (children ".card-property-value") (val))))))
+			(when image (setf (@ res :image-uri) image))
+			
 			(if ($exists? (+ "#deck-editor .cards .card[title='" (@ res name) "']"))
 			    (let (($ct ($ (+ "#deck-editor .cards .card[title='" (@ res name) "'] .count"))))
 			      ($ $ct (val (+ 1 ($int $ct)))))
@@ -682,8 +688,10 @@
 	     ($button "#deck-editor button.create-deck" (:check :text? t)
 		      (let* ((deck-name ($ "#deck-editor .deck-name" (val)))
 			     (card-type ($ "#deck-editor .card-type" (val)))
+			     (back-image ($ "#deck-editor .card-back-image" (val)))
 			     (deck (create 'deck-name deck-name 
-					   'card-type card-type 
+					   'card-type card-type
+					   :image-uri (when back-image back-image)
 					   'cards (loop for card-elem in ($ "#deck-editor .cards .card")
 						     collect (let ((count (or ($int ($ card-elem (children ".count"))) 1))
 								   (card (string->obj ($ card-elem (children ".card-content") (text)))))

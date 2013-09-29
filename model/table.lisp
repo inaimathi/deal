@@ -24,7 +24,7 @@
   ((deck-name :reader deck-name :initarg :deck-name)
    (card-type :reader card-type :initarg :card-type)
    (cards :reader cards :initarg :cards)
-   (image-uri :accessor image-uri :initarg :image-uri)))
+   (image-uri :accessor image-uri :initarg :image-uri :initform nil)))
 
 (defclass placeable ()
   ((id :accessor id :initform (make-id))
@@ -36,15 +36,15 @@
    (height :accessor height :initarg :height :initform nil)
    (depth :accessor depth :initarg :depth :initform nil)
    (belongs-to :accessor belongs-to :initarg :belongs-to)
-   (attached-to :accessor attached-to :initarg :attached-to :initform nil)))
+   (attached-to :accessor attached-to :initarg :attached-to :initform nil)
+   (image-uri :accessor image-uri :initarg :image-uri :initform nil)))
 
 (defclass card (placeable)
   ((id :initform (make-id "CARD"))
    (content :accessor content :initarg :content)
    (face :accessor face :initform :up :initarg :face)
    (card-type :accessor card-type :initarg :card-type)
-   (back-image-uri :accessor back-image-uri :initarg :back-image-uri :initform nil)
-   (image-uri :accessor image-uri :initarg :image-uri)))
+   (back-image-uri :accessor back-image-uri :initarg :back-image-uri :initform nil)))
 
 (defclass stack (placeable)
   ((id :initform (make-id "STACK"))
@@ -57,23 +57,12 @@
    (text :accessor text :initarg :text)))
 
 (defclass mini (placeable)
-  ((id :initform (make-id "MINI"))
-   (image-uri :accessor image-uri :initarg :image-uri)))
+  ((id :initform (make-id "MINI"))))
 
-(defun make-card (content card-type belongs-to &optional (x 0) (y 0) (z 0) (rot 0))
-  (make-instance 'card :content content :face :down 
+(defun make-card (content card-type belongs-to &key back-image image (x 0) (y 0) (z 0) (rot 0))
+  (make-instance 'card :content content :face :down :back-image-uri back-image :image-uri image 
 		 :card-type card-type :belongs-to belongs-to
 		 :x x :y y :z z :rot rot))
-
-(defun card<-json (player json)
-  (macrolet ((gets (k) `(getj ,k json))
-	     (getd (k &optional (default 0)) `(or (getj ,k json) ,default)))
-    (let ((face (intern (string-upcase (getj :face json)) :keyword)))
-      (assert (member face (list :up :down)))
-      (make-instance 
-       'card :belongs-to (id player) 
-       :content (gets :content) :face (intern (string-upcase (getj :face json)) :keyword)
-       :x (getd :x) :y (getd :y) :z (getd :z) :rot (getd :rot)))))
 
 (defmethod stack<-deck (player (deck deck))
   "Takes a deck and creates a stack (a bag of cards suitable for placing on a table)"
@@ -89,16 +78,21 @@
 	     (getd (k &optional (default 0)) `(or (getj ,k json) ,default)))
     (let ((cards (gets :cards))
 	  (card-type (gets :card-type))
-	  (id (id player))
-	  (card-count 0))
+	  (player-id (id player))
+	  (card-count 0)
+	  (back-image (gets :image-uri)))
       (let ((stack
 	     (make-instance
-	      'stack :belongs-to id :card-type card-type
+	      'stack :belongs-to player-id :card-type card-type :image-uri back-image
 	      :x (getd :x) :y (getd :y) :z (getd :z) :rot (getd :rot)
 	      :cards (loop for content in cards
 			append (loop repeat (or (getj :count content) 1)
 				  do (incf card-count)
-				  collect (make-card (remove :count content :key #'car) card-type id))))))
+				  collect (make-card (remove-if (lambda (elem) 
+								  (member (car elem) (list :count :image-uri)))
+								content)
+						     card-type player-id :back-image back-image 
+						     :image (getj :image-uri content)))))))
 	(setf (card-count stack) card-count)
 	stack))))
 
@@ -163,11 +157,11 @@ so it made sense to formalize this."
   (hash-map (lambda (v) (redact v)) hash-table))
 
 (defmethod redact ((stack stack))
-  (obj->hash stack (:type :stack) id x y z rot belongs-to card-count card-type))
+  (obj->hash stack (:type :stack) id x y z rot belongs-to card-count card-type image-uri))
 
 (defmethod redact ((card card))
-  (obj->hash card (:type :card :content (when (eq :up face) content))
-	     id x y z rot belongs-to face content card-type))
+  (obj->hash card (:type :card :content (when (eq :up face) content) :image-uri (when (eq :up face) image-uri))
+	     id x y z rot belongs-to face content card-type image-uri back-image-uri))
 
 (defmethod redact ((mini mini))
   (obj->hash mini (:type :mini) id x y z rot belongs-to image-uri))

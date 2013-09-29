@@ -249,7 +249,7 @@
       `(let* ((,crd ,card)
 	      (face (@ ,crd face))
 	      (type (@ ,crd card-type)))
-	 (if (= face "down")
+	 (if (= face :down)
 	     (case type
 	       ,@f-down
 	       (t (who-ps-html (:div "Face Down"))))
@@ -257,7 +257,8 @@
 	       (case type
 		 ,@f-up
 		 (t (who-ps-html 
-		     (:div (:ul (chain 
+		     (:div :style (+ "height:100%;background-size:100% 100%;position:absolute;background-image:url(" (@ ,crd image-uri) ");")
+			   (:ul (chain 
 				 ($map content
 				       (let ((lines (chain elem (split #\newline))))
 					 (who-ps-html 

@@ -41,7 +41,7 @@
 	       (".moveable h2" ,@css-header :font-size small :font-style oblique :clear both :margin "5px 0px 5px 0px")
 	       (".moveable .content" :padding 10px)
 	       
-	       (.stack ,@(css-box :filled) ,@css-card-size :font-size small :position absolute :cursor move :border-bottom-width 6px)
+	       (.stack ,@(css-box :filled) ,@css-card-size :font-size small :position absolute :cursor move :border-bottom-width 6px :background-size "100% 100%")
 	       (".stack .card-count" :font-size x-small :float right :width 100% :text-align right)
 
 	       (.mini :position absolute :cursor move)
@@ -49,7 +49,7 @@
 	       (.tablecloth ,@(css-box) :width 50px :height 50px :padding 5px :margin-right 3px :font-size medium :font-weight bold :float left :cursor move)
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move :background-size "100% 100%")
-	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :padding 0px)
+	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :padding 0px :background-size "100% 100%")
 	       (".card .card-type" :font-size xx-small :white-space nowrap)
 	       (".card .content ul" :list-style-type none :margin 0px :padding 0px)
 	       (".card .content ul .card-field, .card .content ul .label" :display none)
@@ -118,6 +118,7 @@
 	       ("#chat-history li .player" :font-size x-small :font-style oblique :padding-right 0px)
 	       ("#chat-history li .player-tag" :font-style oblique :padding-right 5px)
 	       ("#chat-history li .message" :height auto :max-width 400px :word-break break-all :margin-left 5px)
+	       ("#chat-history .card li" :border none :background-color transparent)
 	       ("#chat-controls" :border-top "1px solid #ccc" :padding-top 10px)
 	       ("#chat-controls textarea" ,@css-text-block)
 	       ("#chat-history .card.in-chat .content ul .card-field, #chat-history .card.in-chat .content ul .label" :display none)
@@ -133,7 +134,7 @@
 	       ("#deck-editor input" :width 190px)
 	       ("#deck-editor .card input" :width 23px)
 	       ;;; TODO make sure these work properly with the back-end
-	       ("#deck-editor input.url-input" :width 380px :display none)
+	       ("#deck-editor input.url-input" :width 380px)
 	       ("#deck-editor .card-properties" :list-style-type none :padding 0px)
 	       ("#deck-editor .card-properties li" :border-bottom "1px dashed #ccc" :padding "8px 0px")
 	       ("#deck-editor button.add-card, #deck-editor button.create-deck" :width 120px :height 30px :font-size small)
