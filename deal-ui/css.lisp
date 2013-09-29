@@ -26,6 +26,7 @@
 	       (.floating-menu :font-size x-small :width 150px :position absolute)
 	       
 	       (button.control-button :width 22px :height 22px :float right :opacity .7)
+	       (button.control-button.text-button :width auto :height auto :font-size small :font-weight bold)
 	       ("button.control-button:hover" :opacity 1)
 	       
 	       (.ping :z-index 100001 :width 30px :height 30px :border-radius 15px :position absolute :border "1px solid black")

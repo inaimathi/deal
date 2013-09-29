@@ -1,6 +1,6 @@
 ;;;; deal-ui.lisp
 (in-package #:deal-ui)
-
+ 
 ;;;;; JS
 (to-file "static/js/lobby.js"
 	 (ps
@@ -12,52 +12,43 @@
 				 (:span :class "player-id")
 				 (:span :class "player-tag"))
 			   (:ul :id "open-tables")
-			   (:ul (:li (:button :id "new-table" "New Table"))))
-		     (:div :id "new-table-setup" :class "overlay"
-			   (:h3 "New Table")
-			   (:div :class "content"
-				 (:input :class "game-tag")
-				 (:button :class "ok" "Ok")
-				 (:button :class "cancel" "Cancel"))))
-
-	     ($on "#open-tables" 
-		  (:click ".join" 
-			  (let ((table-id ($ this (siblings ".id") (text)))
-				(passphrase ""))
-			    (lobby/join-table table-id passphrase))))
+			   (:ul (:li (:button :id "new-table" "New Table")))))
 
 	     (when *table-stream* 
 	       (chain *table-stream* (close))
 	       (setf *table-stream* nil))
 	     (show-chat "#left-pane")
-	     ($click "#new-table-setup .ok" (lobby/new-table ($ "#new-table-setup .game-tag" (val)) "")
-		     "#new-table-setup .cancel" ($ "#new-table-setup" (hide))
-		     "#new-table" (progn ($ "#new-table-setup" (show))
-					 ($ "#new-table-setup .game-tag" (focus))))
-	     ($keydown "#new-table-setup .game-tag" 
-		       <ret> ($ "#new-table-setup .ok" (click))
-		       <esc> ($ "#new-table-setup .cancel" (click)))
+	     (show-new-table-form "#lobby")
+	     ($button "#new-table" (:arrowthick-1-se :text? t)
+		      ($ "#new-table-setup" (show))
+		      ($ "#new-table-setup .game-tag" (focus)))	     
 	     (server-info))
 
-	   ;; (define-thing table-entry
-	   ;;     (:li :id (self id)
-	   ;; 	    (:span :class "tag" (self tag))
-	   ;; 	    (:span :class "id" (self id))
-	   ;; 	    (:span :class "players" (:span :class "count" (self player-count)) "/" (self max-players))
-	   ;; 	    (:button :class "join" "Join"))
-	   ;;   ($highlight $self)
-	   ;;   ($button ($child ".join") (:check :text t) 
-	   ;; 	      (let ((passphrase ""))
-	   ;; 		(lobby/join-table (self id) passphrase))))
+	   (define-component (new-table-form :empty? nil)
+	       (:div :id "new-table-setup" :class "overlay"
+		     (:h3 "New Table")
+		     (:div :class "content"
+			   (:input :class "game-tag")
+			   (:button :class "ok" "Ok")
+			   (:button :class "cancel" "Cancel")))
+	     ($button "#new-table-setup .ok" (:check :text? t)
+		      (lobby/new-table ($ "#new-table-setup .game-tag" (val)) ""))
+	     ($button "#new-table-setup .cancel" (:cancel :text? t) ($ "#new-table-setup" (hide)))
+	     
+	     ($keydown "#new-table-setup .game-tag" 
+		       <ret> ($ "#new-table-setup .ok" (click))
+		       <esc> ($ "#new-table-setup .cancel" (click))))
 
-	   (defun render-table-entry (tbl-entry)
-	     (with-slots (id tag player-count max-players) tbl-entry
-	       ($prepend "#open-tables"
-			 (:li :id (+ "game-" id) 
-			      (:span :class "tag" tag)
-			      (:span :class "id" id) 
-			      (:span :class "players" (:span :class "count" player-count) "/" max-players)
-			      (:button :class "join" "Join")))))))
+	   (define-thing (table-entry :prepend? t :replace? t)
+	       (:li :id (self id)
+	   	    (:span :class "tag" (self tag))
+	   	    (:span :class "id" (self id))
+	   	    (:span :class "players" (:span :class "count" (self player-count)) "/" (self max-players))
+	   	    (:button :class "join" "Join"))
+	     ($highlight $self)
+	     ($button ($child ".join") (:arrowthick-1-ne) 
+	   	      (let ((passphrase ""))
+	   		(lobby/join-table (self id) passphrase))))))
 
 (to-file "static/js/chat.js"
 	 (ps (define-component (chat)
@@ -178,7 +169,7 @@
 		     (if (> (length messages) 50)
 			 (chain messages (splice 0 1))
 			 (incf current-message))))))
-
+	     
 	     (defun chat-command (txt)
 	       (let ((re (new (-reg-exp "^(@\\S+)"))))
 		 (awhen (chain txt (match re))
@@ -191,7 +182,7 @@
 	       (create "@roll"   (lambda (txt) (string->die-roll txt))
 		       "@toss"   (lambda (txt) (table/coin-toss))
 		       "@rename" (lambda (txt) (rename txt))))
-
+	     
 	     (defun chat-card (card)
 	       (who-ps-html (:div :class "card in-chat" 
 				  (:span :class "content" (card-html card)))))))
@@ -200,69 +191,70 @@
 	 (ps
 	   (define-component (table)
 	       (:div :id "table"
-		(:div :id "board" :style (aif (@ *table-info* tablecloth) (+ "background-image: url(" it ")") ""))
-		(:div :id "zoomed-card" :class "moveable"
-		      (:h3 "Zoomed" (:button :class "hide"))
-		      (:div :class "content"))
-		(:div :id "table-toolbar" :class "moveable"		      
-		      (:h3 (:span :class "game-id" (@ *table-info* id))
-			   (:span :class "game-tag" (@ *table-info* tag)))
-		      (:div :id "player-info" :class "control-row"
-			    (:span :class "player-id" (@ *session* id))
-			    (:span :class "player-tag" (@ *session* tag)))
-		      (:div :class "control-row"
-			    (:button :id "leave" "Leave Table")
-			    (:button :id "save-board" "Save")
-			    (:form :id "load-form" :enctype "multipart/form-data"
-				   (:span :class "label" "Load: ") 
-				   (:input :type "hidden" :name "table" :value (@ *table-info* id))
-				   (:input :name "file" :type "file")))
-		      (:div :class "control-row" 
-			    (:ul :id "table-players"
-				 (:li :class "header-row"
-				      (:span :class "id" "Id")
-				      (:span :class "tag" "Tag")
-				      (:span :class "hand-size" "Cards"))))
-		      (:div :class "content"
-			    (:h2 "Hand")
-			    (:div :id "hand")
-			    (:h2 "Chat")
-			    (:div :id "game-chat")
-			    (:div :id "backpack"
-				  (:ul
-				   (:li (:a :href "#decks-tab" "Decks") (:button :id "custom-deck" "Custom Deck"))
-				   (:li (:a :href "#dice-tab" "Dice"))
-				   (:li (:a :href "#minis-tab" "Minis") (:button :id "custom-mini" "Custom Tablecloth"))
-				   (:li (:a :href "#tablecloth-tab" "Tablecloths") (:button :id "custom-tablecloth" "Custom Tablecloth")))
-				  (:div :id "decks-tab" 
-					(:div :class "content"
-					      (map-markup (@ *server-info* decks) (:div :class "new-deck" elem)))
-					(:br :class "clear"))
-				  (:div :id "dice-tab" 
-					(:div :class "content"
-					      (map-markup (list "d3" "d4" "d6" "d8" "d10" "d20" "d100")
-							  (:div :class "die-roll-icon" 
-								(:span :class "num-dice" "1")
-								elem
-								(:button :class "increment")
-								(:button :class "decrement")))
-					      (:div :class "coin-flip-icon" "Flip"))
-					(:br :class "clear"))
-				  (:div :id "minis-tab"
-					(:div :class "content"
-					      (map-markup 
-					       (@ *server-info* minis)
-					       (:div :class "backpack-mini" :title elem (:img :src elem))))
-					(:br :class "clear"))
-				  (:div :id "tablecloth-tab" 
-					(:div :class "content"
-					      (:div :class "tablecloth" :title "" "None")
-					      (map-markup 
-					       (@ *server-info* tablecloths)
-					       (:div :class "tablecloth" :title elem
-						     :style (+ "background-image: url(" elem ");")
-						     (uri->name elem))))
-					(:br :class "clear"))))))
+		     (:div :id "board" :style (aif (@ *table-info* tablecloth) (+ "background-image: url(" it ")") ""))
+		     (:div :id "zoomed-card" :class "moveable"
+			   (:h3 "Zoomed" (:button :class "hide"))
+			   (:div :class "content"))
+		     (:div :id "table-toolbar" :class "moveable"		      
+			   (:h3 (:span :class "game-id" (@ *table-info* id))
+				(:span :class "game-tag" (@ *table-info* tag)))
+			   (:div :id "player-info" :class "control-row"
+				 (:span :class "player-id" (@ *session* id))
+				 (:span :class "player-tag" (@ *session* tag)))
+			   (:div :class "control-row"
+				 (:button :id "leave" "Leave Table")
+				 (:button :id "save-board" "Save")
+				 (:form :id "load-form" :enctype "multipart/form-data"
+					(:span :class "label" "Load: ") 
+					(:input :type "hidden" :name "table" :value (@ *table-info* id))
+					(:input :name "file" :type "file")))
+			   (:div :class "control-row" 
+				 (:ul :id "table-players"
+				      (:li :class "header-row"
+					   (:span :class "id" "Id")
+					   (:span :class "tag" "Tag")
+					   (:span :class "hand-size" "Cards"))))
+			   (:div :class "content"
+				 (:h2 "Hand")
+				 (:div :id "hand")
+				 (:h2 "Chat")
+				 (:div :id "game-chat")
+				 (:div :id "backpack"
+				       (:ul
+					(:li (:a :href "#decks-tab" "Decks") (:button :id "custom-deck" "Custom Deck"))
+					(:li (:a :href "#dice-tab" "Dice"))
+					(:li (:a :href "#minis-tab" "Minis") (:button :id "custom-mini" "Custom Tablecloth"))
+					(:li (:a :href "#tablecloth-tab" "Tablecloths") (:button :id "custom-tablecloth" "Custom Tablecloth")))
+				       (:div :id "decks-tab" 
+					     (:div :class "content"
+						   (map-markup (@ *server-info* decks) 
+							       (:div :class "new-deck" elem)))
+					     (:br :class "clear"))
+				       (:div :id "dice-tab" 
+					     (:div :class "content"
+						   (map-markup (list "d3" "d4" "d6" "d8" "d10" "d20" "d100")
+							       (:div :class "die-roll-icon" 
+								     (:span :class "num-dice" "1")
+								     elem
+								     (:button :class "increment")
+								     (:button :class "decrement")))
+						   (:div :class "coin-flip-icon" "Flip"))
+					     (:br :class "clear"))
+				       (:div :id "minis-tab"
+					     (:div :class "content"
+						   (map-markup 
+						    (@ *server-info* minis)
+						    (:div :class "backpack-mini" :title elem (:img :src elem))))
+					     (:br :class "clear"))
+				       (:div :id "tablecloth-tab" 
+					     (:div :class "content"
+						   (:div :class "tablecloth" :title "" "None")
+						   (map-markup 
+						    (@ *server-info* tablecloths)
+						    (:div :class "tablecloth" :title elem
+							  :style (+ "background-image: url(" elem ");")
+							  (uri->name elem))))
+					     (:br :class "clear"))))))
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
@@ -285,7 +277,7 @@
 			    (:li :id (@ elem id)
 				 (:span :class "id" (+ (if (= (@ elem id) (@ *session* id)) "(you)" "") (@ elem id)))
 				 (:span :class "tag" (@ elem tag))
-				 (:span :class "hand-size" (@ elem hand)))))
+				 (:span :class "hand-size" (@ elem hand))))) 
 	     
 	     ;; load moveable element locations from local storage
 	     (aif (@ window local-storage :element-locations)
@@ -381,7 +373,7 @@
 		       ($ "#custom-mini-dialog .url-input" (val ""))
 		       ($ "#custom-mini-dialog" (dialog :close))))
 
-	     (define-thing custom-mini
+	     (define-thing (custom-mini)
 		 (:div :class "backpack-mini" :title (self uri) 
 		       (:img :src (self uri))
 		       (:button :class "remove"))
@@ -393,7 +385,7 @@
 			($ this (parent) (remove)))
 	       ($draggable $self (:revert t)))
 
-	     (define-thing custom-tablecloth
+	     (define-thing (custom-tablecloth)
 		 (:div :class "tablecloth" :title (self uri)
 		       :style (+ "background-image: url(" (self uri) ");")
 		       (self name)
@@ -568,7 +560,7 @@
 	       ($ hand-selector (empty))
 	       ($map cards (create-card-in-hand hand-selector elem))))
 
-	   (define-thing stack
+	   (define-thing (stack)
 	       (:div :id (self id) :class "stack" 
 		     :style (+ (self position) (aif (self image-uri) (+ "background-image:url(" it ");") ""))		     
 		     (:button :class "draw" "Draw")
@@ -599,7 +591,7 @@
 		      (table/stack/peek (self id) 0 (parse-int (prompt "How many?"))))
 	     ($button ($child ".draw") (:document) (table/stack/draw (self id) 1)))
 	   
-	   (define-thing mini
+	   (define-thing (mini)
 	       (:div :id (self id) :class "mini" :style (self position)
 		     (:img :src (self image-uri)))
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
@@ -609,7 +601,7 @@
 			 (let ((off ($ $self (offset))))
 			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self)))))
 
-	   (define-thing card 
+	   (define-thing (card) 
 	       (:div :id (self id) :class (+ "card " (self card-type)) 
 		     :style (+ (self position) (if (= (self face) :down) (+ "background-image:url(" (self back-image-uri) ");") ""))
 		     (:span :class "content" (card-html self))
@@ -626,7 +618,7 @@
 	     		 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self))
 	     		 (when shift? (table/card/flip (self id)))))
 
-	   (define-thing card-in-hand
+	   (define-thing (card-in-hand)
 	       (:div :id (self id) :class "card card-in-hand"
 		     (:span :class "content" (card-html self))
 		     (:button :class "zoom"))
@@ -653,7 +645,7 @@
 					     (obj->string (loop for elem in ($ "#peek-window .peek-card")
 							     collect ($ elem (attr :id))))))))))
 
-	   (define-thing peek-card
+	   (define-thing (peek-card)
 	       (:div :id (self id) :class "card in-chat peek-card"
 		     (:span :class "content" 
 			    (card-html ($extend thing (create :face :up))))
@@ -705,9 +697,9 @@
 					 ($ this (children ".card-property-value") (val))))))
 			(when image (setf (@ res :image-uri) image))
 			
-			(if ($exists? (+ "#deck-editor .cards .card[title='" (@ res name) "']"))
-			    ($incf (+ "#deck-editor .cards .card[title='" (@ res name) "'] .count"))
-			    (create-card-record "#deck-editor .cards" res))))
+			(aif ($exists? (+ "#deck-editor .cards .card[title='" (@ res name) "']"))
+			     ($incf ($ it (children ".count")))
+			     (create-card-record "#deck-editor .cards" res))))
 	     ($button "#deck-editor button.exit" (:close) ($ "#deck-editor" (hide)))
 	     ($button "#deck-editor button.create-deck" (:check :text? t)
 		      (let* ((deck-name ($ "#deck-editor .deck-name" (val)))
@@ -723,22 +715,22 @@
 							       card)))))
 			(setf (aref *session* :custom-decks deck-name) deck)
 			(store-decks)
-			(when ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
-			  ($ (+ ".new-deck.new-custom-deck[title='" deck-name "']") (remove)))
+			(aif ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
+			     ($ it (remove)))
 			(create-custom-deck "#decks-tab .content" deck)
 			($draggable "#decks-tab .new-custom-deck:first" (:revert t))
 			($ "#deck-editor" (hide))))
 	     ($button "#deck-editor button.load" (:arrowthick-1-n)
 		      ($ "#load-deck-dialog" (dialog :open)))
 	     
-	     (define-thing card-property
+	     (define-thing (card-property)
 		 (:li :class "card-property"
 		      (:button :class "remove")
 		      (:input :class "card-property-name" :value (aif (self name) it ""))
 		      (:textarea :class "card-property-value" (aif (self value) it "")))
 	       ($button ($child ".remove") (:cancel) ($ $self (remove)))) 
 	     
-	     (define-thing card-record
+	     (define-thing (card-record)
 		 (:div :class "card in-chat" :title (self name)
 		       (:span :class "content" (card-html (create :card-type "" :face :up :content self)))
 		       (:input :class "count" :value (or (self count) 1))
@@ -751,7 +743,7 @@
 			($ "#zoomed-card .content" (empty) 
 			   (append (card-html (create :card-type "" :face :up :content self))))))
 
-	     (define-thing custom-deck
+	     (define-thing (custom-deck)
 		 (:div :class "new-deck new-custom-deck"
 		       :title (self deck-name) (self deck-name)
 		       (:button :class "delete")
@@ -911,20 +903,17 @@
 				     (said)
 				     (changed-tag)
 				     (started-table
-				      ;; (create-table-entry "#open-tables" (@ ev table))
-				      (render-table-entry (@ ev table)))
+				      (create-table-entry "#open-tables" (@ ev table)))
 				     (filled-table
 				      ($ (+ "#game-" (@ ev id)) (remove)))
 				     (joined
 				      ($incf (+ "#game-" (@ ev id) " .players .count")))
 				     (left
-				      (let ((sel (+ "#game-" (@ ev id))))
-					(if ($exists? sel)
-					    ($ sel (replace (render-table-entry (@ ev table))))
-					    (render-table-entry (@ ev table)))))))
+				      (create-table-entry "#open-tables" (@ ev table)))))
 		 ($map public-tables
 		       (with-slots (player-count max-players) elem
-			 (when (< player-count max-players) (render-table-entry elem)))))
+			 (when (< player-count max-players) 
+			   (create-table-entry "#open-tables" elem)))))
 	       (get-session))
 
 	     (define-ajax get-session ()

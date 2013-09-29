@@ -46,7 +46,8 @@
   `(chain (j-query ,selector) ,@chains))
 
 (defpsmacro $exists? (selector)
-    `(> (@ ($ ,selector) length) 0))
+  `(when (> (@ ($ ,selector) length) 0)
+     ,selector))
 
 (defpsmacro $val (selector &optional new-value)
   (with-ps-gensyms (sel type elem)
@@ -157,7 +158,8 @@
   `($ ,selector
       (button (create :icons (create :primary ,(format nil "ui-icon-~(~a~)" icon-name)) :text ,text?))
       (click (lambda (event) (let (,@mod-keys) ,@on-click)))
-      ,@(when class `((add-class ,class)))))
+      ,@(when class `((add-class ,class)))
+      ,@(when text? `((add-class "text-button")))))
 
 (defpsmacro $dialog (selector (&key auto-open?))
   `($ ,selector (dialog (create "autoOpen" ,auto-open?))))
@@ -248,11 +250,15 @@
 	   (cons (recur (car form))
 		 (recur (cdr form)))))))
 
-(defpsmacro define-thing (name markup &body behavior)
+(defpsmacro define-thing ((name &key prepend? replace?) markup &body behavior)
   (with-ps-gensyms (container)
     `(defun ,(intern (format nil "create-~a" name)) (,container thing)
-       ($ ,container (append (who-ps-html ,(expand-self-expression markup 'thing))))
-       (let (($self (aif (@ thing id) ($ (+ "#" it)) ($ ,container (children) (last)))))
+       ,@(when replace?
+	       `((when (@ thing id)
+		   (aif ($exists? (+ "#" (@ thing id)))
+			($ it (remove))))))
+       ($ ,container (,(if prepend? 'prepend 'append) (who-ps-html ,(expand-self-expression markup 'thing))))
+       (let (($self (aif (@ thing id) ($ (+ "#" it)) ($ ,container (children) ,(if prepend? '(first) '(last))))))
 	 (flet (($child (selector) (chain $self (children selector)))
 		($find (selector) (chain $self (find selector))))
 	   ,@(loop for clause in behavior
