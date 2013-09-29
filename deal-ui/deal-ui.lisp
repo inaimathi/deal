@@ -472,7 +472,7 @@
 				  (when (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
 				    (clear-peek-window))
 				  (change-stack-count (@ ev stack) -1)
-				  (change-hand-count (@ ev player) +1)
+				  ($incf (+ "#" (@ ev player) " .hand-size"))
 				  ($highlight (+ "#" (@ ev stack))))
 				 (shuffled
 				  (when (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
@@ -484,7 +484,7 @@
 				  (when (and (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
 					     (not (= (@ ev player) (@ *session* id))))
 				    (clear-peek-window))
-				  (change-hand-count (@ ev player) +1)
+				  ($incf (+ "#" (@ ev player) " .hand-size"))
 				  (change-stack-count (@ ev stack) -1))
 				 (reordered
 				  (when (and (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
@@ -496,7 +496,7 @@
 				 (removed
 				  ($ (+ "#" (@ ev thing)) (remove)))
 				 (played-from-hand 
-				  (change-hand-count (@ ev player) -1)
+				  ($decf (+ "#" (@ ev player) " .hand-size"))
 				  (create-card "body" (@ ev card)))
 				 
 				 (played-from-stack 
@@ -504,10 +504,10 @@
 				  (create-card "body" (@ ev card)))
 				 (played-to-stack
 				  (change-stack-count (@ ev stack) +1)
-				  (change-hand-count (@ ev player) -1))
+				  ($decf (+ "#" (@ ev player) " .hand-size")))
 				 (picked-up 
 				  ($ (+ "#" (@ ev card)) (remove))
-				  (change-hand-count (@ ev player) +1))
+				  ($incf (+ "#" (@ ev player) " .hand-size")))
 
 				 (rolled)
 				 (flipped-coin))))
@@ -825,9 +825,6 @@
 			  (b (aref values 1))
 			  (angle (round (* (chain -math (atan2 b a)) (/ 180 pi)))))
 		     (if (< angle 0) (+ 360 angle) angle)))))
-	   
-	   (defun change-hand-count (player-id by)
-	     ($incf (+ "#" player-id " .hand-size") by))
 
 	   (defun change-stack-count (stack-id by)
 	     (let ((stack-count (+ "#" stack-id " .card-count")))
@@ -851,7 +848,7 @@
 	   (defun scroll-to-bottom (selector)
 	     (let ((sel ($ selector)))
 	       (chain sel (scroll-top (@ sel 0 scroll-height)))))
-
+	   
 	   (defun newline->break (message)
 	     (let ((re (new (-reg-exp #\newline :g))))
 	       (chain message (replace re "<br />"))))	   
@@ -1002,6 +999,7 @@
 	     (define-ajax table/remove (thing))
 	     (define-ajax table/move (thing x y z rot))
 	     ;; TODO table/take
+	     ;; TODO table/attach
 
 	     ;;; Stack-related actions
 	     (define-ajax table/stack/play-top-card (stack face x y z rot))
@@ -1020,9 +1018,6 @@
 	       ($ (+ "#" card-id) (remove))
 	       (create-card-in-hand "#hand" res))
 	     (define-ajax table/stack/reorder (stack card-order))
-
-	     ;;; Note-related actions
-	     ;; TODO table/note/attach
 
 	     ;;; Card-related actions
 	     (define-ajax table/card/flip (card))
