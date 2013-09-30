@@ -269,6 +269,22 @@
      ($ container ,@(when empty? `((empty))) (append (who-ps-html ,markup)))
      ,@behavior))
 
+(defpsmacro define-overlay ((name &key (ok-button? t)) content &body behavior)
+  (let* ((elem-name (format nil "~(~a~)-overlay" name))
+	 (display-name (string-capitalize (cl-ppcre:regex-replace-all "-" "load-deck" " ")))
+	 (id (concatenate 'string "#" elem-name)))
+    `(define-component (,(intern (string-upcase elem-name)) :empty? nil)
+	 (:div :id ,elem-name :class "overlay"
+	       (:h3 ,display-name)
+	       (:div :class "content"
+		     ,content
+		     (:button :class "cancel" "Cancel")
+		     ,@(when ok-button? `((:button :class "ok" "Ok")))))
+       (let (($self ,id))
+	 (flet (($find (selector) ($ $self (find selector))))
+	   ,@behavior
+	   ($button (+ ,id " .cancel") (:cancel :text? t) ($ ".overlay" (hide))))))))
+
 (defpsmacro markup-by-card-type (card &rest card-type/face-up/face-down-list)
   (destructuring-bind (f-up f-down) 
       (loop for (card-type face-up face-down) in card-type/face-up/face-down-list

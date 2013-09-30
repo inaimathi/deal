@@ -18,26 +18,19 @@
 	       (chain *table-stream* (close))
 	       (setf *table-stream* nil))
 	     (show-chat "#left-pane")
-	     (show-new-table-form "#lobby")
+	     (show-new-table-overlay "#lobby")
 	     ($button "#new-table" (:arrowthick-1-se :text? t)
-		      ($ "#new-table-setup" (show))
-		      ($ "#new-table-setup .game-tag" (focus)))	     
+		      ($ "#new-table-overlay" (show))
+		      ($ "#new-table-overlay .game-tag" (focus)))	     
 	     (server-info))
 
-	   (define-component (new-table-form :empty? nil)
-	       (:div :id "new-table-setup" :class "overlay"
-		     (:h3 "New Table")
-		     (:div :class "content"
-			   (:input :class "game-tag")
-			   (:button :class "ok" "Ok")
-			   (:button :class "cancel" "Cancel")))
-	     ($button "#new-table-setup .ok" (:check :text? t)
-		      (lobby/new-table ($ "#new-table-setup .game-tag" (val)) ""))
-	     ($button "#new-table-setup .cancel" (:cancel :text? t) ($ "#new-table-setup" (hide)))
-	     
-	     ($keydown "#new-table-setup .game-tag" 
-		       <ret> ($ "#new-table-setup .ok" (click))
-		       <esc> ($ "#new-table-setup .cancel" (click))))
+	   (define-overlay (new-table)
+	       (:input :class "game-tag")
+	     ($button ($find ".ok") (:check :text? t)
+		      (lobby/new-table ($ ($find ".game-tag") (val)) ""))
+	     ($keydown ($find ".game-tag")
+		       <ret> ($ ($find ".ok") (click))
+		       <esc> ($ ($find ".cancel") (click))))
 
 	   (define-thing (table-entry :prepend? t :replace? t)
 	       (:li :id (self id)
@@ -192,9 +185,6 @@
 	   (define-component (table)
 	       (:div :id "table"
 		     (:div :id "board" :style (aif (@ *table-info* tablecloth) (+ "background-image: url(" it ")") ""))
-		     (:div :id "zoomed-card" :class "moveable"
-			   (:h3 "Zoomed" (:button :class "hide"))
-			   (:div :class "content"))
 		     (:div :id "table-toolbar" :class "moveable"		      
 			   (:h3 (:span :class "game-id" (@ *table-info* id))
 				(:span :class "game-tag" (@ *table-info* tag)))
@@ -258,9 +248,13 @@
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
-
+	     
 	     (show-deck-editor "#table")
 	     (show-peek-window "#table")
+	     (show-custom-tablecloth-overlay "#table")
+	     (show-custom-mini-overlay "#table")
+	     (show-zoomed-card "#table")
+	     (show-chat "#game-chat")
 
 	     ($draggable ".tablecloth" (:revert t))
 	     ($draggable ".backpack-mini" (:revert t))
@@ -270,7 +264,12 @@
 			 (:stack (table/remove ($ dropped (attr :id))))
 			 (:card  (table/remove ($ dropped (attr :id)))))
 	     
-	     ($ "#load-form" (change (fn ($upload "#load-form" "/table/load"))))
+	     ($change "#load-form" ($upload "#load-form" "/table/load"))
+	     ($click "#save-board"
+		     (with-slots (id tag) *table-info*
+		       ($post "/table/save" (:table id)
+			      ($save-as (name->filename tag) res))))
+	     ($click "#leave" (table/leave))
 
 	     ($map (@ *table-info* players)
 		   ($append "#table-players"
@@ -278,61 +277,19 @@
 				 (:span :class "id" (+ (if (= (@ elem id) (@ *session* id)) "(you)" "") (@ elem id)))
 				 (:span :class "tag" (@ elem tag))
 				 (:span :class "hand-size" (@ elem hand))))) 
-	     
+
+	     ;;; TODO getting/putting stuff from local storage needs to be abstracted
 	     ;; load moveable element locations from local storage
 	     (aif (@ window local-storage :element-locations)
 		  (let ((locs (string->obj it)))
 		    (setf (@ *session* :element-locations) locs)
 		    ($map locs ($ i (offset elem))))
 		  (setf (@ *session* :element-locations) (create)))
-
-	     ($button "#zoomed-card button.hide" (:zoomout) ($ "#zoomed-card" (hide)))
-
-	     (show-chat "#game-chat")
-	     ($button ".die-roll-icon .increment" (:plus)
-		      ($incf ($ this (siblings ".num-dice")) +1 :max 4096)
-		      (store-dice))
-	     ($button ".die-roll-icon .decrement" (:minus)
-		      ($decf ($ this (siblings ".num-dice")) -1 :min 1)
-		      (store-dice))
-
+	     
 	     ;; get dice from local storage
 	     (aif (@ window local-storage :dice)
 		  (loop for elem in ($ "#dice-tab .num-dice") for num-dice in (string->obj it)
 		     do ($ elem (text num-dice))))
-
-	     (defun store-dice ()
-	       (setf (@ window local-storage :dice)
-		     (obj->string (loop for elem in ($ "#dice-tab .num-dice")
-				     collect ($ elem (text))))))
-
-	     ($click "#save-board"
-		     (with-slots (id tag) *table-info*
-		       ($post "/table/save" (:table id)
-			      ($save-as (name->filename tag) res))))
-	     
-	     ($droppable "#hand" (:overlapping "#board, .stack")
-			 (:peek-card
-			  (table/stack/take ($ "#peek-window .stack-id" (text)) ($ dropped (attr :id)))
-			  ($ "#peek-window .cards" (sortable :cancel)))
-			 (:card 
-			  (unless ($ dropped (has-class :card-in-hand))
-			    (table/card/pick-up ($ dropped (attr :id))))))	     
-	     
-	     ($draggable ".moveable" (:handle "h3")
-			 (setf (@ *session* :element-locations (+ "#" ($ this (attr :id)))) ($ this (offset))
-			       (@ window local-storage :element-locations) (obj->string (@ *session* :element-locations))))
-	     ($draggable ".new-deck" (:revert t))
-	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
-	     
-	     ($append "body" 
-		      (:div :class "dialog" :id "custom-tablecloth-dialog" 
-			    (:input :class "url-input" :placeholder "Tablecloth image URL")
-			    (:input :class "name-input" :placeholder "Tablecloth Name")
-			    (:button :class "ok" "Ok"))
-		      (:div :class "dialog" :id "custom-mini-dialog" 
-			    (:input :class "url-input" :placeholder "Mini image URL")
-			    (:button :class "ok" "Ok")))
 
 	     ;; get tablecloths from local storage
 	     (aif (@ window local-storage :custom-tablecloths)
@@ -341,77 +298,49 @@
 		    ($map tbls (create-custom-tablecloth "#tablecloth-tab .content" elem)))
 		  (setf (@ *session* :custom-tablecloths) (create)))
 
+	     ;; get custom-minis from local storage
 	     (aif (@ window local-storage :custom-minis)
 		  (let ((ms (string->obj it)))
 		    (setf (@ *session* :custom-minis) ms)
 		    ($map ms (create-custom-mini "#minis-tab .content" (create :uri elem)))))
 
-	     (defun store-custom-tablecloths ()
-	       (setf (@ window local-storage :custom-tablecloths) 
-		     (obj->string (@ *session* :custom-tablecloths))))
+	     ($draggable ".moveable" (:handle "h3")
+			 (setf (@ *session* :element-locations (+ "#" ($ this (attr :id))))
+			       ($ this (offset))
+			       (@ window local-storage :element-locations)
+			       (obj->string (@ *session* :element-locations))))
+	     ;;;;;;;;;; END TODO
 	     
-	     (defun store-custom-minis ()
-	       (setf (@ window local-storage :custom-minis)
-		     (obj->string (@ *session* :custom-minis))))
-
-	     ($click "#custom-tablecloth-dialog .ok" 
-		     (let* ((uri ($ "#custom-tablecloth-dialog .url-input" (val)))
-			    (name ($ "#custom-tablecloth-dialog .name-input" (val)))
-			    (tblc (create :uri uri :name name)))
-		       (create-custom-tablecloth "#tablecloth-tab .content" tblc)
-		       (setf (aref *session* :custom-tablecloths name) tblc)
-		       (store-custom-tablecloths)
-		       ($ "#custom-tablecloth-dialog input" (val ""))
-		       ($ "#custom-tablecloth-dialog" (dialog :close)))
-		     "#custom-mini-dialog .ok" 
-		     (let ((uri ($ "#custom-mini-dialog .url-input" (val))))
-		       (create-custom-mini "#minis-tab .content" (create :uri uri))
-		       (aif (aref *session* :custom-minis)
-			    (chain it (push uri))
-			    (setf (aref *session* :custom-minis) (list uri)))
-		       (store-custom-minis)
-		       ($ "#custom-mini-dialog .url-input" (val ""))
-		       ($ "#custom-mini-dialog" (dialog :close))))
-
-	     (define-thing (custom-mini)
-		 (:div :class "backpack-mini" :title (self uri) 
-		       (:img :src (self uri))
-		       (:button :class "remove"))
-	       ($button ($child ".remove") (:minus)
-			(let* ((c-ms (aref *session* :custom-minis)) 
-			       (ix (chain c-ms (index-of (self uri))))))
-			(chain c-ms (splice ix 1))
-			(store-custom-minis)
-			($ this (parent) (remove)))
-	       ($draggable $self (:revert t)))
-
-	     (define-thing (custom-tablecloth)
-		 (:div :class "tablecloth" :title (self uri)
-		       :style (+ "background-image: url(" (self uri) ");")
-		       (self name)
-		       (:button :class "remove"))
-	       ($button ($child ".remove") (:minus)
-			(delete (aref *session* :custom-tablecloths (self name)))
-			(store-custom-tablecloths)
-			($ this (parent) (remove)))
-	       ($draggable $self (:revert t)))
-
-	     ($ ".dialog" (dialog (create "autoOpen" false)))
+	     ($button ".die-roll-icon .increment" (:plus)
+		      ($incf ($ this (siblings ".num-dice")) +1 :max 4096)
+		      (store-dice))
+	     ($button ".die-roll-icon .decrement" (:minus)
+		      ($decf ($ this (siblings ".num-dice")) -1 :min 1)
+		      (store-dice))
+	     
+	     ($droppable "#hand" (:overlapping "#board, .stack")
+			 (:peek-card
+			  (table/stack/take ($ "#peek-window .stack-id" (text)) ($ dropped (attr :id)))
+			  ($ "#peek-window .cards" (sortable :cancel)))
+			 (:card 
+			  (unless ($ dropped (has-class :card-in-hand))
+			    (table/card/pick-up ($ dropped (attr :id))))))
+	     
+	     ($draggable ".new-deck" (:revert t))
+	     ($draggable ".die-roll-icon, .coin-flip-icon" (:revert t :cancel ".increment, .decrement"))
 
 	     ($ "#backpack" (tabs))
 	     ($button "#custom-deck" (:plus) 
 		      ($ "#deck-editor" (show))
 		      ($ "#backpack" (tabs (create :active 0))))
 	     ($button "#custom-mini" (:plus) 
-		      ($ "#deck-editor, .dialog" (hide))
-		      ($ "#custom-mini-dialog" (dialog :open))
+		      ($ "#deck-editor, .overlay" (hide))
+		      ($ "#custom-mini-overlay" (show))
 		      ($ "#backpack" (tabs (create :active 2))))
 	     ($button "#custom-tablecloth" (:plus)
-		      ($ "#deck-editor, .dialog" (hide))
-		      ($ "#custom-tablecloth-dialog" (dialog :open))
+		      ($ "#deck-editor, .overlay" (hide))
+		      ($ "#custom-tablecloth-overlay" (show))
 		      ($ "#backpack" (tabs (create :active 3))))
-
-	     ($click "#leave" (table/leave))
 	     
 	     (setf *table-stream*
 		   (event-source (+ "/ev/" (chain (@ *table-info* id) (to-upper-case)))
@@ -503,6 +432,72 @@
 
 				 (rolled)
 				 (flipped-coin))))
+	   
+	   (define-component (zoomed-card :empty? nil)
+	       (:div :id "zoomed-card" :class "moveable"
+		     (:h3 "Zoomed" (:button :class "hide"))
+		     (:div :class "content"))
+	     ($button "#zoomed-card button.hide" (:zoomout) ($ "#zoomed-card" (hide))))
+	   
+	   (define-overlay (custom-tablecloth)
+	       (:span (:input :class "url-input" :placeholder "Tablecloth image URL")
+		      (:input :class "name-input" :placeholder "Tablecloth Name"))
+	     ($button ($find ".ok") (:check :text? t)
+		      (let* ((name ($val ($find ".name-input")))
+			     (tblc (create :name name :uri ($val ($find ".url-input")))))
+			(create-custom-tablecloth "#tablecloth-tab .content" tblc)
+			(setf (aref *session* :custom-tablecloths name) tblc)
+			(store-custom-tablecloths)
+			($val ($find "input") "")
+			($ $self (hide)))))
+	   
+	   (define-overlay (custom-mini)
+	       (:input :class "url-input" :placeholder "Mini image URL")
+	     ($button ($find ".ok") (:check :text? t)
+		      (let ((uri ($val ($find ".url-input"))))
+			(create-custom-mini "#minis-tab .content" (create :uri uri))
+			(aif (aref *session* :custom-minis)
+			     (chain it (push uri))
+			     (setf (aref *session* :custom-minis) (list uri)))
+			(store-custom-minis)
+			($val ($find ".url-input") "")
+			($ $self (hide)))))
+
+	   (define-thing (custom-mini)
+	       (:div :class "backpack-mini" :title (self uri) 
+		     (:img :src (self uri))
+		     (:button :class "remove"))
+	     ($button ($child ".remove") (:minus)
+		      (let* ((c-ms (aref *session* :custom-minis)) 
+			     (ix (chain c-ms (index-of (self uri))))))
+		      (chain c-ms (splice ix 1))
+		      (store-custom-minis)
+		      ($ this (parent) (remove)))
+	     ($draggable $self (:revert t)))
+
+	   (define-thing (custom-tablecloth)
+	       (:div :class "tablecloth" :title (self uri)
+		     :style (+ "background-image: url(" (self uri) ");")
+		     (self name)
+		     (:button :class "remove"))
+	     ($button ($child ".remove") (:minus)
+		      (delete (aref *session* :custom-tablecloths (self name)))
+		      (store-custom-tablecloths)
+		      ($ this (parent) (remove)))
+	     ($draggable $self (:revert t)))
+
+	   (defun store-custom-tablecloths ()
+	     (setf (@ window local-storage :custom-tablecloths) 
+		   (obj->string (@ *session* :custom-tablecloths))))
+	   
+	   (defun store-custom-minis ()
+	     (setf (@ window local-storage :custom-minis)
+		   (obj->string (@ *session* :custom-minis))))
+
+	   (defun store-dice ()
+	     (setf (@ window local-storage :dice)
+		   (obj->string (loop for elem in ($ "#dice-tab .num-dice")
+				   collect ($ elem (text))))))
 	   
 	   (defun render-board (table)
 	     (let ((board-selector "#board")
@@ -660,9 +655,6 @@
 	   (define-component (deck-editor :empty? nil)
 	       (:div :id "deck-editor" :class "moveable"
 		     (:h3 "Deck Editor" (:button :class "exit") (:button :class "load"))
-		     (:div :class "dialog" :id "load-deck-dialog" :title "Load Deck"
-			   (:form :id "load-deck-form" :enctype "multipart/form-data"
-				  (:input :id "load-deck-file" :name "deck" :type "file")))
 		     (:div :class "content"
 			   (:div :class "row"
 				 (:input :class "deck-name" :value "New Deck Name")
@@ -685,6 +677,8 @@
 			   (:div :class "row" (:button :class "add-card" "Add Card"))
 			   (:br :class "clear")))
 
+	     (show-load-deck-overlay "#deck-editor")
+	     
 	     ($button "#deck-editor .add-card-property" (:plus)
 		      (create-card-property "#deck-editor .card-properties" (create)))
 	     ($button "#deck-editor button.add-card" (:check :text? t)
@@ -720,74 +714,75 @@
 			(create-custom-deck "#decks-tab .content" deck)
 			($draggable "#decks-tab .new-custom-deck:first" (:revert t))
 			($ "#deck-editor" (hide))))
-	     ($button "#deck-editor button.load" (:arrowthick-1-n)
-		      ($ "#load-deck-dialog" (dialog :open)))
-	     
-	     (define-thing (card-property)
-		 (:li :class "card-property"
-		      (:button :class "remove")
-		      (:input :class "card-property-name" :value (aif (self name) it ""))
-		      (:textarea :class "card-property-value" (aif (self value) it "")))
-	       ($button ($child ".remove") (:cancel) ($ $self (remove)))) 
-	     
-	     (define-thing (card-record)
-		 (:div :class "card in-chat" :title (self name)
-		       (:span :class "content" (card-html (create :card-type "" :face :up :content self)))
-		       (:input :class "count" :value (or (self count) 1))
-		       (:button :class "zoom")
-		       (:button :class "remove")
-		       (:span :class "card-content" (obj->string self)))
-	       ($button ($child ".remove") (:cancel) ($ $self (remove)))
-	       ($button ($child ".zoom") (:zoomin)
-			($ "#zoomed-card" (show))
-			($ "#zoomed-card .content" (empty) 
-			   (append (card-html (create :card-type "" :face :up :content self))))))
-
-	     (define-thing (custom-deck)
-		 (:div :class "new-deck new-custom-deck"
-		       :title (self deck-name) (self deck-name)
-		       (:button :class "delete")
-		       (:button :class "edit")
-		       (:button :class "download"))
-	       ($button ($child ".delete") (:cancel)
-			(delete (aref *session* :custom-decks (self deck-name)))
-			(store-decks)
-			($ $self (remove)))
-	       ($button ($child ".download") (:arrowthick-1-s)
-			($save-as (name->filename (self deck-name)) self))
-	       ($button ($child ".edit") (:pencil)
-			(load-deck-for-editing self)
-			($ "#deck-editor" (show)))
-	       ($draggable $self (:revert t)))
+	     ($button "#deck-editor button.load" (:arrowthick-1-n) ($ "#load-deck-overlay" (show)))
 	     
 	     (create-card-property "#deck-editor .card-properties" 
 				   (create :name "Rules" :value "Card Rules Text"))
 	     (create-card-property "#deck-editor .card-properties" 
 				   (create :name "Flavor" :value "Card Flavor Text"))
-
-	     (defun store-decks ()
-	       (setf (@ window local-storage :custom-decks) 
-		     (obj->string (@ *session* :custom-decks))))
-
-	     (defun load-deck-for-editing (deck)
-	       (with-slots (deck-name card-type cards) deck
-		 ($ "#deck-editor .deck-name" (val deck-name))
-		 ($ "#deck-editor .card-type" (val card-type))
-		 ($ "#deck-editor .cards" (empty))
-		 (loop for c in cards 
-		    do (create-card-record "#deck-editor .cards" c))))
-	     
-	     ($ "#load-deck-form" 
-		(change (fn 
-			 ($load "load-deck-file" (load-deck-for-editing res))
-			 ($ "#load-deck-dialog" (dialog :close)))))
 	     
 	     ;; get custom decks from local storage
 	     (aif (@ window local-storage :custom-decks)
 		  (let ((decks (string->obj it)))
 		    (setf (@ *session* :custom-decks) decks)
 		    ($map decks (create-custom-deck "#decks-tab .content" elem)))
-		  (setf (@ *session* :custom-decks) (create))))))
+		  (setf (@ *session* :custom-decks) (create))))
+
+	   (define-thing (card-property)
+	       (:li :class "card-property"
+		    (:button :class "remove")
+		    (:input :class "card-property-name" :value (aif (self name) it ""))
+		    (:textarea :class "card-property-value" (aif (self value) it "")))
+	     ($button ($child ".remove") (:cancel) ($ $self (remove)))) 
+	   
+	   (define-thing (card-record)
+	       (:div :class "card in-chat" :title (self name)
+		     (:span :class "content" (card-html (create :card-type "" :face :up :content self)))
+		     (:input :class "count" :value (or (self count) 1))
+		     (:button :class "zoom")
+		     (:button :class "remove")
+		     (:span :class "card-content" (obj->string self)))
+	     ($button ($child ".remove") (:cancel) ($ $self (remove)))
+	     ($button ($child ".zoom") (:zoomin)
+		      ($ "#zoomed-card" (show))
+		      ($ "#zoomed-card .content" (empty) 
+			 (append (card-html (create :card-type "" :face :up :content self))))))
+
+	   (define-thing (custom-deck)
+	       (:div :class "new-deck new-custom-deck"
+		     :title (self deck-name) (self deck-name)
+		     (:button :class "delete")
+		     (:button :class "edit")
+		     (:button :class "download"))
+	     ($button ($child ".delete") (:cancel)
+		      (delete (aref *session* :custom-decks (self deck-name)))
+		      (store-decks)
+		      ($ $self (remove)))
+	     ($button ($child ".download") (:arrowthick-1-s)
+		      ($save-as (name->filename (self deck-name)) self))
+	     ($button ($child ".edit") (:pencil)
+		      (load-deck-for-editing self)
+		      ($ "#deck-editor" (show)))
+	     ($draggable $self (:revert t)))
+	   
+	   (defun store-decks ()
+	     (setf (@ window local-storage :custom-decks) 
+		   (obj->string (@ *session* :custom-decks))))
+	   
+	   (defun load-deck-for-editing (deck)
+	     (with-slots (deck-name card-type cards) deck
+	       ($ "#deck-editor .deck-name" (val deck-name))
+	       ($ "#deck-editor .card-type" (val card-type))
+	       ($ "#deck-editor .cards" (empty))
+	       (loop for c in cards 
+		  do (create-card-record "#deck-editor .cards" c))))
+	   
+	   (define-overlay (load-deck :ok-button? nil)
+	       (:form :id "load-deck-inputs" :enctype "multipart/form-data"
+		      (:input :id "load-deck-file" :name "deck" :type "file"))
+	     ($change "#load-deck-inputs"
+		      ($load "load-deck-file" (load-deck-for-editing res))
+		      ($ $self (hide))))))
 
 (to-file "static/js/util.js"
 	 (ps 
@@ -905,9 +900,9 @@
 				     (started-table
 				      (create-table-entry "#open-tables" (@ ev table)))
 				     (filled-table
-				      ($ (+ "#game-" (@ ev id)) (remove)))
+				      ($ (+ "#" (@ ev id)) (remove)))
 				     (joined
-				      ($incf (+ "#game-" (@ ev id) " .players .count")))
+				      ($incf (+ "#" (@ ev id) " .players .count")))
 				     (left
 				      (create-table-entry "#open-tables" (@ ev table)))))
 		 ($map public-tables

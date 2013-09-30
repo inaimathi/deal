@@ -5,7 +5,7 @@
 (defun css-centered-box (width height &optional (position 'absolute))
   `(:width ,(px width) :height ,(px height)
 	   :left 50% :top 50% :margin-left ,(px (- (/ width 2))) :margin-top ,(px (- (/ height 2)))
-	   :position ,position :z-index 10000 ))
+	   :position ,position :z-index 10000))
 
 (defun css-box (&optional filled?)
   `(:border "1px solid #ccc" :background-color ,(if filled? "#eee" "#fff") :border-radius 4px))
@@ -30,7 +30,6 @@
 	       ("button.control-button:hover" :opacity 1)
 	       
 	       (.ping :z-index 100001 :width 30px :height 30px :border-radius 15px :position absolute :border "1px solid black")
-	       (".ui-dialog" :z-index 100001)
 
 	       (.overlay ,@(css-centered-box 400 200 'fixed) ,@(css-box) :display none)
 	       (".overlay h3" ,@css-header)
