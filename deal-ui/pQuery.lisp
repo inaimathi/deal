@@ -115,7 +115,7 @@
 		  (let ((res (string->obj (@ jqXHR response-text))))
 		    ,@body)))))
 
-(defpsmacro $highlight (target)
+(defpsmacro $highlight (target &body body)
   `($ ,target (stop t t) (effect :highlight nil 500)))
 
 (defpsmacro $droppable (target (&key overlapping) &rest class/action-list)
@@ -128,10 +128,20 @@
 		      (ev-x (@ event page-x)) (ev-y (@ event page-y)))
 		  (cond ,@(loop for (class . action) in class/action-list
 			     collect `(($ dropped (has-class ,class)) ,@action)))
-		  ,@(when overlapping `(($ ,overlapping (droppable "enable"))))))
+		  ,@(when overlapping `(($ ,overlapping (droppable :enable))))))
 	,@(when overlapping
-		`(:over (fn ($ ,overlapping (droppable "disable")))
-		  :out (fn ($ ,overlapping (droppable "enable")))))))))
+		`(:over (fn ($ ,overlapping (droppable :disable)))
+		  :out (fn ($ ,overlapping (droppable :enable)))))))))
+
+(defpsmacro $sortable (target (&key overlapping) &body body)
+  `($ ,target
+      (sortable (create :update (lambda (event ui)
+				  ,@body
+				  ,@(when overlapping `(($ ,overlapping (droppable :enable)))))
+			,@(when overlapping
+				`(:start (fn ($ ,overlapping (droppable :disable)))
+				  :over (fn ($ ,overlapping (droppable :disable)))
+				  :out (fn ($ ,overlapping (droppable :enable)))))))))
 
 (defpsmacro $x (elem ev)
   `(- (+ (@ ,ev client-x) ($ window (scroll-left)))

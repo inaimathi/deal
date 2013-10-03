@@ -335,6 +335,7 @@
 				 (said)
 				 (pinged
 				  ($append "body" (:div :class "ping" :style (+ "left:" (- (@ ev x) 15) "px; top:" (- (@ ev y) 15) "px;")))
+				  ;; todo -- add optional callback to $highlight
 				  ($ ".ping" (stop t t) (effect :highlight nil 500 (fn ($ ".ping" (remove))))))
 
 				 ;;; todo
@@ -374,7 +375,7 @@
 				 (added-to-stack 
 				  ($ (+ "#" (@ ev card)) (remove))
 				  (change-stack-count (@ ev stack) +1)
-				  ($ (+ "#" (@ ev stack)) (highlight)))
+				  ($highlight (+ "#" (@ ev stack))))
 				 (drew-from 
 				  (when (= (@ ev stack) ($ "#peek-window .stack-id" (text)))
 				    (clear-peek-window))
@@ -615,12 +616,11 @@
 		    (:h3 "Peeking at " (:span :class "stack-id") "..." (:button :class "hide"))
 		    (:div :class "cards"))
 	    ($button "#peek-window button.hide" (:zoomout) (clear-peek-window))
-	    ($ "#peek-window .cards" 
-	       (sortable (create :update (lambda (event ui)
-					   (table/stack/reorder 
-					    ($ "#peek-window h3 .stack-id" (text))
-					    (obj->string (loop for elem in ($ "#peek-window .peek-card")
-							    collect ($ elem (attr :id))))))))))
+	    ($sortable "#peek-window .cards" (:overlapping "#board, .stack")
+		       (table/stack/reorder
+			($ "#peek-window h3 .stack-id" (text))
+			(obj->string (loop for elem in ($ "#peek-window .peek-card")
+					collect ($ elem (attr :id)))))))
 
 	  (define-thing (peek-card)
 	      (:div :id (self id) :class "card in-chat peek-card"
