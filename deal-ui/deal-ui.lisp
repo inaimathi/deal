@@ -27,7 +27,8 @@
 	   (define-overlay (new-table)
 	       (:input :class "game-tag")
 	     ($button ($find ".ok") (:check :text? t)
-		      (lobby/new-table ($ ($find ".game-tag") (val)) ""))
+		      (lobby/new-table ($ ($find ".game-tag") (val)) "")
+		      ($ $self (hide)))
 	     ($keydown ($find ".game-tag")
 		       <ret> ($ ($find ".ok") (click))
 		       <esc> ($ ($find ".cancel") (click))))
@@ -151,6 +152,7 @@
 		 ($ selector (append msg-html))
 		 (when scrl? (scroll-to-bottom selector))))
 
+	     ;;; TODO local-storage
 	     (defun push-chat-message (message)
 	       (let* ((re (new (-reg-exp "\\s+$")))
 		      (msg (chain message (replace re ""))))
@@ -162,6 +164,7 @@
 		     (if (> (length messages) 50)
 			 (chain messages (splice 0 1))
 			 (incf current-message))))))
+	     ;;; END TODO
 	     
 	     (defun chat-command (txt)
 	       (let ((re (new (-reg-exp "^(@\\S+)"))))
@@ -278,37 +281,20 @@
 				 (:span :class "tag" (@ elem tag))
 				 (:span :class "hand-size" (@ elem hand))))) 
 
-	     ;;; TODO getting/putting stuff from local storage needs to be abstracted
-	     ;; load moveable element locations from local storage
-	     (aif (@ window local-storage :element-locations)
-		  (let ((locs (string->obj it)))
-		    (setf (@ *session* :element-locations) locs)
-		    ($map locs ($ i (offset elem))))
-		  (setf (@ *session* :element-locations) (create)))
-	     
-	     ;; get dice from local storage
-	     (aif (@ window local-storage :dice)
-		  (loop for elem in ($ "#dice-tab .num-dice") for num-dice in (string->obj it)
-		     do ($ elem (text num-dice))))
+	     (local-load! (:element-locations) ($map res ($ i (offset elem))))
+	     (local-load! (:dice :default (list))
+			  (loop for elem in ($ "#dice-tab .num-dice") for num-dice in res
+			     do ($ elem (text num-dice))))
+	     (local-load! (:custom-tablecloths)
+			  ($map res (create-custom-tablecloth "#tablecloth-tab . content" elem)))
+	     (local-load! (:custom-minis :default (list))
+			  ($map res (create-custom-mini "#minis-tab .content" (create :uri elem))))
 
-	     ;; get tablecloths from local storage
-	     (aif (@ window local-storage :custom-tablecloths)
-		  (let ((tbls (string->obj it)))
-		    (setf (@ *session* :custom-tablecloths) tbls)
-		    ($map tbls (create-custom-tablecloth "#tablecloth-tab .content" elem)))
-		  (setf (@ *session* :custom-tablecloths) (create)))
-
-	     ;; get custom-minis from local storage
-	     (aif (@ window local-storage :custom-minis)
-		  (let ((ms (string->obj it)))
-		    (setf (@ *session* :custom-minis) ms)
-		    ($map ms (create-custom-mini "#minis-tab .content" (create :uri elem)))))
-
+	     ;;; TODO local-storage
 	     ($draggable ".moveable" (:handle "h3")
-			 (setf (@ *session* :element-locations (+ "#" ($ this (attr :id))))
-			       ($ this (offset))
-			       (@ window local-storage :element-locations)
-			       (obj->string (@ *session* :element-locations))))
+			 (setf (@ *session* :element-locations (+ "#" ($ this (attr :id)))) 
+			       ($ this (offset)))
+			 (local-store! :element-locations))
 	     ;;;;;;;;;; END TODO
 	     
 	     ($button ".die-roll-icon .increment" (:plus)
@@ -447,7 +433,7 @@
 			     (tblc (create :name name :uri ($val ($find ".url-input")))))
 			(create-custom-tablecloth "#tablecloth-tab .content" tblc)
 			(setf (aref *session* :custom-tablecloths name) tblc)
-			(store-custom-tablecloths)
+			(local-store! :custom-tablecloths)
 			($val ($find "input") "")
 			($ $self (hide)))))
 	   
@@ -459,7 +445,7 @@
 			(aif (aref *session* :custom-minis)
 			     (chain it (push uri))
 			     (setf (aref *session* :custom-minis) (list uri)))
-			(store-custom-minis)
+			(local-store! :custom-minis)
 			($val ($find ".url-input") "")
 			($ $self (hide)))))
 
@@ -471,7 +457,7 @@
 		      (let* ((c-ms (aref *session* :custom-minis)) 
 			     (ix (chain c-ms (index-of (self uri))))))
 		      (chain c-ms (splice ix 1))
-		      (store-custom-minis)
+		      (local-store! :custom-minis)
 		      ($ this (parent) (remove)))
 	     ($draggable $self (:revert t)))
 
@@ -482,22 +468,18 @@
 		     (:button :class "remove"))
 	     ($button ($child ".remove") (:minus)
 		      (delete (aref *session* :custom-tablecloths (self name)))
-		      (store-custom-tablecloths)
+		      (local-store! :custom-tablecloths)
 		      ($ this (parent) (remove)))
 	     ($draggable $self (:revert t)))
 
-	   (defun store-custom-tablecloths ()
-	     (setf (@ window local-storage :custom-tablecloths) 
-		   (obj->string (@ *session* :custom-tablecloths))))
 	   
-	   (defun store-custom-minis ()
-	     (setf (@ window local-storage :custom-minis)
-		   (obj->string (@ *session* :custom-minis))))
-
+	   ;;; TODO local-storage
 	   (defun store-dice ()
-	     (setf (@ window local-storage :dice)
-		   (obj->string (loop for elem in ($ "#dice-tab .num-dice")
-				   collect ($ elem (text))))))
+	     (setf (@ *session* :dice)
+		   (loop for elem in ($ "#dice-tab .num-dice")
+				   collect ($ elem (text))))
+	     (local-store! :dice))
+	   ;;;;;;;; END TODO
 	   
 	   (defun render-board (table)
 	     (let ((board-selector "#board")
@@ -624,31 +606,31 @@
 
 (to-file "static/js/peeking.js"
 	 (ps
-	   (defun clear-peek-window ()
-	     ($ "#peek-window" (hide))
-	     ($ "#peek-window .cards" (empty)))
-	   
-	   (define-component (peek-window :empty? nil)
-	       (:div :id "peek-window" :class "moveable"
-		     (:h3 "Peeking at " (:span :class "stack-id") "..." (:button :class "hide"))
-		     (:div :class "cards"))
-	     ($button "#peek-window button.hide" (:zoomout) (clear-peek-window))
-	     ($ "#peek-window .cards" 
-		(sortable (create :update (lambda (event ui)
-					    (table/stack/reorder 
-					     ($ "#peek-window h3 .stack-id" (text))
-					     (obj->string (loop for elem in ($ "#peek-window .peek-card")
-							     collect ($ elem (attr :id))))))))))
+	  (defun clear-peek-window ()
+	    ($ "#peek-window" (hide))
+	    ($ "#peek-window .cards" (empty)))
+	  
+	  (define-component (peek-window :empty? nil)
+	      (:div :id "peek-window" :class "moveable"
+		    (:h3 "Peeking at " (:span :class "stack-id") "..." (:button :class "hide"))
+		    (:div :class "cards"))
+	    ($button "#peek-window button.hide" (:zoomout) (clear-peek-window))
+	    ($ "#peek-window .cards" 
+	       (sortable (create :update (lambda (event ui)
+					   (table/stack/reorder 
+					    ($ "#peek-window h3 .stack-id" (text))
+					    (obj->string (loop for elem in ($ "#peek-window .peek-card")
+							    collect ($ elem (attr :id))))))))))
 
-	   (define-thing (peek-card)
-	       (:div :id (self id) :class "card in-chat peek-card"
-		     (:span :class "content" 
-			    (card-html ($extend thing (create :face :up))))
-		     (:button :class "zoom"))
-	     ($button ($child ".zoom") (:zoomin)
-		      ($ "#zoomed-card" (show))
-		      ($ "#zoomed-card .content" (empty) 
-			 (append (card-html ($extend thing (create :face :up)))))))))
+	  (define-thing (peek-card)
+	      (:div :id (self id) :class "card in-chat peek-card"
+		    (:span :class "content" 
+			   (card-html ($extend thing (create :face :up))))
+		    (:button :class "zoom"))
+	    ($button ($child ".zoom") (:zoomin)
+		     ($ "#zoomed-card" (show))
+		     ($ "#zoomed-card .content" (empty) 
+			(append (card-html ($extend thing (create :face :up)))))))))
 
 (to-file "static/js/deck-editor.js"
 	 (ps 
@@ -708,7 +690,7 @@
 							       (setf (@ card count) count)
 							       card)))))
 			(setf (aref *session* :custom-decks deck-name) deck)
-			(store-decks)
+			(local-store! :custom-decks)
 			(aif ($exists? (+ ".new-deck.new-custom-deck[title='" deck-name "']"))
 			     ($ it (remove)))
 			(create-custom-deck "#decks-tab .content" deck)
@@ -721,12 +703,8 @@
 	     (create-card-property "#deck-editor .card-properties" 
 				   (create :name "Flavor" :value "Card Flavor Text"))
 	     
-	     ;; get custom decks from local storage
-	     (aif (@ window local-storage :custom-decks)
-		  (let ((decks (string->obj it)))
-		    (setf (@ *session* :custom-decks) decks)
-		    ($map decks (create-custom-deck "#decks-tab .content" elem)))
-		  (setf (@ *session* :custom-decks) (create))))
+	     (local-load! (:custom-decks)
+		  ($map res (create-custom-deck "#decks-tab .content" elem))))
 
 	   (define-thing (card-property)
 	       (:li :class "card-property"
@@ -756,7 +734,7 @@
 		     (:button :class "download"))
 	     ($button ($child ".delete") (:cancel)
 		      (delete (aref *session* :custom-decks (self deck-name)))
-		      (store-decks)
+		      (local-store! :custom-decks)
 		      ($ $self (remove)))
 	     ($button ($child ".download") (:arrowthick-1-s)
 		      ($save-as (name->filename (self deck-name)) self))
@@ -764,11 +742,7 @@
 		      (load-deck-for-editing self)
 		      ($ "#deck-editor" (show)))
 	     ($draggable $self (:revert t)))
-	   
-	   (defun store-decks ()
-	     (setf (@ window local-storage :custom-decks) 
-		   (obj->string (@ *session* :custom-decks))))
-	   
+
 	   (defun load-deck-for-editing (deck)
 	     (with-slots (deck-name card-type cards) deck
 	       ($ "#deck-editor .deck-name" (val deck-name))
@@ -783,6 +757,20 @@
 	     ($change "#load-deck-inputs"
 		      ($load "load-deck-file" (load-deck-for-editing res))
 		      ($ $self (hide))))))
+
+;;; TODO local-storage
+(to-file "static/js/local-storage.js"
+	 (ps
+	   ;; get tag from local storage
+	   (aif (@ window local-storage :tag)
+		(rename it)
+		($ "#player-info .player-tag" (text (@ *session* :tag))))
+
+	   ;; get chat history from local storage
+	   (aif (@ window local-storage :chat-messages)
+		(setf (@ *chat-history* messages) (string->obj it)
+		      (@ *chat-history* current-message) (length (@ *chat-history* messages))))))
+;;; END TODO
 
 (to-file "static/js/util.js"
 	 (ps 
@@ -915,15 +903,16 @@
 	       (setf *session* res)
 	       ($ "#player-info .player-id" (text (@ *session* id)))
 
-	       ;; get tag from local storage
+
+	       ;;; TODO local-storage
 	       (aif (@ window local-storage :tag)
 		    (rename it)
 		    ($ "#player-info .player-tag" (text (@ *session* tag))))
 
-	       ;; get chat history from local storage
 	       (aif (@ window local-storage :chat-messages)
 		    (setf (@ *chat-history* messages) (string->obj it)
 			  (@ *chat-history* current-message) (length (@ *chat-history* messages))))
+	       ;;; END TODO 
 
 	       (when (@ res current-table)
 		 (setf *table-info* (@ res current-table))
@@ -934,12 +923,14 @@
 	     (define-ajax look/table () (render-board res))
 	     (define-ajax look/hand () (render-hand res))
 	     
+	     ;;; TODO local-storage
 	     (define-ajax rename (new-tag)
 	       (setf (@ *session* tag) new-tag)
 	       (unless (= new-tag (@ window local-storage :tag))
 		 (setf (@ window local-storage :tag) new-tag))
 	       ($ "#player-info .player-tag" (text new-tag))
 	       ($replace "input.player-tag" (:span :class "player-tag" new-tag)))
+	     ;;; END TODO
 
 	     ;;;;; Lobby actions
 	     (define-ajax lobby/speak (message)

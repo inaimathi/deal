@@ -41,6 +41,21 @@
 		  else collect `(,(first a-bind) (or (@ ,match ,i) ,(second a-bind))))
 	   ,@body)))))
 
+(defpsmacro local-load! ((key &key (default '(create))) &body body)
+  (with-ps-gensyms (k)
+    `(let ((,k ,key))
+       (aif (aref (@ window local-storage) ,k)
+	    (let ((res (string->obj it)))
+	      (setf (aref *session* ,k) res)
+	      ,@body)
+	    (setf (aref *session* ,k) ,default)))))
+
+(defpsmacro local-store! (key)
+  (with-ps-gensyms (k)
+    `(let ((,k ,key)) 
+       (setf (aref (@ window local-storage) ,k)
+	     (obj->string (aref *session* ,k))))))
+
 ;;;;;;;;;; jQuery Basics
 (defpsmacro $ (selector &body chains)
   `(chain (j-query ,selector) ,@chains))
@@ -271,7 +286,7 @@
 
 (defpsmacro define-overlay ((name &key (ok-button? t)) content &body behavior)
   (let* ((elem-name (format nil "~(~a~)-overlay" name))
-	 (display-name (string-capitalize (cl-ppcre:regex-replace-all "-" "load-deck" " ")))
+	 (display-name (string-capitalize (cl-ppcre:regex-replace-all "-" (symbol-name name) " ")))
 	 (id (concatenate 'string "#" elem-name)))
     `(define-component (,(intern (string-upcase elem-name)) :empty? nil)
 	 (:div :id ,elem-name :class "overlay"
