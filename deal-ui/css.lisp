@@ -135,19 +135,21 @@
 	       ("#deck-editor" :display none :left 30px :top 30px :position absolute)
 	       ("#deck-editor .label" :display inline-block :min-width 100px)
 	       ("#deck-editor textarea" ,@css-text-block :height 30px)
-	       ("#deck-editor .cards" :height 100px :overflow auto :list-style-type none :width 100%)
-	       ("#deck-editor .cards .card-content" :display none)
-	       ("#deck-editor .card .content .label" :display none)
-	       
 	       ("#deck-editor input" :width 190px)
-	       ("#deck-editor .card input" :width 23px :position absolute :bottom 0px)
-	       ;;; TODO make sure these work properly with the back-end
 	       ("#deck-editor input.url-input" :width 380px)
 	       ("#deck-editor .card-properties" :list-style-type none :padding 0px)
 	       ("#deck-editor .card-properties li" :border-bottom "1px dashed #ccc" :padding "8px 0px")
 	       ("#deck-editor button.add-card, #deck-editor button.create-deck" :width 120px :height 30px :font-size small)
+
+	       ("#deck-editor .cards" :height 100px :overflow auto :list-style-type none :width 100%)
+	       ("#deck-editor .cards .card-content" :display none)
 	       ("#deck-editor .card" :vertical-align top :position relative :display inline-block :float none :cursor auto)
-	       ("#deck-editor .card .type" :margin-top 20px)
+	       ("#deck-editor .card .content .label" :display none)
+	       ("#deck-editor .card input" :width 23px :position absolute :bottom 0px)
+	       ("#deck-editor .card button" :position absolute :bottom 2px :right 0px)
+	       ("#deck-editor .card button.zoom" :bottom 27px)
+	       
+	       
 
 	       (".backpack-mini" :display inline-block :max-height 75px :max-width 75px :cursor move)
 
