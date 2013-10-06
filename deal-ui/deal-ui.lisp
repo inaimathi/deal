@@ -646,6 +646,8 @@
 			   (:div :class "row"
 				 (:div :class "cards")
 				 (:br :class "clear")
+				 (:span :class "label" "Total Cards: ")
+				 (:span :class "total-cards" "0")
 				 (:button :class "create-deck" "Create Deck")
 				 (:br :class "clear"))
 			   (:div :class "row"
@@ -674,8 +676,10 @@
 			(when image (setf (@ res :image-uri) image))
 			
 			(aif ($exists? (+ "#deck-editor .cards .card[title='" (@ res name) "']"))
-			     ($incf ($ it (children ".count")))
-			     (create-card-record "#deck-editor .cards" res))))
+			     (progn ($incf ($ it (children ".count")))
+				    ($ it (children ".card-content") (text (obj->string res))))
+			     (create-card-record "#deck-editor .cards" res))
+			(update-card-total)))
 	     ($button "#deck-editor button.exit" (:close) ($ "#deck-editor" (hide)))
 	     ($button "#deck-editor button.create-deck" (:check :text? t)
 		      (let* ((deck-name ($ "#deck-editor .deck-name" (val)))
@@ -696,6 +700,7 @@
 			(create-custom-deck "#decks-tab .content" deck)
 			($draggable "#decks-tab .new-custom-deck:first" (:revert t))
 			($ "#deck-editor" (hide))))
+	     
 	     ($button "#deck-editor button.load" (:arrowthick-1-n) ($ "#load-deck-overlay" (show)))
 	     
 	     (create-card-property "#deck-editor .card-properties" 
@@ -720,12 +725,15 @@
 		     (:button :class "zoom")
 		     (:button :class "remove")
 		     (:span :class "card-content" (obj->string self)))
-	     ($button ($child ".remove") (:cancel) ($ $self (remove)))
+	     ($change ($child ".count") (update-card-total))
+	     ($button ($child ".remove") (:cancel) 
+		      ($ $self (remove))
+		      (update-card-total))
 	     ($button ($child ".zoom") (:zoomin)
 		      ($ "#zoomed-card" (show))
 		      ($ "#zoomed-card .content" (empty) 
 			 (append (card-html (create :card-type "" :face :up :content self))))))
-
+	   
 	   (define-thing (custom-deck)
 	       (:div :class "new-deck new-custom-deck"
 		     :title (self deck-name) (self deck-name)
@@ -743,6 +751,11 @@
 		      ($ "#deck-editor" (show)))
 	     ($draggable $self (:revert t)))
 
+	   (defun update-card-total ()
+	     ($ "#deck-editor .total-cards"
+		(text (loop for card-elem in ($ "#deck-editor .cards .card")
+			 sum (or ($int ($ card-elem (children ".count"))) 0)))))
+	   
 	   (defun load-deck-for-editing (deck)
 	     (with-slots (deck-name card-type cards) deck
 	       ($ "#deck-editor .deck-name" (val deck-name))

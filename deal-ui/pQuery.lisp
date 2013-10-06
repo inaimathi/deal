@@ -245,7 +245,7 @@
   (with-ps-gensyms (tgt fn)
     `(let ((,tgt ,target)
 	   (,fn (lambda (value) ,@body)))
-       ($ ,tgt (keydown (lambda (event) (,fn ($ ,tgt (val))))))
+       ($ ,tgt (keyup (lambda (event) (,fn ($ ,tgt (val))))))
        ($ ,tgt (change (lambda (event) (,fn ($ ,tgt (val)))))))))
 
 ;;;;;;;;;; Define client-side handlers
@@ -331,10 +331,12 @@
 		     (:div :style (+ "height:100%;background-size:100% 100%;position:absolute;background-image:url(" (@ ,crd image-uri) ");")
 			   (:ul (chain 
 				 ($map content
-				       (let ((lines (chain elem (split #\newline))))
-					 (who-ps-html 
-					  (:li :class (+ "card-field " i) (:span :class "label" i)
-					       (:span :class "text" (map-markup lines (:p elem)))))))
+				       (if (= i :count)
+					   ""
+					   (let ((lines (chain elem (split #\newline))))
+					     (who-ps-html 
+					      (:li :class (+ "card-field " i) (:span :class "label" i)
+						   (:span :class "text" (map-markup lines (:p elem))))))))
 				 (join "")))))))))))))
 
 (defpsmacro event-source (uri &body name/body-list)
