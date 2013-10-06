@@ -83,7 +83,8 @@
 	       ("#zoomed-card .content .card-field.flavor .text p" :padding "0px 20px")
 	       
 
-	       ("#table-toolbar" :left 1230px :top 20px)
+	       ("#table-toolbar" :left 970px :top 30px)
+	       ("#player-toolbar" :left 560px :top 30px)
 
 	       ("#table-players" :padding 5px :margin 0px :list-style-type none)
 	       ("#table-players .header-row" :font-size xx-small :font-style oblique :color "#aaa")
@@ -93,15 +94,15 @@
 	       ("#table-players li .tag" :width 210px)
 	       ("#table-players li .hand-size")
 
-	       ("#table-toolbar h3 span" :font-size small :vertical-align top)
-	       ("#table-toolbar h3 .game-id" :font-size x-small)
-	       ("#table-toolbar .control-row" :padding 5px :font-size small)
-	       ("#table-toolbar .control-row .label" :padding-left 3px)
-	       ("#table-toolbar .control-row button" :margin "0px 10px 5px 0px")
-	       ("#table-toolbar .card" :float left)
-	       ("#table-toolbar .card.in-chat" :position relative :display inline-block :float none :cursor auto)
-	       ("#table-toolbar .card.in-chat .type" :margin-top 20px)
-	       ("#table-toolbar textarea" ,@css-text-block)
+	       (".moveable h3 span" :font-size small :vertical-align top)
+	       (".moveable h3 .game-id" :font-size x-small)
+	       (".moveable .control-row" :padding 5px :font-size small)
+	       (".moveable .control-row .label" :padding-left 3px)
+	       (".moveable .control-row button" :margin "0px 10px 5px 0px")
+	       (".moveable .card" :float left)
+	       (".moveable .card.in-chat" :position relative :display inline-block :float none :cursor auto)
+	       (".moveable .card.in-chat .type" :margin-top 20px)
+	       (".moveable textarea" ,@css-text-block)
 
 	       ("#hand" :height ,(px (+ css-card-height 5)))
 

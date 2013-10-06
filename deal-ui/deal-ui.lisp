@@ -191,9 +191,6 @@
 		     (:div :id "table-toolbar" :class "moveable"		      
 			   (:h3 (:span :class "game-id" (@ *table-info* id))
 				(:span :class "game-tag" (@ *table-info* tag)))
-			   (:div :id "player-info" :class "control-row"
-				 (:span :class "player-id" (@ *session* id))
-				 (:span :class "player-tag" (@ *session* tag)))
 			   (:div :class "control-row"
 				 (:button :id "leave" "Leave Table")
 				 (:button :id "save-board" "Save")
@@ -207,47 +204,51 @@
 					   (:span :class "id" "Id")
 					   (:span :class "tag" "Tag")
 					   (:span :class "hand-size" "Cards"))))
-			   (:div :class "content"
-				 (:h2 "Hand")
-				 (:div :id "hand")
+			   (:div :class "control-row"
 				 (:h2 "Chat")
-				 (:div :id "game-chat")
-				 (:div :id "backpack"
-				       (:ul
-					(:li (:a :href "#decks-tab" "Decks") (:button :id "custom-deck" "Custom Deck"))
-					(:li (:a :href "#dice-tab" "Dice"))
-					(:li (:a :href "#minis-tab" "Minis") (:button :id "custom-mini" "Custom Tablecloth"))
-					(:li (:a :href "#tablecloth-tab" "Tablecloths") (:button :id "custom-tablecloth" "Custom Tablecloth")))
-				       (:div :id "decks-tab" 
-					     (:div :class "content"
-						   (map-markup (@ *server-info* decks) 
-							       (:div :class "new-deck" elem)))
-					     (:br :class "clear"))
-				       (:div :id "dice-tab" 
-					     (:div :class "content"
-						   (map-markup (list "d3" "d4" "d6" "d8" "d10" "d20" "d100")
-							       (:div :class "die-roll-icon" 
-								     (:span :class "num-dice" "1")
-								     elem
-								     (:button :class "increment")
-								     (:button :class "decrement")))
-						   (:div :class "coin-flip-icon" "Flip"))
-					     (:br :class "clear"))
-				       (:div :id "minis-tab"
-					     (:div :class "content"
-						   (map-markup 
-						    (@ *server-info* minis)
-						    (:div :class "backpack-mini" :title elem (:img :src elem))))
-					     (:br :class "clear"))
-				       (:div :id "tablecloth-tab" 
-					     (:div :class "content"
-						   (:div :class "tablecloth" :title "" "None")
-						   (map-markup 
-						    (@ *server-info* tablecloths)
-						    (:div :class "tablecloth" :title elem
-							  :style (+ "background-image: url(" elem ");")
-							  (uri->name elem))))
-					     (:br :class "clear"))))))
+				 (:div :id "game-chat")))
+		     (:div :id "player-toolbar" :class "moveable"
+			   (:h3 :id "player-info" 
+				(:span :class "player-id" (@ *session* id))
+				(:span :class "player-tag" (@ *session* tag)))
+			   (:div :id "hand")
+			   (:br :class "clear")
+			   (:div :id "backpack"
+				 (:ul
+				  (:li (:a :href "#decks-tab" "Decks") (:button :id "custom-deck" "Custom Deck"))
+				  (:li (:a :href "#dice-tab" "Dice"))
+				  (:li (:a :href "#minis-tab" "Minis") (:button :id "custom-mini" "Custom Tablecloth"))
+				  (:li (:a :href "#tablecloth-tab" "Tablecloths") (:button :id "custom-tablecloth" "Custom Tablecloth")))
+				 (:div :id "decks-tab" 
+				       (:div :class "content"
+					     (map-markup (@ *server-info* decks) 
+							 (:div :class "new-deck" elem)))
+				       (:br :class "clear"))
+				 (:div :id "dice-tab" 
+				       (:div :class "content"
+					     (map-markup (list "d3" "d4" "d6" "d8" "d10" "d20" "d100")
+							 (:div :class "die-roll-icon" 
+							       (:span :class "num-dice" "1")
+							       elem
+							       (:button :class "increment")
+							       (:button :class "decrement")))
+					     (:div :class "coin-flip-icon" "Flip"))
+				       (:br :class "clear"))
+				 (:div :id "minis-tab"
+				       (:div :class "content"
+					     (map-markup 
+					      (@ *server-info* minis)
+					      (:div :class "backpack-mini" :title elem (:img :src elem))))
+				       (:br :class "clear"))
+				 (:div :id "tablecloth-tab" 
+				       (:div :class "content"
+					     (:div :class "tablecloth" :title "" "None")
+					     (map-markup 
+					      (@ *server-info* tablecloths)
+					      (:div :class "tablecloth" :title elem
+						    :style (+ "background-image: url(" elem ");")
+						    (uri->name elem))))
+				       (:br :class "clear")))))
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
 	       (setf *lobby-stream* nil))
