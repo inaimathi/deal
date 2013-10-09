@@ -127,6 +127,8 @@
 					    (+ "pinged " (@ msg x) "." (@ msg y)))
 					   ("placedNote"
 					    (+ "placed a note"))
+					   ("changedNote"
+					    (+ "changed note " (@ msg note) " to " (@ msg new) " from " (@ msg old)))
 					   ("attached"
 					    (+ "attached " (@ msg child) " to " (@ msg parent)))
 					   ("detachedFrom"
@@ -265,6 +267,7 @@
 
 	     ($droppable "#backpack" (:overlapping "#board, .stack")
 			 (:mini  (table/remove ($ dropped (attr :id))))
+			 (:note  (table/remove ($ dropped (attr :id))))
 			 (:stack (table/remove ($ dropped (attr :id))))
 			 (:card  (table/remove ($ dropped (attr :id)))))
 	     
@@ -341,6 +344,7 @@
 
 				 ;;; todo
 				 (placed-note)
+				 (changed-note)
 				 (attached)
 				 (detached-from)
 				 (detached)
@@ -498,6 +502,8 @@
 	       (awhen (@ table tablecloth)
 		 ($ board-selector (css "background-image" (+ "url(" it ")"))))
 	       ($droppable board-selector ()
+			   (:note
+			    (table/new/note (prompt "Note Text") ev-x ev-y 0 0))
 			   (:card-in-hand 
 			    (table/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
 			   (:peek-card
@@ -554,7 +560,9 @@
 			 (let ((off ($ $self (offset))))
 			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self))))
 	     ($droppable $self (:overlapping "#board")
-			 (:card-in-hand
+			 (:note
+			  (table/new/note-on (prompt "Note Text") (self id)))
+			 (:card-in-hand 
 			  (table/stack/play-to ($ dropped (attr :id)) (self id)))
 			 (:card
 			  (table/stack/add-to (self id) ($ dropped (attr :id))))
@@ -763,7 +771,8 @@
 	       ($ "#deck-editor .card-type" (val card-type))
 	       ($ "#deck-editor .cards" (empty))
 	       (loop for c in cards 
-		  do (create-card-record "#deck-editor .cards" c))))
+		  do (create-card-record "#deck-editor .cards" c))
+	       (update-card-total)))
 	   
 	   (define-overlay (load-deck :ok-button? nil)
 	       (:form :id "load-deck-inputs" :enctype "multipart/form-data"
@@ -977,8 +986,8 @@
 
 	     ;;; Table element placement actions
 	     (define-ajax table/new/mini (image-uri x y z rot))
-	     ;; TODO table/new/note
-	     ;; TODO table/new/note-on
+	     (define-ajax table/new/note (text x y z rot))
+	     (define-ajax table/new/note-on (text thing))
 	     (define-ajax table/new/stack-from-deck (deck-name x y z rot))
 	     (define-ajax table/new/stack-from-cards (cards))
 	     (define-ajax table/new/stack-from-json (deck x y z rot))
@@ -1012,7 +1021,10 @@
 	     (define-ajax table/card/flip (card))
 	     (define-ajax table/card/pick-up (card)
 	       ($ (+ "#" card) (remove))
-	       (render-hand res))))
+	       (render-hand res))
+	     
+	     ;;; Note-related actions
+	     (define-ajax table/note/change (note new-text))))
 
 ;;;;; HTML
 (to-file "static/index.html"

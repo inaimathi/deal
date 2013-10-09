@@ -5,7 +5,7 @@
 (defun css-centered-box (width height &optional (position 'absolute))
   `(:width ,(px width) :height ,(px height)
 	   :left 50% :top 50% :margin-left ,(px (- (/ width 2))) :margin-top ,(px (- (/ height 2)))
-	   :position ,position :z-index 10000))
+	   :position ,position :z-index 1000001))
 
 (defun css-box (&optional filled?)
   `(:border "1px solid #ccc" :background-color ,(if filled? "#eee" "#fff") :border-radius 4px))

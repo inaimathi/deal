@@ -301,3 +301,10 @@
   (move! card table (session-value :player))
   (publish! table :picked-up `((card . ,(id card))))
   (hash-values (hand (session-value :player))))
+
+;;;;; Note-specific actions
+(define-player-handler (table/note/change) ((table :table) (note :note) (new-text :string :max 255))
+  (let ((old (text note)))
+    (setf (text note) new-text)
+    (publish! table :changed-note `((note . ,(id note)) (old . ,old) (new . ,new-text)))
+    :ok))

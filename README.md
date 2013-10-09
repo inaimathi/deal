@@ -47,3 +47,7 @@ Deal bundles some images from [OpenGameArt.org](http://opengameart.org/). This i
 
 - [chess/go/checkers piees](http://opengameart.org/content/boardgame-tiles) ([CC-BY 3.0 license](http://creativecommons.org/licenses/by/3.0/) by [Sharm](http://opengameart.org/users/sharm), aka Lanea Zimmerman)
 - [plants](http://opengameart.org/content/lpc-plant-repack) (Dual-licensed under [CC-BY-SA 3.0](http://creativecommons.org/licenses/by-sa/3.0/) and [GPL3](http://www.gnu.org/licenses/gpl-3.0.html), re-packaged by [William. Thompsonj](http://opengameart.org/users/williamthompsonj))
+
+Deal bundles an image from another source.
+
+- [sticky-note icon](https://www.iconfinder.com/icons/43879/note_icon#size=32) from [Momentum Labs](http://momentumdesignlab.com/) released under [CC-BY 3.0](http://creativecommons.org/licenses/by/3.0/).
