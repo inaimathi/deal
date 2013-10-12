@@ -304,7 +304,8 @@
 
 ;;;;; Note-specific actions
 (define-player-handler (table/note/change) ((table :table) (note :note) (new-text :string :max 255))
-  (let ((old (text note)))
-    (setf (text note) new-text)
-    (publish! table :changed-note `((note . ,(id note)) (old . ,old) (new . ,new-text)))
+  (let ((old-text (text note)))
+    (unless (string= new-text old-text)
+      (setf (text note) new-text)
+      (publish! table :changed-note `((note . ,(id note)) (old . ,old-text) (new . ,new-text))))
     :ok))

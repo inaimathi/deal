@@ -115,7 +115,7 @@
 					    (+ "flipped over " (chat-card (@ msg card))))
 					   ("placedMini" "placed a mini")
 					   ("removed"
-					    (+ "removed " (@ msg thing) " from play"))
+					    (+ "removed " (@ msg thing) " from the table"))
 					   ("playedFromHand"
 					    (+ "played " (chat-card (@ msg card)) " from hand"))
 					   ("playedFromStack"
@@ -128,7 +128,7 @@
 					   ("placedNote"
 					    (+ "placed a note"))
 					   ("changedNote"
-					    (+ "changed note " (@ msg note) " to " (@ msg new) " from " (@ msg old)))
+					    (+ "changed note " (@ msg note) " from <pre>" (@ msg old) "</pre> to <pre>" (@ msg new) "</pre>"))
 					   ("attached"
 					    (+ "attached " (@ msg child) " to " (@ msg parent)))
 					   ("detachedFrom"
@@ -199,7 +199,8 @@
 				 (:form :id "load-form" :enctype "multipart/form-data"
 					(:span :class "label" "Load: ") 
 					(:input :type "hidden" :name "table" :value (@ *table-info* id))
-					(:input :name "file" :type "file")))
+					(:input :name "file" :type "file"))
+				 (:img :id "new-note" :class "new-note" :src "/static/img/note-icon.png"))
 			   (:div :class "control-row" 
 				 (:ul :id "table-players"
 				      (:li :class "header-row"
@@ -264,6 +265,7 @@
 
 	     ($draggable ".tablecloth" (:revert t))
 	     ($draggable ".backpack-mini" (:revert t))
+	     ($draggable "#new-note" (:revert t))
 
 	     ($droppable "#backpack" (:overlapping "#board, .stack")
 			 (:mini  (table/remove ($ dropped (attr :id))))
@@ -343,7 +345,8 @@
 				  ($ ".ping" (stop t t) (effect :highlight nil 500 (fn ($ ".ping" (remove))))))
 
 				 ;;; todo
-				 (placed-note)
+				 (placed-note
+				  (create-note "body" (@ ev note)))
 				 (changed-note)
 				 (attached)
 				 (detached-from)
@@ -502,7 +505,7 @@
 	       (awhen (@ table tablecloth)
 		 ($ board-selector (css "background-image" (+ "url(" it ")"))))
 	       ($droppable board-selector ()
-			   (:note
+			   (:new-note
 			    (table/new/note (prompt "Note Text") ev-x ev-y 0 0))
 			   (:card-in-hand 
 			    (table/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
@@ -538,7 +541,8 @@
 	       ($map ts 
 		     (cond ((= (@ elem type) :stack) (create-stack "body" elem))
 			   ((= (@ elem type) :card) (create-card "body" elem))
-			   ((= (@ elem type) :mini) (create-mini "body" elem))))))
+			   ((= (@ elem type) :mini) (create-mini "body" elem))
+			   ((= (@ elem type) :note) (create-note "body" elem))))))
 	   
 	   (defun render-hand (cards)
 	     (let ((hand-selector "#hand"))
@@ -560,7 +564,7 @@
 			 (let ((off ($ $self (offset))))
 			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self))))
 	     ($droppable $self (:overlapping "#board")
-			 (:note
+			 (:new-note
 			  (table/new/note-on (prompt "Note Text") (self id)))
 			 (:card-in-hand 
 			  (table/stack/play-to ($ dropped (attr :id)) (self id)))
@@ -604,6 +608,17 @@
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
 	     		 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self))
 	     		 (when shift? (table/card/flip (self id)))))
+
+	   (define-thing (note)
+	       (:div :id (self id) :class "note" :style (self position)
+		     (:img :src "/static/img/note-icon.png")
+		     (:textarea :class "note-text" (self text)))
+	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
+	     ($draggable $self (:start ($ this (css :z-index ""))) 
+			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
+	     ($ ($child ".note-text") (change (fn (table/note/change (self id) ($ this (val))))))
+	     ($keydown ($child ".note-text")
+		       <ret> (when ctrl? ($ this (blur)))))
 
 	   (define-thing (card-in-hand)
 	       (:div :id (self id) :class "card card-in-hand"
