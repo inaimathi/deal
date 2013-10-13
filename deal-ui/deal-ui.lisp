@@ -128,7 +128,7 @@
 					   ("placedNote"
 					    (+ "placed a note"))
 					   ("changedNote"
-					    (+ "changed note " (@ msg note) " from <pre>" (@ msg old) "</pre> to <pre>" (@ msg new) "</pre>"))
+					    (+ "changed note " (@ msg note) (aif (@ msg old) (+ " from <pre>" it "</pre>") "") " to <pre>" (@ msg new) "</pre>"))
 					   ("attached"
 					    (+ "attached " (@ msg child) " to " (@ msg parent)))
 					   ("detachedFrom"
@@ -506,7 +506,7 @@
 		 ($ board-selector (css "background-image" (+ "url(" it ")"))))
 	       ($droppable board-selector ()
 			   (:new-note
-			    (table/new/note (prompt "Note Text") ev-x ev-y 0 0))
+			    (table/new/note "" ev-x ev-y 0 0))
 			   (:card-in-hand 
 			    (table/play ($ dropped (attr :id)) (if shift? :down :up) ev-x ev-y 0 0))
 			   (:peek-card
@@ -565,7 +565,7 @@
 			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self))))
 	     ($droppable $self (:overlapping "#board")
 			 (:new-note
-			  (table/new/note-on (prompt "Note Text") (self id)))
+			  (table/new/note-on "" (self id)))
 			 (:card-in-hand 
 			  (table/stack/play-to ($ dropped (attr :id)) (self id)))
 			 (:card
