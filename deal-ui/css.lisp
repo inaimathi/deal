@@ -59,7 +59,7 @@
 	       (.card-in-hand :position relative :z-index 10000)
 
 	       (.note :position absolute :cursor move)
-	       (".note .note-text" :display none :width 200px :margin-left 22px :margin-top -9px :padding 5px :min-height 100px :background-color "#f3cb60" :border "1px solid #9c7520" :color "#9c7520")
+	       (".note .note-text" :display none :width 150px :margin-left 22px :margin-top -9px :padding 5px :min-height 100px :background-color "#f3cb60" :border "1px solid #9c7520" :color "#9c7520")
 	       (".note:hover .note-text" :display block)
 	       (.note.ui-state-disabled :opacity 1)
 

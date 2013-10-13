@@ -92,7 +92,7 @@
 					   ("loaded"
 					    (+ "loaded a saved table. Added " (@ msg things) " things."))
 					   ("tablecloth"
-					    (+ "set a new tablecloth"))
+					    (+ "set a new board"))
 					   ("moved"
 					    (+ "moved " (@ msg thing)))
 					   ("changedTag"
@@ -199,8 +199,7 @@
 				 (:form :id "load-form" :enctype "multipart/form-data"
 					(:span :class "label" "Load: ") 
 					(:input :type "hidden" :name "table" :value (@ *table-info* id))
-					(:input :name "file" :type "file"))
-				 (:img :id "new-note" :class "new-note" :src "/static/img/note-icon.png"))
+					(:input :name "file" :type "file")))
 			   (:div :class "control-row" 
 				 (:ul :id "table-players"
 				      (:li :class "header-row"
@@ -220,8 +219,9 @@
 				 (:ul
 				  (:li (:a :href "#decks-tab" "Decks") (:button :id "custom-deck" "Custom Deck"))
 				  (:li (:a :href "#dice-tab" "Dice"))
-				  (:li (:a :href "#minis-tab" "Minis") (:button :id "custom-mini" "Custom Tablecloth"))
-				  (:li (:a :href "#tablecloth-tab" "Tablecloths") (:button :id "custom-tablecloth" "Custom Tablecloth")))
+				  (:li (:a :href "#minis-tab" "Minis") (:button :id "custom-mini" "Custom Board"))
+				  (:li (:a :href "#tablecloth-tab" "Boards") (:button :id "custom-tablecloth" "Custom Board"))
+				  (:li (:a :href "#note-tab" "Notes")))
 				 (:div :id "decks-tab" 
 				       (:div :class "content"
 					     (map-markup (@ *server-info* decks) 
@@ -251,6 +251,10 @@
 					      (:div :class "tablecloth" :title elem
 						    :style (+ "background-image: url(" elem ");")
 						    (uri->name elem))))
+				       (:br :class "clear"))
+				 (:div :id "note-tab"
+				       (:div :class "content"
+					     (:img :id "new-note" :class "new-note" :src "/static/img/note-icon.png"))
 				       (:br :class "clear")))))
 	     (when *lobby-stream* 
 	       (chain *lobby-stream* (close))
@@ -347,7 +351,8 @@
 				 ;;; todo
 				 (placed-note
 				  (create-note "body" (@ ev note)))
-				 (changed-note)
+				 (changed-note
+				  ($ (+ "#" (@ ev note) " .note-text") (val (@ ev new))))
 				 (attached)
 				 (detached-from)
 				 (detached)
@@ -357,8 +362,9 @@
 				  ($ "#board" (css "background-image" (+ "url(" (@ ev tablecloth) ")"))))
 				 (changed-tag
 				  ($ (+ "#" (@ ev player) " .tag") (text (@ ev player-tag))))
-				 (moved 
+				 (moved
 				  (with-slots (thing x y rot) ev
+				    (update-attached thing)
 				    (let ((elem ($ (+ "#" thing))))
 				      ($ elem 
 					 (offset (create :left x :top y))
@@ -557,7 +563,6 @@
 		     (:button :class "peek" "Peek")
 		     (:button :class "play-top")
 		     (:div :class "card-count" (self card-count)))
-	     (set-attachments self)
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
@@ -586,10 +591,11 @@
 	   (define-thing (mini)
 	       (:div :id (self id) :class "mini" :style (self position)
 		     (:img :src (self image-uri)))
-	     (set-attachments self)
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index "")))
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
+	     ($droppable $self (:overlapping "#board")
+			 (:new-note (table/new/note-on "" (self id))))
 	     ($rotatable $self
 			 (let ((off ($ $self (offset))))
 			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self)))))
@@ -600,7 +606,6 @@
 		     (:span :class "content" (card-html self))
 		     (:span :class "card-type" (self card-type))
 		     (:button :class "zoom"))
-	     (set-attachments self)
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($button ($child ".zoom") (:zoomin)
 		      ($ "#zoomed-card" (show))
@@ -608,6 +613,8 @@
 	     ($rotatable $self
 			 (let ((off ($ $self (offset))))
 			   (table/move (self id) (@ off left) (@ off top) 0 (get-degrees $self))))
+	     ($droppable $self (:overlapping "#board")
+			 (:new-note (table/new/note-on "" (self id))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
 	     		 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self))
 	     		 (when shift? (table/card/flip (self id)))))
@@ -616,8 +623,20 @@
 	       (:div :id (self id) :class "note" :style (self position)
 		     (:img :src "/static/img/note-icon.png")
 		     (:textarea :class "note-text" (self text)))
-	     (set-attachments self)
-	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
+	     
+	     ;; handling attached notes here
+	     (when (self attached-to)
+	       ($pushnew (self id) (@ *table-info* thing-connections (self attached-to)))
+	       (let* ((parent ($ (+ "#" (self attached-to))))
+		      (parent-offset (chain parent (offset))))
+		 (incf (@ parent-offset top) (+ (chain parent (height)) 5))
+		 (incf (@ parent-offset left) (+ (chain parent (width)) 5))
+		 ($ $self (offset parent-offset))))
+
+	     ($ $self 
+		(css :z-index (+ (self y) ($ $self (height))))
+		(hover (fn ($ $self (css :z-index 10000001)))
+		       (fn ($ $self (css :z-index (+ (self y) ($ $self (height))))))))	     
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
 	     ($ ($child ".note-text") (change (fn (table/note/change (self id) ($ this (val))))))
@@ -815,11 +834,15 @@
 ;;; END TODO
 
 (to-file "static/js/util.js"
-	 (ps 
-	   (defun set-attachments (thing)
-	     (when (@ thing attached-to)
-	       (loop for id in (@ thing attached-to)
-		  do ($pushnew (@ thing id) (@ *table-info* thing-connections id)))))
+	 (ps
+	   (defun update-attached (thing-id)
+	     (aif (aref (@ *table-info* thing-connections) thing-id)
+		  (let* ((elem ($ (+ "#" thing-id))) 
+			 (elem-offset (chain elem (offset))))
+		    (incf (@ elem-offset top) (+ (chain elem (height)) 5))
+		    (incf (@ elem-offset left) (+ (chain elem (width)) 5))
+		    (loop for id in it
+		       do ($ (+ "#" id) (offset elem-offset))))))
 	   
 	   (defun name->filename (name &optional (extension ".json"))
 	     (let ((reg (new (-reg-exp " " :g))))

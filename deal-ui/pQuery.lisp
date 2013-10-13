@@ -65,13 +65,12 @@
      ,selector))
 
 (defpsmacro $pushnew (element array)
-  (with-ps-gensyms (arr elem)
-    `(let ((,arr ,array)
-	   (,elem ,element))
-       (if ,arr
-	   (when (= -1 (chain ,arr (index-of ,elem)))
-	     (chain ,arr (push ,elem)))
-	   (setf ,arr (list ,elem))))))
+  (with-ps-gensyms (elem)
+    `(let ((,elem ,element))
+       (aif ,array
+	    (when (= -1 (chain it (index-of ,elem)))
+	      (chain it (push ,elem)))
+	    (setf ,array (list ,elem))))))
 
 (defpsmacro $val (selector &optional new-value)
   (with-ps-gensyms (sel type elem)
