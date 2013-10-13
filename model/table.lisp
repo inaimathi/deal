@@ -157,14 +157,14 @@ so it made sense to formalize this."
   (hash-map (lambda (v) (redact v)) hash-table))
 
 (defmethod redact ((stack stack))
-  (obj->hash stack (:type :stack) id x y z rot belongs-to card-count card-type image-uri))
+  (obj->hash stack (:type :stack) id x y z rot belongs-to card-count card-type image-uri attached-to))
 
 (defmethod redact ((card card))
   (obj->hash card (:type :card :content (when (eq :up face) content) :image-uri (when (eq :up face) image-uri))
-	     id x y z rot belongs-to face content card-type image-uri back-image-uri))
+	     id x y z rot belongs-to face content card-type image-uri back-image-uri attached-to))
 
 (defmethod redact ((mini mini))
-  (obj->hash mini (:type :mini) id x y z rot belongs-to image-uri))
+  (obj->hash mini (:type :mini) id x y z rot belongs-to image-uri attached-to))
 
 (defmethod redact ((note note))
   (obj->hash note (:type :note) id x y z rot belongs-to attached-to text))
@@ -175,17 +175,17 @@ so it made sense to formalize this."
   (obj->hash note (:type :note) id x y z rot belongs-to attached-to text))
 
 (defmethod serialize ((mini mini))
-  (obj->hash mini (:type :mini) id x y z rot belongs-to image-uri))
+  (obj->hash mini (:type :mini) id x y z rot belongs-to image-uri attached-to))
 
 (defmethod serialize ((card card))
-  (obj->hash card (:type :card) content face card-type x y z rot))
+  (obj->hash card (:type :card) content face card-type x y z rot attached-to))
 
 (defmethod serialize-stacked ((card card))
   (obj->hash card (:type :card) content))
 
 (defmethod serialize ((stack stack))
   (obj->hash stack (:type :stack :cards (mapcar #'serialize (cards stack))) 
-	     cards card-type x y z rot))
+	     cards card-type x y z rot attached-to))
 
 (defmethod serialize ((table table))
   (obj->hash table (:things (mapcar #'serialize (hash-values things)))

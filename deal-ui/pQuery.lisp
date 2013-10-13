@@ -64,6 +64,15 @@
   `(when (> (@ ($ ,selector) length) 0)
      ,selector))
 
+(defpsmacro $pushnew (element array)
+  (with-ps-gensyms (arr elem)
+    `(let ((,arr ,array)
+	   (,elem ,element))
+       (if ,arr
+	   (when (= -1 (chain ,arr (index-of ,elem)))
+	     (chain ,arr (push ,elem)))
+	   (setf ,arr (list ,elem))))))
+
 (defpsmacro $val (selector &optional new-value)
   (with-ps-gensyms (sel type elem)
     (let* ((!exp (when new-value `(,new-value)))

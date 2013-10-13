@@ -557,6 +557,7 @@
 		     (:button :class "peek" "Peek")
 		     (:button :class "play-top")
 		     (:div :class "card-count" (self card-count)))
+	     (set-attachments self)
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
@@ -585,6 +586,7 @@
 	   (define-thing (mini)
 	       (:div :id (self id) :class "mini" :style (self position)
 		     (:img :src (self image-uri)))
+	     (set-attachments self)
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index "")))
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
@@ -598,6 +600,7 @@
 		     (:span :class "content" (card-html self))
 		     (:span :class "card-type" (self card-type))
 		     (:button :class "zoom"))
+	     (set-attachments self)
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($button ($child ".zoom") (:zoomin)
 		      ($ "#zoomed-card" (show))
@@ -613,6 +616,7 @@
 	       (:div :id (self id) :class "note" :style (self position)
 		     (:img :src "/static/img/note-icon.png")
 		     (:textarea :class "note-text" (self text)))
+	     (set-attachments self)
 	     ($ $self (css "z-index" (+ (self y) ($ $self (height)))))
 	     ($draggable $self (:start ($ this (css :z-index ""))) 
 			 (table/move (self id) (@ ui offset left) (@ ui offset top) 0 (get-degrees $self)))
@@ -812,6 +816,11 @@
 
 (to-file "static/js/util.js"
 	 (ps 
+	   (defun set-attachments (thing)
+	     (when (@ thing attached-to)
+	       (loop for id in (@ thing attached-to)
+		  do ($pushnew (@ thing id) (@ *table-info* thing-connections id)))))
+	   
 	   (defun name->filename (name &optional (extension ".json"))
 	     (let ((reg (new (-reg-exp " " :g))))
 	       (+ (chain name (replace reg "-") (to-lower-case)) extension)))
@@ -954,6 +963,7 @@
 
 	       (when (@ res current-table)
 		 (setf *table-info* (@ res current-table))
+		 (setf (@ *table-info* thing-connections) (create))
 		 (show-table "body")		  
 		 (look/hand)
 		 (render-board (@ res current-table))))
