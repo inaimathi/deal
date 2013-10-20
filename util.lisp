@@ -1,6 +1,6 @@
 (in-package #:deal)
 
-(proclaim '(inline sym->keyword))
+(proclaim '(inline ->keyword))
 
 ;;;;; Simple anaphora
 (defmacro aif (test-form then-form &optional else-form)
@@ -32,9 +32,9 @@ Evaluates the slots twice, and evaluates slots before extra-values.
 This works where it's used inside of Deal, but probably isn't what you want externally."
   (let ((extra-keys (loop for (k v) on extra-values collect k)))
     `(with-slots ,slots ,instance
-       (hash ,@(loop for s in slots for sym = (sym->keyword s)
+       (hash ,@(loop for s in slots for sym = (->keyword s)
 		  unless (member sym extra-keys)
-		  collect (sym->keyword s) and collect s)
+		  collect (->keyword s) and collect s)
 	     ,@extra-values))))
 
 ;;;;; Basic functions
@@ -81,10 +81,15 @@ This works where it's used inside of Deal, but probably isn't what you want exte
       (loop repeat (- count 1) for (elem . rest) on seq
 	 finally (return rest))))
 
-(defun make-id (&optional (prefix "G")) (sym->keyword (gensym prefix)))
+(defun make-id (&optional (prefix "G")) (->keyword (gensym prefix)))
 
-(defun sym->keyword (symbol)
-  (intern (symbol-name symbol) :keyword))
+(defmethod ->keyword ((sym symbol))
+  (if (keywordp sym) 
+      sym
+      (intern (symbol-name sym) :keyword)))
+
+(defmethod ->keyword ((str string))
+  (intern (string-upcase str) :keyword))
 
 (defun getj (item json-assoc-list)
   (cdr (assoc item json-assoc-list)))

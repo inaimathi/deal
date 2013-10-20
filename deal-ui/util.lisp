@@ -17,7 +17,7 @@
 
 (defun args->plist (arg-syms)
   (loop for arg in arg-syms
-     collect (deal::sym->keyword arg)
+     collect (deal::->keyword arg)
      collect arg))
 
 ;;;;;;;;;; HTML-related 
