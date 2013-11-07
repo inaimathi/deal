@@ -21,20 +21,21 @@
   ((resource :accessor resource :initarg :resource)
    (headers :accessor headers :initarg :headers :initform nil)
    (token :accessor token :initarg :token :initform nil)
-   (session :accessor session :initarg :session :initform nil)
+   (session-token :accessor session-token :initarg :session-token :initform nil)
    (get-params :accessor get-params :initarg :get-params :initform nil)))
 
-(defclass POST (request) 
+(defclass http-post (request) 
   ((post-params :accessor post-params :initarg :post-params :initform nil)))
-(defclass GET (request) ())
+(defclass http-get (request) ())
 
 (defclass response ()
   ((content-type :accessor content-type :initform "text/html" :initarg :content-type)
    (charset :accessor charset :initform "utf-8")
    (response-code :accessor response-code :initform "200 OK")
    (cache-control :accessor cache-control :initform nil)
-   (connection :accessor connection :initform nil)
-   (expires :accessor expires :initform nil)))
+   (keep-alive? :accessor keep-alive? :initform nil)
+   (expires :accessor expires :initform nil)
+   (body :accessor body :initform nil :initarg :body)))
 
 ;;;;;;;;;; Function definitions
 ;;; The basic structure of the server is
@@ -56,8 +57,8 @@
 			     (remhash ready conns)
 			     (remhash ready buffers)
 			     (handle-request ready (parse buf)))))))
-      (loop for c being the hash-keys of conns do (loop while (socket-close c)))
-      (setf *channel* nil))))
+      (loop for c being the hash-keys of conns
+	 do (loop while (socket-close c))))))
 
 (defmethod buffer! (stream (buffer buffer))
   (loop for char = (read-char-no-hang stream nil :eof)
@@ -80,6 +81,39 @@
 	     else do (push (cons n value) (headers req)))
 	  req)))))
 
+;;;;; Handling requests
+(defun crlf (&optional (stream *standard-output*))
+  (write-char #\return stream)
+  (write-char #\linefeed stream)
+  (values))
+
+(defmethod handle-request ((sock usocket) (req request))
+  (let ((res (funcall (lookup (resource req) *handlers*)
+		      (get-session! (session-token req))
+		      (get-params req) 
+		      (post-params req))))
+    (write! res sock)))
+
+(defmethod write! ((res response) (stream stream))
+  (flet ((write-ln (&rest strings)
+	   (mapc (lambda (str) (write-string str stream)) strings)
+	   (crlf stream)))
+    (write-ln "HTML/1.1 " (response-code res))  
+    (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
+    (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
+    (when (keep-alive? res) 
+      (write-ln "Connection: keep-alive")
+      (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
+    (awhen (body res)
+      (write-ln "Content-Length: " (write-to-string (length it))) (crlf stream)
+      (write-ln it))
+    (crlf stream)
+    (force-output stream)
+    (values)))
+
+(defmethod write! (msg (sock usocket))
+  (write! msg (socket-stream sock)))
+
 ;;;;; Session-related
 (let ((prng (ironclad:make-prng :fortuna)))
   (defun new-session-token ()
@@ -96,6 +130,9 @@
     (setf (last-poked session) (get-universal-time))
     session))
 
+(defmethod lookup (key (hash hash-table))
+  (gethash key hash))
+
 (defmethod lookup (key (session session))
   (gethash key (session-values session)))
 
@@ -104,6 +141,9 @@
 
 (defmethod (setf lookup) (new-value key (session session))
   (setf (gethash key (session-values session)) new-value))
+
+(defmethod (setf lookup) (new-value key (hash hash-table))
+  (setf (gethash key hash) new-value))
 
 ;;;;; Channel-related
 (defmethod subscribe! ((channel symbol) (sock usocket))
@@ -114,6 +154,8 @@
 	(loop for sock in (gethash channel *channels*)
 	   when (ignore-errors
 		  (let ((s (socket-stream sock)))
-		    (write-string (cat "data: " message crlf crlf) s)
+		    (write-string "data: " s)
+		    (write-string message s)
+		    (crlf s) (crlf s)
 		    (force-output s)))
 	   collect it)))

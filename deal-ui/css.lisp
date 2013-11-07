@@ -50,7 +50,7 @@
 	       
 	       (.card ,@css-card-size ,@(css-box) :position absolute :cursor move :background-size "100% 100%")
 	       (".card .content" :font-size small :font-weight bold :display block :overflow hidden :padding 0px :background-size "100% 100%")
-	       (".card .card-type" :font-size xx-small :white-space nowrap)
+	       (".card .card-type" :font-size xx-small :white-space nowrap :bottom 2px :position absolute)
 	       (".card .content ul" :list-style-type none :margin 0px :padding 0px)
 	       (".card .content ul .card-field, .card .content ul .label" :display none)
 	       (".card .content ul .card-field.name, .card .content ul .card-field.tag" :display block)
