@@ -47,7 +47,7 @@
 	(conns (make-hash-table))
         (buffers (make-hash-table)))
     (unwind-protect
-	 (loop (loop for ready in (wait-for-input (cons server (hash-keys conns)) :ready-only t)
+	 (loop (loop for ready in (wait-for-input (cons server (deal::hash-keys conns)) :ready-only t)
 		  do (if (typep ready 'stream-server-usocket)
 			 (setf (gethash (socket-accept ready) conns) :on)
 			 (let ((buf (gethash ready buffers (make-instance 'buffer))))
@@ -57,8 +57,9 @@
 			     (remhash ready conns)
 			     (remhash ready buffers)
 			     (handle-request ready (parse buf)))))))
-      (loop for c being the hash-keys of conns
-	 do (loop while (socket-close c))))))
+      (loop for c being the deal::hash-keys of conns
+	 do (loop while (socket-close c)))
+      (loop while (socket-close server)))))
 
 (defmethod buffer! (stream (buffer buffer))
   (loop for char = (read-char-no-hang stream nil :eof)
@@ -72,7 +73,7 @@
       (assert (string= http-version "HTTP/1.1"))
       (let ((req-t (intern (string-upcase req-type))))
 	(assert (member req-t (list 'get 'post)))
-	(let ((req (make-instance req-t :resource path)))
+	(let ((req (make-instance (intern (format nil "HTTP-~a" req-t)) :resource path)))
 	  (loop 
 	     for header in (rest lines) for (name value) = (split ": " header)
 	     for n = (deal::->keyword name)
@@ -88,17 +89,19 @@
   (values))
 
 (defmethod handle-request ((sock usocket) (req request))
-  (let ((res (funcall (lookup (resource req) *handlers*)
-		      (get-session! (session-token req))
-		      (get-params req) 
-		      (post-params req))))
-    (write! res sock)))
+  (aif (lookup (resource req) *handlers*)
+       (let ((res (funcall it (get-session! (session-token req))
+			   (get-params req) 
+			   (when (typep req 'http-post) (post-params req)))))
+	 (write! res sock)
+	 (force-output (socket-stream sock))
+	 (socket-close sock))))
 
 (defmethod write! ((res response) (stream stream))
   (flet ((write-ln (&rest strings)
 	   (mapc (lambda (str) (write-string str stream)) strings)
 	   (crlf stream)))
-    (write-ln "HTML/1.1 " (response-code res))  
+    (write-ln "HTTP/1.1 " (response-code res))  
     (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
     (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
     (when (keep-alive? res) 
@@ -108,11 +111,24 @@
       (write-ln "Content-Length: " (write-to-string (length it))) (crlf stream)
       (write-ln it))
     (crlf stream)
-    (force-output stream)
     (values)))
 
 (defmethod write! (msg (sock usocket))
   (write! msg (socket-stream sock)))
+
+;;;;; Defining Handlers
+(defmacro define-handler (name &body body)
+  (let ((uri (format nil "/~(~a~)" name)))
+    `(progn
+       (awhen (gethash ,uri *handlers*)
+	 (warn ,(format nil "Redefining handler '~a'" uri)))
+       (setf (gethash ,uri *handlers*)
+	     (lambda (session get-params post-params)
+	       (declare (ignorable session get-params post-params))
+	       (make-instance 'response :body (progn ,@body)))))))
+
+(define-handler index.html
+    "<html><head><title>Test Page</title></head><body><h1>Hello from House!</h1></body></html>")
 
 ;;;;; Session-related
 (let ((prng (ironclad:make-prng :fortuna)))
@@ -126,9 +142,9 @@
     session))
 
 (defun get-session! (token)
-  (let ((session (gethash token *sessions*)))
-    (setf (last-poked session) (get-universal-time))
-    session))
+  (awhen (gethash token *sessions*)
+    (setf (last-poked it) (get-universal-time))
+    it))
 
 (defmethod lookup (key (hash hash-table))
   (gethash key hash))
