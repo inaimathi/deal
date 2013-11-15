@@ -76,7 +76,6 @@
 	(loop 
 	   for header in (rest lines) for (name value) = (split ": " header)
 	   for n = (deal::->keyword name)
-	   do (format t "~a -> ~a :: ~a ~a~%" name value (eq n :cookie) n)
 	   if (eq n :cookie) do (setf (session-token req) value)
 	   else do (push (cons n value) (headers req)))
 	req))))
