@@ -22,16 +22,13 @@
    (headers :accessor headers :initarg :headers :initform nil)
    (token :accessor token :initarg :token :initform nil)
    (session-token :accessor session-token :initarg :session-token :initform nil)
-   (get-params :accessor get-params :initarg :get-params :initform nil)))
-
-(defclass http-post (request) 
-  ((post-params :accessor post-params :initarg :post-params :initform nil)))
-(defclass http-get (request) ())
+   (parameters :accessor parameters :initarg :parameters :initform nil)))
 
 (defclass response ()
   ((content-type :accessor content-type :initform "text/html" :initarg :content-type)
    (charset :accessor charset :initform "utf-8")
-   (response-code :accessor response-code :initform "200 OK")
+   (response-code :accessor response-code :initform "200 OK" :initarg :response-code)
+   (cookie :accessor cookie :initform nil :initarg :cookie)
    (cache-control :accessor cache-control :initform nil)
    (keep-alive? :accessor keep-alive? :initform nil)
    (expires :accessor expires :initform nil)
@@ -70,32 +67,43 @@
 (defmethod parse ((buf buffer))
   (let ((lines (split "\\r?\\n" (coerce (reverse (contents buf)) 'string))))
     (destructuring-bind (req-type path http-version) (split " " (first lines))
+      (declare (ignore req-type))
       (assert (string= http-version "HTTP/1.1"))
-      (let ((req-t (intern (string-upcase req-type))))
-	(assert (member req-t (list 'get 'post)))
-	(let ((req (make-instance (intern (format nil "HTTP-~a" req-t)) :resource path)))
-	  (loop 
-	     for header in (rest lines) for (name value) = (split ": " header)
-	     for n = (deal::->keyword name)
-	     if (eq n :cookie) do (loop for val in (split "; " value) for (n v) = (split "=" val)
-				     when (string= n "token") do (setf (token req) v))
-	     else do (push (cons n value) (headers req)))
-	  req)))))
+      (let* ((path-pieces (split "\\?" path))
+	     (resource (first path-pieces))
+	     (parameters (second path-pieces))
+	     (req (make-instance 'request :resource resource :parameters parameters)))
+	(loop 
+	   for header in (rest lines) for (name value) = (split ": " header)
+	   for n = (deal::->keyword name)
+	   do (format t "~a -> ~a :: ~a ~a~%" name value (eq n :cookie) n)
+	   if (eq n :cookie) do (setf (session-token req) value)
+	   else do (push (cons n value) (headers req)))
+	req))))
 
 ;;;;; Handling requests
+(defmethod handle-request ((sock usocket) (req request))
+  (aif (lookup (resource req) *handlers*)
+       (let* ((check? (aand (session-token req) (get-session! it)))
+	      (sess (aif check? it (new-session!)))
+	      (res (funcall it sess (parameters req))))
+	 (unless check? (setf (cookie res) (token sess)))
+	 (write! res sock)
+	 (force-output (socket-stream sock))
+	 (socket-close sock))
+       (progn
+	 (write!
+	  (make-instance 
+	   'response 
+	   :response-code "404 Not Found"
+	   :content-type "text/plain"
+	   :body "Resource not found...") sock)
+	 (socket-close sock))))
+
 (defun crlf (&optional (stream *standard-output*))
   (write-char #\return stream)
   (write-char #\linefeed stream)
   (values))
-
-(defmethod handle-request ((sock usocket) (req request))
-  (aif (lookup (resource req) *handlers*)
-       (let ((res (funcall it (get-session! (session-token req))
-			   (get-params req) 
-			   (when (typep req 'http-post) (post-params req)))))
-	 (write! res sock)
-	 (force-output (socket-stream sock))
-	 (socket-close sock))))
 
 (defmethod write! ((res response) (stream stream))
   (flet ((write-ln (&rest strings)
@@ -104,6 +112,8 @@
     (write-ln "HTTP/1.1 " (response-code res))  
     (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
     (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
+    (awhen (cookie res)
+      (write-ln "Set-Cookie: " it))
     (when (keep-alive? res) 
       (write-ln "Connection: keep-alive")
       (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
@@ -123,12 +133,12 @@
        (awhen (gethash ,uri *handlers*)
 	 (warn ,(format nil "Redefining handler '~a'" uri)))
        (setf (gethash ,uri *handlers*)
-	     (lambda (session get-params post-params)
-	       (declare (ignorable session get-params post-params))
+	     (lambda (session parameters)
+	       (declare (ignorable session parameters))
 	       (make-instance 'response :body (progn ,@body)))))))
 
 (define-handler index.html
-    "<html><head><title>Test Page</title></head><body><h1>Hello from House!</h1></body></html>")
+  "<html><head><title>Test Page</title></head><body><h1>Hello from House!</h1></body></html>")
 
 ;;;;; Session-related
 (let ((prng (ironclad:make-prng :fortuna)))
