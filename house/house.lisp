@@ -84,12 +84,8 @@
 (defmethod handle-request ((sock usocket) (req request))
   (aif (lookup (resource req) *handlers*)
        (let* ((check? (aand (session-token req) (get-session! it)))
-	      (sess (aif check? it (new-session!)))
-	      (res (funcall it sess (parameters req))))
-	 (unless check? (setf (cookie res) (token sess)))
-	 (write! res sock)
-	 (force-output (socket-stream sock))
-	 (socket-close sock))
+	      (sess (aif check? it (new-session!))))
+	 (funcall it sock check? sess (parameters req)))
        (progn
 	 (write!
 	  (make-instance 
@@ -126,15 +122,28 @@
   (write! msg (socket-stream sock)))
 
 ;;;;; Defining Handlers
-(defmacro define-handler (name &body body)
+(defmacro make-handler (close? &body body)
+  `(lambda (sock cookie? session parameters)
+     (declare (ignorable session parameters))
+     (let ((res (make-instance 'response :body (progn ,@body))))
+       (unless cookie? (setf (cookie res) (token session)))
+       (write! res sock)
+       ,(if (eq close? :close)
+	    `(socket-close sock)
+	    `(force-output (socket-stream sock))))))
+
+(defmacro bind-handler (name handler)
   (let ((uri (format nil "/~(~a~)" name)))
     `(progn
-       (awhen (gethash ,uri *handlers*)
-	 (warn ,(format nil "Redefining handler '~a'" uri)))
-       (setf (gethash ,uri *handlers*)
-	     (lambda (session parameters)
-	       (declare (ignorable session parameters))
-	       (make-instance 'response :body (progn ,@body)))))))
+       (when (gethash ,uri *handlers*)
+	 (warn ,(format nil "Redefining handler '~a" uri)))
+       (setf (gethash ,uri *handlers*) ,handler))))
+
+(defmacro define-handler (name &body body)
+  `(bind-handler ,name (make-handler :close ,@body)))
+
+(defmacro define-stream-handler (name &body body)
+  `(bind-handler ,name (make-handler :stream ,@body)))
 
 (define-handler index.html
   "<html><head><title>Test Page</title></head><body><h1>Hello from House!</h1></body></html>")
@@ -175,8 +184,8 @@
   (push sock (gethash channel *channels*)))
 
 (defmethod publish! ((channel symbol) (message string))
-  (setf (gethash channel *channels*)
-	(loop for sock in (gethash channel *channels*)
+  (setf (lookup channel *channels*)
+	(loop for sock in (lookup channel *channels*)
 	   when (ignore-errors
 		  (let ((s (socket-stream sock)))
 		    (write-string "data: " s)
