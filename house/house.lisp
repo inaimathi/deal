@@ -34,6 +34,23 @@
    (expires :accessor expires :initform nil)
    (body :accessor body :initform nil :initarg :body)))
 
+;;;;;;;;;; HTTP error definitions
+(defparameter +404+
+  (make-instance 'response :response-code "404 Not Found"
+		 :content-type "text/plain" :body "Resource not found..."))
+
+(defparameter +400+
+  (make-instance 'response :response-code "400 Bad Request"
+		 :content-type "text/plain" :body "Malformed HTTP request..."))
+
+(defparameter +413+
+  (make-instance 'response :response-code "413 Request Entity Too Large"
+   :content-type "text/plain" :body "Your request is too long..."))
+
+(defparameter +500+
+  (make-instance 'response :response-code "500 Internal Server Error"
+   :content-type "text/plain" :body "Something went wrong on our end..."))
+
 ;;;;;;;;;; Function definitions
 ;;; The basic structure of the server is
 ; buffering-listen -> parse -> session-lookup -> handle -> channel
@@ -44,7 +61,7 @@
 	(conns (make-hash-table))
         (buffers (make-hash-table)))
     (unwind-protect
-	 (loop (loop for ready in (wait-for-input (cons server (deal::hash-keys conns)) :ready-only t)
+	 (loop (loop for ready in (wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
 		  do (if (typep ready 'stream-server-usocket)
 			 (setf (gethash (socket-accept ready) conns) :on)
 			 (let ((buf (gethash ready buffers (make-instance 'buffer))))
@@ -53,8 +70,12 @@
 						     (contents buf))
 			     (remhash ready conns)
 			     (remhash ready buffers)
-			     (handle-request ready (parse buf)))))))
-      (loop for c being the deal::hash-keys of conns
+			     (handler-case
+				 (handle-request ready (parse buf))
+			       ((not simple-error) ()
+				 (write! +400+ ready)
+ 				 (socket-close ready))))))))
+      (loop for c being the hash-keys of conns
 	 do (loop while (socket-close c)))
       (loop while (socket-close server)))))
 
@@ -64,8 +85,8 @@
      do (push char (contents buffer))))
 
 ;;;;; Parse-related
-(defmethod parse ((buf buffer))
-  (let ((lines (split "\\r?\\n" (coerce (reverse (contents buf)) 'string))))
+(defmethod parse ((str string))
+  (let ((lines (split "\\r?\\n" str)))
     (destructuring-bind (req-type path http-version) (split " " (first lines))
       (declare (ignore req-type))
       (assert (string= http-version "HTTP/1.1"))
@@ -75,24 +96,26 @@
 	     (req (make-instance 'request :resource resource :parameters parameters)))
 	(loop 
 	   for header in (rest lines) for (name value) = (split ": " header)
-	   for n = (deal::->keyword name)
-	   if (eq n :cookie) do (setf (session-token req) value)
+	   for n = (alexandria:make-keyword name)
+	   if (eq n :|Cookie|) do (setf (session-token req) value)
 	   else do (push (cons n value) (headers req)))
 	req))))
+
+(defmethod parse ((buf buffer))
+  (parse (coerce (reverse (contents buf)) 'string)))
 
 ;;;;; Handling requests
 (defmethod handle-request ((sock usocket) (req request))
   (aif (lookup (resource req) *handlers*)
-       (let* ((check? (aand (session-token req) (get-session! it)))
-	      (sess (aif check? it (new-session!))))
-	 (funcall it sock check? sess (parameters req)))
+       (handler-case
+	   (let* ((check? (aand (session-token req) (get-session! it)))
+		  (sess (aif check? it (new-session!))))
+	     (funcall it sock check? sess (parameters req)))
+	 ((not simple-error) ()
+	   (write! +413+ sock)
+	   (socket-close sock)))
        (progn
-	 (write!
-	  (make-instance 
-	   'response 
-	   :response-code "404 Not Found"
-	   :content-type "text/plain"
-	   :body "Resource not found...") sock)
+	 (write! +404+ sock)
 	 (socket-close sock))))
 
 (defun crlf (&optional (stream *standard-output*))
@@ -122,13 +145,13 @@
   (write! msg (socket-stream sock)))
 
 ;;;;; Defining Handlers
-(defmacro make-handler (close? &body body)
+(defmacro make-handler ((&key close? (content-type "text/html")) &body body)
   `(lambda (sock cookie? session parameters)
      (declare (ignorable session parameters))
-     (let ((res (make-instance 'response :body (progn ,@body))))
+     (let ((res (make-instance 'response :content-type ,content-type :body (progn ,@body))))
        (unless cookie? (setf (cookie res) (token session)))
        (write! res sock)
-       ,(if (eq close? :close)
+       ,(if close?
 	    `(socket-close sock)
 	    `(force-output (socket-stream sock))))))
 
@@ -136,23 +159,27 @@
   (let ((uri (format nil "/~(~a~)" name)))
     `(progn
        (when (gethash ,uri *handlers*)
-	 (warn ,(format nil "Redefining handler '~a" uri)))
+	 (warn ,(format nil "Redefining handler '~a'" uri)))
        (setf (gethash ,uri *handlers*) ,handler))))
 
-(defmacro define-handler (name &body body)
-  `(bind-handler ,name (make-handler :close ,@body)))
+(defmacro define-closing-handler ((name &key (content-type "text/html")) &body body)
+  `(bind-handler ,name (make-handler (:close? t :content-type ,content-type) ,@body)))
 
-(defmacro define-stream-handler (name &body body)
-  `(bind-handler ,name (make-handler :stream ,@body)))
+(defmacro define-stream-handler ((name &key (content-type "text/event-stream")) &body body)
+  `(bind-handler ,name (make-handler (:content-type ,content-type) ,@body)))
 
-(define-handler index.html
+(define-closing-handler (index.html)
   "<html><head><title>Test Page</title></head><body><h1>Hello from House!</h1></body></html>")
 
+(define-closing-handler (test.json :content-type "application/json")
+  "{\"this is\": \"a test\"}")
+
 ;;;;; Session-related
-(let ((prng (ironclad:make-prng :fortuna)))
-  (defun new-session-token ()
-    (cl-base64:usb8-array-to-base64-string
-     (ironclad:random-data 32 prng) :uri t)))
+(defun new-session-token ()
+  (cl-base64:usb8-array-to-base64-string
+   (with-open-file (s "/dev/urandom" :element-type '(unsigned-byte 8))
+     (make-array 32 :initial-contents (loop repeat 32 collect (read-byte s))))
+   :uri t))
 
 (defun new-session! ()
   (let ((session (make-instance 'session :token (new-session-token))))

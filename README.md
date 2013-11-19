@@ -33,6 +33,14 @@ That's a *lot* more compliacted than I like to make installation, but there isn'
 
 In any case, you should now be able to visit `[your-server]/static/index.html` and play.
 
+## TODO
+
+The House server is still under construction (when that's done, you won't need to do the above nginx whiskey tango foxtrot).
+
+- In `start`, if a buffer gets larger than a certain threshold, it should dump state and send back a 413 error
+- In `start`, when the `buffers` table gets large enough, it should trigger a cleanup pass that evicts all sufficiently old buffers
+- Sessions should actually expire at some point
+
 ## License
 
 This program is released under the GNU AGPL (License text can be found in the [LICENSE.md](https://github.com/Inaimathi/deal/blob/master/LICENSE.md) file, or at <http://www.gnu.org/licenses/agpl-3.0.html>)
