@@ -30,9 +30,15 @@
    (response-code :accessor response-code :initform "200 OK" :initarg :response-code)
    (cookie :accessor cookie :initform nil :initarg :cookie)
    (cache-control :accessor cache-control :initform nil)
-   (keep-alive? :accessor keep-alive? :initform nil)
+   (keep-alive? :accessor keep-alive? :initform nil :initarg :keep-alive?)
    (expires :accessor expires :initform nil)
    (body :accessor body :initform nil :initarg :body)))
+
+(defclass sse ()
+  ((id :reader id :initarg :id :initform nil)
+   (event :reader event :initarg :event :initform nil)
+   (retry :reader retry :initarg :retry :initform nil)
+   (data :reader data :initarg :data)))
 
 ;;;;;;;;;; HTTP error definitions
 (defparameter +404+
@@ -123,6 +129,15 @@
   (write-char #\linefeed stream)
   (values))
 
+(let ((day-names '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
+      (month-names '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")))
+  (defun http-date ()
+    (multiple-value-bind (second minute hour date month year day-of-week dst-p tz)
+	(get-decoded-time)
+      (format nil "~a, ~a ~a ~a ~a:~a:~a GMT~@d"
+	      (nth day-of-week day-names) date
+	      (nth month month-names) year hour minute second (- tz)))))
+
 (defmethod write! ((res response) (stream stream))
   (flet ((write-ln (&rest strings)
 	   (mapc (lambda (str) (write-string str stream)) strings)
@@ -134,6 +149,7 @@
       (write-ln "Set-Cookie: " it))
     (when (keep-alive? res) 
       (write-ln "Connection: keep-alive")
+      (write-ln "Date: " (http-date))
       (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
     (awhen (body res)
       (write-ln "Content-Length: " (write-to-string (length it))) (crlf stream)
@@ -141,19 +157,34 @@
     (crlf stream)
     (values)))
 
+(defmethod write! ((res sse) (stream stream))
+  (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
+	  (id res) (event res) (retry res) (data res)))
+
 (defmethod write! (msg (sock usocket))
   (write! msg (socket-stream sock)))
 
 ;;;;; Defining Handlers
-(defmacro make-handler ((&key close? (content-type "text/html")) &body body)
+(defmacro make-closing-handler ((&key (content-type "text/html")) &body body)
   `(lambda (sock cookie? session parameters)
      (declare (ignorable session parameters))
-     (let ((res (make-instance 'response :content-type ,content-type :body (progn ,@body))))
-       (unless cookie? (setf (cookie res) (token session)))
+     (let ((res (make-instance 
+		 'response 
+		 :content-type ,content-type 
+		 :cookie (unless cookie? (token session))
+		 :body (progn ,@body))))
        (write! res sock)
-       ,(if close?
-	    `(socket-close sock)
-	    `(force-output (socket-stream sock))))))
+       (socket-close sock))))
+
+(defmacro make-stream-handler (&body body)
+  `(lambda (sock cookie? session parameters)
+     (declare (ignorable session parameters))
+     (let ((res (progn ,@body)))
+       (write! (make-instance 'response
+		:keep-alive? t :content-type "text/event-stream" 
+		:cookie (unless cookie? (token session))) sock)
+       (awhen res (write! (make-instance 'sse :data it) sock))
+       (force-output (socket-stream sock)))))
 
 (defmacro bind-handler (name handler)
   (let ((uri (format nil "/~(~a~)" name)))
@@ -163,16 +194,10 @@
        (setf (gethash ,uri *handlers*) ,handler))))
 
 (defmacro define-closing-handler ((name &key (content-type "text/html")) &body body)
-  `(bind-handler ,name (make-handler (:close? t :content-type ,content-type) ,@body)))
+  `(bind-handler ,name (make-closing-handler (:content-type ,content-type) ,@body)))
 
-(defmacro define-stream-handler ((name &key (content-type "text/event-stream")) &body body)
-  `(bind-handler ,name (make-handler (:content-type ,content-type) ,@body)))
-
-(define-closing-handler (index.html)
-  "<html><head><title>Test Page</title></head><body><h1>Hello from House!</h1></body></html>")
-
-(define-closing-handler (test.json :content-type "application/json")
-  "{\"this is\": \"a test\"}")
+(defmacro define-stream-handler ((name) &body body)
+  `(bind-handler ,name (make-stream-handler ,@body)))
 
 ;;;;; Session-related
 (defun new-session-token ()
@@ -208,15 +233,51 @@
 
 ;;;;; Channel-related
 (defmethod subscribe! ((channel symbol) (sock usocket))
-  (push sock (gethash channel *channels*)))
+  (push sock (lookup channel *channels*))
+  (format t "Subscribing ... ~s~%" channel)
+  nil)
 
 (defmethod publish! ((channel symbol) (message string))
+  (format t "Publishing ... ~s :: ~a :: ~a~%" 
+	  message channel (lookup channel *channels*))
   (setf (lookup channel *channels*)
-	(loop for sock in (lookup channel *channels*)
-	   when (ignore-errors
-		  (let ((s (socket-stream sock)))
-		    (write-string "data: " s)
-		    (write-string message s)
-		    (crlf s) (crlf s)
-		    (force-output s)))
+	(loop with msg = (make-instance 'sse :data message)
+	   for sock in (lookup channel *channels*)
+	   when (ignore-errors 
+		  (write! msg sock)
+		  (force-output (socket-stream sock))
+		  sock)
 	   collect it)))
+
+;;;;;;;;;; Test Handlers
+(define-closing-handler (index.html)
+  "<html><head><title>Test Page</title></head><body><h1>Hello from House!</h1></body></html>")
+
+(define-closing-handler (interface)
+  "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">
+<html><head><title>Test page</title></head><body><div id='console'></div><script type='text/javascript'>var src = new EventSource('/test-stream');
+function p(msg) {
+    var elem = document.getElementById('console');
+    return elem.innerHTML = elem.innerHTML + '<p>' + msg + '</p>';
+};
+src.onerror = function (e) {
+    p('ERROR OCCURRED...');
+    return p(JSON.stringify(e));
+};
+src.onopen = function (e) {
+    return p('STREAM OPENED...');
+};
+src.onmessage = function (e) {
+    p('GOT MESSAGE!');
+    return p('data: ' + e.data);
+};</script></body></html>")
+
+(define-closing-handler (test.json :content-type "application/json")
+  "{\"this is\": \"a test\"}")
+
+(define-stream-handler (test-stream)
+  (subscribe! :test-channel sock))
+
+(define-closing-handler (send-message)
+  (publish! :test-channel "You've been pinged, motherfuckers!")
+  "Sent message...")
