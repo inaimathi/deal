@@ -169,25 +169,27 @@
 
 ;;;;; Defining Handlers
 (defmacro make-closing-handler ((&key (content-type "text/html")) &body body)
-  `(lambda (sock cookie? session parameters)
-     (declare (ignorable session parameters))
-     (let ((res (make-instance 
-		 'response 
-		 :content-type ,content-type 
-		 :cookie (unless cookie? (token session))
-		 :body (progn ,@body))))
-       (write! res sock)
-       (socket-close sock))))
+  (with-gensyms (cookie?)
+    `(lambda (sock ,cookie? session parameters)
+       (declare (ignorable session parameters))
+       (let ((res (make-instance 
+		   'response 
+		   :content-type ,content-type 
+		   :cookie (unless ,cookie? (token session))
+		   :body (progn ,@body))))
+	 (write! res sock)
+	 (socket-close sock)))))
 
 (defmacro make-stream-handler (&body body)
-  `(lambda (sock cookie? session parameters)
-     (declare (ignorable session parameters))
-     (let ((res (progn ,@body)))
-       (write! (make-instance 'response
-		:keep-alive? t :content-type "text/event-stream" 
-		:cookie (unless cookie? (token session))) sock)
-       (awhen res (write! (make-instance 'sse :data it) sock))
-       (force-output (socket-stream sock)))))
+  (with-gensyms (cookie?)
+    `(lambda (sock ,cookie? session parameters)
+       (declare (ignorable session parameters))
+       (let ((res (progn ,@body)))
+	 (write! (make-instance 'response
+				:keep-alive? t :content-type "text/event-stream" 
+				:cookie (unless ,cookie? (token session))) sock)
+	 (awhen res (write! (make-instance 'sse :data it) sock))
+	 (force-output (socket-stream sock))))))
 
 (defmacro bind-handler (name handler)
   (let ((uri (format nil "/~(~a~)" name)))
