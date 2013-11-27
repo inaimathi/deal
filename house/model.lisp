@@ -23,6 +23,7 @@
    (charset :accessor charset :initform "utf-8")
    (response-code :accessor response-code :initform "200 OK" :initarg :response-code)
    (cookie :accessor cookie :initform nil :initarg :cookie)
+   (location :accessor location :initform nil :initarg :location)
    (cache-control :accessor cache-control :initform nil)
    (keep-alive? :accessor keep-alive? :initform nil :initarg :keep-alive?)
    (expires :accessor expires :initform nil)
@@ -34,7 +35,7 @@
    (retry :reader retry :initarg :retry :initform nil)
    (data :reader data :initarg :data)))
 
-;;;;;;;;;; HTTP static handler definitions
+;;;;;;;;;; HTTP basic responses
 (defparameter +404+
   (make-instance 'response :response-code "404 Not Found"
 		 :content-type "text/plain" :body "Resource not found..."))
@@ -45,8 +46,8 @@
 
 (defparameter +413+
   (make-instance 'response :response-code "413 Request Entity Too Large"
-   :content-type "text/plain" :body "Your request is too long..."))
+		 :content-type "text/plain" :body "Your request is too long..."))
 
 (defparameter +500+
   (make-instance 'response :response-code "500 Internal Server Error"
-   :content-type "text/plain" :body "Something went wrong on our end..."))
+		 :content-type "text/plain" :body "Something went wrong on our end..."))

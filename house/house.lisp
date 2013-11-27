@@ -95,11 +95,14 @@
     (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
     (awhen (cookie res)
       (write-ln "Set-Cookie: " it))
+    (awhen (location res)
+      (write-ln "Location: " it))
     (when (keep-alive? res) 
       (write-ln "Connection: keep-alive")
       (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
     (awhen (body res)
-      (write-ln "Content-Length: " (write-to-string (length it))) (crlf stream)
+      (write-ln "Content-Length: " (write-to-string (length it)))
+      (crlf stream)
       (write-ln it))
     (crlf stream)
     (values)))
@@ -141,7 +144,7 @@
 	 (force-output (socket-stream sock))))))
 
 (defmacro bind-handler (name handler)
-  (let ((uri (format nil "/~(~a~)" name)))
+  (let ((uri (if (eq name 'root) "/" (format nil "/~(~a~)" name))))
     `(progn
        (when (gethash ,uri *handlers*)
 	 (warn ,(format nil "Redefining handler '~a'" uri)))
@@ -152,6 +155,18 @@
 
 (defmacro define-stream-handler ((name) &body body)
   `(bind-handler ,name (make-stream-handler ,@body)))
+
+(defmacro define-redirect-handler ((name &key permanent?) target)
+  (with-gensyms (cookie?)
+    `(bind-handler 
+      ,name
+      (lambda (sock ,cookie? session parameters)
+	(write! (make-instance 
+		 'response :response-code ,(if permanent? "301 Moved Permanently" "307 Temporary Redirect")
+		 :location ,target :content-type "text/plain"
+		 :body "Resource moved...")
+		sock)
+	(socket-close sock)))))
 
 ;;;;; Session-related
 (defun new-session-token ()
