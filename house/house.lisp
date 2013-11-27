@@ -6,58 +6,6 @@
 (defparameter *channels* (make-hash-table))
 (defparameter *sessions* (make-hash-table :test 'equal))
 
-;;;;;;;;;; Class definitions
-(defclass buffer ()
-  ((contents :accessor contents :initform nil)
-   (content-size :accessor content-size :initform 0)
-   (started :reader started :initform (get-universal-time))))
-
-(defclass session ()
-  ((started :reader started :initform (get-universal-time))
-   (last-poked :accessor last-poked :initform (get-universal-time))
-   (token :reader token :initarg :token)
-   (session-values :reader session-values :initform (make-hash-table :test 'equal))))
-
-(defclass request ()
-  ((resource :accessor resource :initarg :resource)
-   (headers :accessor headers :initarg :headers :initform nil)
-   (token :accessor token :initarg :token :initform nil)
-   (session-token :accessor session-token :initarg :session-token :initform nil)
-   (parameters :accessor parameters :initarg :parameters :initform nil)))
-
-(defclass response ()
-  ((content-type :accessor content-type :initform "text/html" :initarg :content-type)
-   (charset :accessor charset :initform "utf-8")
-   (response-code :accessor response-code :initform "200 OK" :initarg :response-code)
-   (cookie :accessor cookie :initform nil :initarg :cookie)
-   (cache-control :accessor cache-control :initform nil)
-   (keep-alive? :accessor keep-alive? :initform nil :initarg :keep-alive?)
-   (expires :accessor expires :initform nil)
-   (body :accessor body :initform nil :initarg :body)))
-
-(defclass sse ()
-  ((id :reader id :initarg :id :initform nil)
-   (event :reader event :initarg :event :initform nil)
-   (retry :reader retry :initarg :retry :initform nil)
-   (data :reader data :initarg :data)))
-
-;;;;;;;;;; HTTP error definitions
-(defparameter +404+
-  (make-instance 'response :response-code "404 Not Found"
-		 :content-type "text/plain" :body "Resource not found..."))
-
-(defparameter +400+
-  (make-instance 'response :response-code "400 Bad Request"
-		 :content-type "text/plain" :body "Malformed HTTP request..."))
-
-(defparameter +413+
-  (make-instance 'response :response-code "413 Request Entity Too Large"
-   :content-type "text/plain" :body "Your request is too long..."))
-
-(defparameter +500+
-  (make-instance 'response :response-code "500 Internal Server Error"
-   :content-type "text/plain" :body "Something went wrong on our end..."))
-
 ;;;;;;;;;; Function definitions
 ;;; The basic structure of the server is
 ; buffering-listen -> parse -> session-lookup -> handle -> channel
@@ -79,11 +27,11 @@
 			     (when (or complete? big? old?)
 			       (remhash ready conns)
 			       (remhash ready buffers)
-			       (if (or big? old?)
-				   (error! +400+ ready)
-				   (handler-case
-				       (handle-request ready (parse buf))
-				     ((not simple-error) () (error! +400+ ready))))))))))
+			       (cond (big? (error! +413+ ready))
+				     (old? (error! +400+ ready))
+				     (t (handler-case
+					    (handle-request ready (parse buf))
+					  ((not simple-error) () (error! +400+ ready)))))))))))
       (loop for c being the hash-keys of conns
 	 do (loop while (socket-close c)))
       (loop while (socket-close server)))))
@@ -130,7 +78,7 @@
 	   (let* ((check? (aand (session-token req) (get-session! it)))
 		  (sess (aif check? it (new-session!))))
 	     (funcall it sock check? sess (parameters req)))
-	 ((not simple-error) () (error! +413+ sock)))
+	 ((not simple-error) () (error! +400+ sock)))
        (error! +404+ sock)))
 
 (defun crlf (&optional (stream *standard-output*))
@@ -221,21 +169,6 @@
   (awhen (gethash token *sessions*)
     (setf (last-poked it) (get-universal-time))
     it))
-
-(defmethod lookup (key (hash hash-table))
-  (gethash key hash))
-
-(defmethod lookup (key (session session))
-  (gethash key (session-values session)))
-
-(defgeneric (setf lookup) (new-value key session)
-  (:documentation "Setter for lookup methods"))
-
-(defmethod (setf lookup) (new-value key (session session))
-  (setf (gethash key (session-values session)) new-value))
-
-(defmethod (setf lookup) (new-value key (hash hash-table))
-  (setf (gethash key hash) new-value))
 
 ;;;;; Channel-related
 (defmethod subscribe! ((channel symbol) (sock usocket))
