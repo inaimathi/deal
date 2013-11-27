@@ -115,8 +115,8 @@
 	     (req (make-instance 'request :resource resource :parameters parameters)))
 	(loop 
 	   for header in (rest lines) for (name value) = (split ": " header)
-	   for n = (alexandria:make-keyword name)
-	   if (eq n :|Cookie|) do (setf (session-token req) value)
+	   for n = (->keyword name)
+	   if (eq n :cookie) do (setf (session-token req) value)
 	   else do (push (cons n value) (headers req)))
 	req))))
 
@@ -164,7 +164,8 @@
   (write! msg (socket-stream sock)))
 
 (defmethod error! ((err response) (sock usocket))
-  (write! err sock)
+  (ignore-errors 
+    (write! err sock))
   (socket-close sock))
 
 ;;;;; Defining Handlers
