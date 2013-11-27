@@ -9,6 +9,7 @@
 ;;;;;;;;;; Class definitions
 (defclass buffer ()
   ((contents :accessor contents :initform nil)
+   (content-size :accessor content-size :initform 0)
    (started :reader started :initform (get-universal-time))))
 
 (defclass session ()
@@ -72,23 +73,35 @@
 			 (setf (gethash (socket-accept ready) conns) :on)
 			 (let ((buf (gethash ready buffers (make-instance 'buffer))))
 			   (buffer! (socket-stream ready) buf)
-			   (when (starts-with-subseq (list #\newline #\return #\newline #\return)
-						     (contents buf))
-			     (remhash ready conns)
-			     (remhash ready buffers)
-			     (handler-case
-				 (handle-request ready (parse buf))
-			       ((not simple-error) ()
-				 (write! +400+ ready)
- 				 (socket-close ready))))))))
+			   (let ((complete? (complete? buf))
+				 (big? (too-big? buf))
+				 (old? (too-old? buf)))
+			     (when (or complete? big? old?)
+			       (remhash ready conns)
+			       (remhash ready buffers)
+			       (if (or big? old?)
+				   (error! +400+ ready)
+				   (handler-case
+				       (handle-request ready (parse buf))
+				     ((not simple-error) () (error! +400+ ready))))))))))
       (loop for c being the hash-keys of conns
 	 do (loop while (socket-close c)))
       (loop while (socket-close server)))))
 
+(defmethod complete? ((buffer buffer))
+  (starts-with-subseq (list #\newline #\return #\newline #\return)
+		      (contents buffer)))
+
+(defmethod too-big? ((buffer buffer))
+  (> (content-size buffer) +max-request-size+))
+
+(defmethod too-old? ((buffer buffer))
+  (> (- (get-universal-time) (started buffer)) +max-request-size+))
+
 (defmethod buffer! (stream (buffer buffer))
   (loop for char = (read-char-no-hang stream nil :eof)
      until (or (null char) (eql :eof char))
-     do (push char (contents buffer))))
+     do (push char (contents buffer)) do (incf (content-size buffer))))
 
 ;;;;; Parse-related
 (defmethod parse ((str string))
@@ -117,26 +130,13 @@
 	   (let* ((check? (aand (session-token req) (get-session! it)))
 		  (sess (aif check? it (new-session!))))
 	     (funcall it sock check? sess (parameters req)))
-	 ((not simple-error) ()
-	   (write! +413+ sock)
-	   (socket-close sock)))
-       (progn
-	 (write! +404+ sock)
-	 (socket-close sock))))
+	 ((not simple-error) () (error! +413+ sock)))
+       (error! +404+ sock)))
 
 (defun crlf (&optional (stream *standard-output*))
   (write-char #\return stream)
   (write-char #\linefeed stream)
   (values))
-
-(let ((day-names '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
-      (month-names '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")))
-  (defun http-date ()
-    (multiple-value-bind (second minute hour date month year day-of-week dst-p tz)
-	(get-decoded-time)
-      (format nil "~a, ~a ~a ~a ~a:~a:~a GMT~@d"
-	      (nth day-of-week day-names) date
-	      (nth month month-names) year hour minute second (- tz)))))
 
 (defmethod write! ((res response) (stream stream))
   (flet ((write-ln (&rest strings)
@@ -149,7 +149,6 @@
       (write-ln "Set-Cookie: " it))
     (when (keep-alive? res) 
       (write-ln "Connection: keep-alive")
-      (write-ln "Date: " (http-date))
       (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
     (awhen (body res)
       (write-ln "Content-Length: " (write-to-string (length it))) (crlf stream)
@@ -163,6 +162,10 @@
 
 (defmethod write! (msg (sock usocket))
   (write! msg (socket-stream sock)))
+
+(defmethod error! ((err response) (sock usocket))
+  (write! err sock)
+  (socket-close sock))
 
 ;;;;; Defining Handlers
 (defmacro make-closing-handler ((&key (content-type "text/html")) &body body)
@@ -234,12 +237,9 @@
 ;;;;; Channel-related
 (defmethod subscribe! ((channel symbol) (sock usocket))
   (push sock (lookup channel *channels*))
-  (format t "Subscribing ... ~s~%" channel)
   nil)
 
 (defmethod publish! ((channel symbol) (message string))
-  (format t "Publishing ... ~s :: ~a :: ~a~%" 
-	  message channel (lookup channel *channels*))
   (setf (lookup channel *channels*)
 	(loop with msg = (make-instance 'sse :data message)
 	   for sock in (lookup channel *channels*)
@@ -250,9 +250,6 @@
 	   collect it)))
 
 ;;;;;;;;;; Test Handlers
-(define-closing-handler (index.html)
-  "<html><head><title>Test Page</title></head><body><h1>Hello from House!</h1></body></html>")
-
 (define-closing-handler (interface)
   "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">
 <html><head><title>Test page</title></head><body><div id='console'></div><script type='text/javascript'>var src = new EventSource('/test-stream');
@@ -275,9 +272,9 @@ src.onmessage = function (e) {
 (define-closing-handler (test.json :content-type "application/json")
   "{\"this is\": \"a test\"}")
 
-(define-stream-handler (test-stream)
-  (subscribe! :test-channel sock))
-
 (define-closing-handler (send-message)
   (publish! :test-channel "You've been pinged, motherfuckers!")
   "Sent message...")
+
+(define-stream-handler (test-stream)
+  (subscribe! :test-channel sock))

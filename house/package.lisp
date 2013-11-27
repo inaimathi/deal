@@ -6,3 +6,8 @@
 	   :new-session! :get-session! :lookup
 	   :subscribe! :publish!
 	   :start))
+
+(in-package :house)
+
+(defparameter +max-request-size+ 50000)
+(defparameter +max-request-age+ 30)
