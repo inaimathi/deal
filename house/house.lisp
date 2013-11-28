@@ -144,6 +144,7 @@
 	 (force-output (socket-stream sock))))))
 
 (defmacro bind-handler (name handler)
+  (assert (symbolp name) nil "`name` must be a symbol")
   (let ((uri (if (eq name 'root) "/" (format nil "/~(~a~)" name))))
     `(progn
        (when (gethash ,uri *handlers*)
@@ -161,6 +162,7 @@
     `(bind-handler 
       ,name
       (lambda (sock ,cookie? session parameters)
+	(declare (ignorable sock ,cookie? session parameters))
 	(write! (make-instance 
 		 'response :response-code ,(if permanent? "301 Moved Permanently" "307 Temporary Redirect")
 		 :location ,target :content-type "text/plain"
@@ -191,41 +193,12 @@
   nil)
 
 (defmethod publish! ((channel symbol) (message string))
-  (setf (lookup channel *channels*)
-	(loop with msg = (make-instance 'sse :data message)
-	   for sock in (lookup channel *channels*)
-	   when (ignore-errors 
-		  (write! msg sock)
-		  (force-output (socket-stream sock))
-		  sock)
-	   collect it)))
-
-;;;;;;;;;; Test Handlers
-(define-closing-handler (interface)
-  "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">
-<html><head><title>Test page</title></head><body><div id='console'></div><script type='text/javascript'>var src = new EventSource('/test-stream');
-function p(msg) {
-    var elem = document.getElementById('console');
-    return elem.innerHTML = elem.innerHTML + '<p>' + msg + '</p>';
-};
-src.onerror = function (e) {
-    p('ERROR OCCURRED...');
-    return p(JSON.stringify(e));
-};
-src.onopen = function (e) {
-    return p('STREAM OPENED...');
-};
-src.onmessage = function (e) {
-    p('GOT MESSAGE!');
-    return p('data: ' + e.data);
-};</script></body></html>")
-
-(define-closing-handler (test.json :content-type "application/json")
-  "{\"this is\": \"a test\"}")
-
-(define-closing-handler (send-message)
-  (publish! :test-channel "You've been pinged, motherfuckers!")
-  "Sent message...")
-
-(define-stream-handler (test-stream)
-  (subscribe! :test-channel sock))
+  (awhen (lookup channel *channels*)
+    (setf (lookup channel *channels*)
+	  (loop with msg = (make-instance 'sse :data message)
+	     for sock in it
+	     when (ignore-errors 
+		    (write! msg sock)
+		    (force-output (socket-stream sock))
+		    sock)
+	     collect it))))

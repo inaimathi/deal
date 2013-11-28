@@ -2,7 +2,8 @@
   (:use :cl #:optima #:cl-ppcre #:usocket)
   (:import-from #:alexandria :starts-with-subseq :with-gensyms)
   (:import-from #:anaphora :aif :awhen :aand :it)
-  (:export :define-closing-handler :define-stream-handler :define-redirect-handler
+  (:export :define-closing-handler :define-stream-handler :define-redirect-handler 
+	   :root :sock :session :parameters
 	   :new-session! :get-session! :lookup
 	   :subscribe! :publish!
 	   :start
