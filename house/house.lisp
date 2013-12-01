@@ -5,6 +5,7 @@
 (defparameter *handlers* (make-hash-table :test 'equal))
 (defparameter *channels* (make-hash-table))
 (defparameter *sessions* (make-hash-table :test 'equal))
+(defparameter *new-session-hook* nil)
 
 ;;;;;;;;;; Function definitions
 ;;; The basic structure of the server is
@@ -18,9 +19,14 @@
     (unwind-protect
 	 (loop (loop for ready in (wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
 		  do (if (typep ready 'stream-server-usocket)
-			 (setf (gethash (socket-accept ready) conns) :on)
+			 (progn
+			   (format t "New connection ...~%")
+			   (setf (gethash (socket-accept ready) conns) :on))
 			 (let ((buf (gethash ready buffers (make-instance 'buffer))))
-			   (buffer! (socket-stream ready) buf)
+			   (format t "Reading from buffer ...~%")
+			   (when (eq :eof (buffer! (socket-stream ready) buf))
+			     (remhash ready conns)
+			     (remhash ready buffers))
 			   (let ((complete? (complete? buf))
 				 (big? (too-big? buf))
 				 (old? (too-old? buf)))
@@ -36,9 +42,7 @@
 	 do (loop while (socket-close c)))
       (loop while (socket-close server)))))
 
-(defmethod complete? ((buffer buffer))
-  (starts-with-subseq (list #\newline #\return #\newline #\return)
-		      (contents buffer)))
+(defmethod complete? ((buffer buffer)) (found-crlf? buffer))
 
 (defmethod too-big? ((buffer buffer))
   (> (content-size buffer) +max-request-size+))
@@ -48,24 +52,38 @@
 
 (defmethod buffer! (stream (buffer buffer))
   (loop for char = (read-char-no-hang stream nil :eof)
+     do (when (and (eql #\newline char)
+		   (starts-with-subseq (list #\return #\newline #\return)
+				       (contents buffer)))
+	  (setf (found-crlf? buffer) t))
      until (or (null char) (eql :eof char))
-     do (push char (contents buffer)) do (incf (content-size buffer))))
+     do (push char (contents buffer)) do (incf (content-size buffer))
+     finally (return char)))
 
 ;;;;; Parse-related
+(defmethod parse-params ((params null)) nil)
+(defmethod parse-params ((params string))
+  (loop for pair in (split "&" params)
+     for (name val) = (split "=" pair)
+     collect (cons (->keyword name) val)))
+
 (defmethod parse ((str string))
   (let ((lines (split "\\r?\\n" str)))
-    (destructuring-bind (req-type path http-version) (split " " (first lines))
+    (destructuring-bind (req-type path http-version) (split " " (pop lines))
       (declare (ignore req-type))
       (assert (string= http-version "HTTP/1.1"))
       (let* ((path-pieces (split "\\?" path))
 	     (resource (first path-pieces))
 	     (parameters (second path-pieces))
 	     (req (make-instance 'request :resource resource :parameters parameters)))
-	(loop 
-	   for header in (rest lines) for (name value) = (split ": " header)
+	(loop for header = (pop lines) for (name value) = (split ": " header)
+	   until (null name)
 	   for n = (->keyword name)
 	   if (eq n :cookie) do (setf (session-token req) value)
 	   else do (push (cons n value) (headers req)))
+	(setf (parameters req)
+	      (append (parse-params (parameters req))
+		      (parse-params (pop lines))))
 	req))))
 
 (defmethod parse ((buf buffer))
@@ -73,10 +91,12 @@
 
 ;;;;; Handling requests
 (defmethod handle-request ((sock usocket) (req request))
+  (format t "Handling request for '~a'...~%" (resource req))
   (aif (lookup (resource req) *handlers*)
        (handler-case
 	   (let* ((check? (aand (session-token req) (get-session! it)))
 		  (sess (aif check? it (new-session!))))
+	     (format t "Got session ~s (check? :: ~s)..." sess check?)
 	     (funcall it sock check? sess (parameters req)))
 	 ((not simple-error) () (error! +400+ sock)))
        (error! +404+ sock)))
@@ -100,12 +120,26 @@
     (when (keep-alive? res) 
       (write-ln "Connection: keep-alive")
       (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
-    (awhen (body res)
-      (write-ln "Content-Length: " (write-to-string (length it)))
-      (crlf stream)
-      (write-ln it))
-    (crlf stream)
+    (write! (body res) stream)
     (values)))
+
+(defmethod write! ((body string) (stream stream))
+  (write-string "Content-Length: " stream) (write (length body) :stream stream) (crlf stream) 
+  (crlf stream)
+  (write-string body stream)
+  (crlf stream)
+  (values))
+
+(defmethod write! ((body array) (stream stream))
+  (write-string "Content-Length: " stream) (write (length body) :stream stream) (crlf stream)
+  (crlf stream)
+  (write-string (flexi-streams:octets-to-string body) stream)
+  (crlf stream)
+  (values))
+
+(defmethod write! ((body null) (stream stream))
+  (crlf stream)
+  (values))
 
 (defmethod write! ((res sse) (stream stream))
   (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
@@ -157,6 +191,35 @@
 (defmacro define-stream-handler ((name) &body body)
   `(bind-handler ,name (make-stream-handler ,@body)))
 
+;;;;; TODO
+;; Read/transmit files with read-byte rather than read-char
+;; (some PNGs are erroring under the assumption that everything's a char)
+(defmethod define-file-handler ((path pathname) &key stem-from)
+  (cond ((cl-fad:directory-exists-p path)
+	 (cl-fad:walk-directory 
+	  path 
+	  (lambda (fname)
+	    (define-file-handler fname :stem-from (or stem-from (format nil "~a" path))))))
+	((cl-fad:file-exists-p path)
+	 (setf (gethash (path->uri path :stem-from stem-from) *handlers*)
+	       (let ((mime (path->mimetype path)))
+		 (lambda (sock cookie? session parameters)
+		   (declare (ignore cookie? session parameters))
+		   (with-open-file (s path :direction :input :element-type 'octet)
+		     (let ((buf (make-array (file-length s) :element-type 'octet)))
+		       (read-sequence buf s)
+		       (write! (make-instance 
+				'response :content-type mime
+				:body buf) 
+			       sock))
+		     (socket-close sock))))))
+	(t
+	 (warn "Tried serving nonexistent file '~a'" path)))
+  nil)
+
+(defmethod define-file-handler ((path string) &key stem-from)
+  (define-file-handler (pathname path) :stem-from stem-from))
+
 (defmacro define-redirect-handler ((name &key permanent?) target)
   (with-gensyms (cookie?)
     `(bind-handler 
@@ -171,6 +234,13 @@
 	(socket-close sock)))))
 
 ;;;;; Session-related
+(defmacro new-session-hook! (&body body)
+  `(push (lambda (session) ,@body)
+	 *new-session-hook*))
+
+(defun clear-session-hooks! ()
+  (setf *new-session-hook* nil))
+
 (defun new-session-token ()
   (cl-base64:usb8-array-to-base64-string
    (with-open-file (s "/dev/urandom" :element-type '(unsigned-byte 8))
@@ -180,6 +250,8 @@
 (defun new-session! ()
   (let ((session (make-instance 'session :token (new-session-token))))
     (setf (gethash (token session) *sessions*) session)
+    (loop for hook in *new-session-hook*
+	 do (funcall hook session))
     session))
 
 (defun get-session! (token)
