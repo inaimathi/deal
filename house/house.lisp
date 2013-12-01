@@ -96,7 +96,7 @@
        (handler-case
 	   (let* ((check? (aand (session-token req) (get-session! it)))
 		  (sess (aif check? it (new-session!))))
-	     (format t "Got session ~s (check? :: ~s)..." sess check?)
+	     (format t "Got session ~s (check? :: ~s)...~%" sess check?)
 	     (funcall it sock check? sess (parameters req)))
 	 ((not simple-error) () (error! +400+ sock)))
        (error! +404+ sock)))
@@ -154,28 +154,31 @@
   (socket-close sock))
 
 ;;;;; Defining Handlers
-(defmacro make-closing-handler ((&key (content-type "text/html")) &body body)
+(defmacro make-closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
   (with-gensyms (cookie?)
     `(lambda (sock ,cookie? session parameters)
-       (declare (ignorable session parameters))
-       (let ((res (make-instance 
-		   'response 
-		   :content-type ,content-type 
-		   :cookie (unless ,cookie? (token session))
-		   :body (progn ,@body))))
-	 (write! res sock)
-	 (socket-close sock)))))
+       (declare (ignorable session))
+       (let ,(loop for arg in args collect `(,arg (cdr (assoc ,(->keyword arg) parameters))))
+	 (let ((res (make-instance 
+		     'response 
+		     :content-type ,content-type 
+		     :cookie (unless ,cookie? (token session))
+		     :body (progn ,@body))))
+	   (write! res sock)
+	   (socket-close sock))))))
 
-(defmacro make-stream-handler (&body body)
+(defmacro make-stream-handler ((&rest args) &body body)
   (with-gensyms (cookie?)
     `(lambda (sock ,cookie? session parameters)
-       (declare (ignorable session parameters))
-       (let ((res (progn ,@body)))
-	 (write! (make-instance 'response
-				:keep-alive? t :content-type "text/event-stream" 
-				:cookie (unless ,cookie? (token session))) sock)
-	 (awhen res (write! (make-instance 'sse :data it) sock))
-	 (force-output (socket-stream sock))))))
+       (declare (ignorable session))
+       (let ,(loop for arg in args 
+		collect `(,arg (cdr (assoc ,(->keyword arg) parameters))))
+	 (let ((res (progn ,@body)))
+	   (write! (make-instance 'response
+				  :keep-alive? t :content-type "text/event-stream" 
+				  :cookie (unless ,cookie? (token session))) sock)
+	   (awhen res (write! (make-instance 'sse :data it) sock))
+	   (force-output (socket-stream sock)))))))
 
 (defmacro bind-handler (name handler)
   (assert (symbolp name) nil "`name` must be a symbol")
@@ -185,11 +188,11 @@
 	 (warn ,(format nil "Redefining handler '~a'" uri)))
        (setf (gethash ,uri *handlers*) ,handler))))
 
-(defmacro define-closing-handler ((name &key (content-type "text/html")) &body body)
-  `(bind-handler ,name (make-closing-handler (:content-type ,content-type) ,@body)))
+(defmacro define-closing-handler ((name &key (content-type "text/html")) (&rest args) &body body)
+  `(bind-handler ,name (make-closing-handler (:content-type ,content-type) ,args ,@body)))
 
-(defmacro define-stream-handler ((name) &body body)
-  `(bind-handler ,name (make-stream-handler ,@body)))
+(defmacro define-stream-handler ((name) (&rest args) &body body)
+  `(bind-handler ,name (make-stream-handler ,args ,@body)))
 
 ;;;;; TODO
 ;; Read/transmit files with read-byte rather than read-char
