@@ -37,10 +37,8 @@ In any case, you should now be able to visit `[your-server]/static/index.html` a
 
 The House server is still under construction (when that's done, you won't need to do the above nginx whiskey tango foxtrot).
 
-- Re-write `define-handler.lisp` to generate `:house` handlers instead of `:hunchentoot` handlers
-- Re-write the `:deal` publishing system to make proper use of `house:publish!`
-- In `start`, when the `buffers` table gets large enough, it should trigger a cleanup pass that evicts all sufficiently old buffers
 - Sessions should actually expire at some point
+- Add session-expiration hooks
 
 ## License
 

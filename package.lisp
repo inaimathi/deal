@@ -1,17 +1,16 @@
 ;;;; package.lisp
-
 (defpackage #:deal 
-  (:use #:cl #:optima #:json #:hunchentoot)
+  (:use #:cl #:optima #:json #:house)
+  (:shadow #:publish!)
   (:import-from :cl-ppcre #:regex-replace-all)
   (:import-from :cl-fad #:list-directory)
   (:import-from :bordeaux-threads #:make-lock #:with-lock-held)
-  (:import-from :drakma #:http-request)
-  (:import-from :alexandria #:with-gensyms))
+  (:import-from :alexandria #:with-gensyms)
+  (:import-from :anaphora #:aif #:awhen #:it))
 
 (in-package #:deal)
 ;;;;;;;;;; Config variables
 (defparameter *server-port* 8080)
-(defparameter *stream-server-uri* "http://localhost:9080/")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defparameter *handlers* (make-hash-table :test 'equal))
@@ -38,3 +37,6 @@
 
 (defgeneric serialize (thing)
   (:documentation "Returns a copy of its argument with private information intact, but table-specific data (such as `id` and `belongs-to`) removed. Used to save table states for later reloading."))
+
+(defgeneric publish! (target player action-type &optional message)
+  (:documentation "Publishes a new message to the stream of the designated target. The message will a JSON object constructed from `action-type`, some internally-generated metadata, and optionally `message`"))

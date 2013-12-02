@@ -96,17 +96,6 @@
 	(setf (card-count stack) card-count)
 	stack))))
 
-(defmethod publish! ((table table) action-type &optional move (stream-server *stream-server-uri*))
-  (let* ((player (session-value :player))
-	 (full-move `((time . ,(get-universal-time))
-		      (type . ,action-type) 
-		      (player . ,(id player))
-		      (player-tag . ,(tag player))
-		      ,@move)))
-    (push full-move (history table))
-    (http-request (format nil "~apub?id=~a" stream-server (id table))
-		  :method :post :content (encode-json-to-string full-move))))
-
 ;;;;;;;;;; delete/insert methods (more in model/server.lisp)
 (defmethod delete! ((table table) (thing placeable))
   "Removes a thing from the given table"

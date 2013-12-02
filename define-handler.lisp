@@ -25,7 +25,7 @@
 	 (list :card :from-table))
      (lookup-expression arg '(things table)))
     ((list :card :from-hand)
-     (lookup-expression arg '(hand (session-value :player))))
+     (lookup-expression arg '(hand (lookup :player session))))
     (_ (error "Invalid type label: '~a'" type))))
 
 (defun lookup-expression (arg &rest places)
@@ -79,32 +79,25 @@ also need to be treated specially by some of the handler-definition macros."
      when (and (not table?) assn) collect it into assertions
      finally (return (values arguments table-lookups table-assertions type-expressions assertions))))
 
-(defmacro with-handler-prelude (&body body)
-  `(progn
-     (assert (symbolp name) nil "`name` must be a symbol")
-     (let* ((uri (if (eq name 'root) "/" (concatenate 'string "/" (string-downcase (symbol-name name)))))
-	    (opts (list name :uri uri)))
-       (setf (gethash uri *handlers*) args)
-       (multiple-value-bind (final-args table-lookups table-assertions type-conversions lookup-assertions)
-	   (type-pieces args)
-	 ,@body))))
-
-(defmacro define-handler ((name) (&rest args) &body body)
+(defmacro define-handler (name (&rest args) &body body)
   "Defines standard handlers (those with no need for complex table interactions, and those with no arguments)"
-  (with-handler-prelude
-    `(define-easy-handler ,opts ,final-args
-       ,@(if (not args)
-	     `((encode-json-to-string (progn ,@body)))
-	     `((assert (and ,@final-args))
+  (multiple-value-bind (final-args table-lookups table-assertions type-conversions lookup-assertions)
+      (type-pieces args)
+    `(define-closing-handler (,name :content-type "application/json") ,final-args
+       ,(if (not args)
+	    `(encode-json-to-string (progn ,@body))
+	    `(progn
+	       (assert (and ,@final-args))
 	       (let* ,(append table-lookups type-conversions)
 		 ,@(append table-assertions lookup-assertions)
 		 (encode-json-to-string (progn ,@body))))))))
 
-(defmacro define-table-handler ((name) (&rest args) &body body)
+(defmacro define-table-handler (name (&rest args) &body body)
   "Defines table-specific handlers. These need to establish a lock on the named table BEFORE doing the rest of their assertions/lookups."
   (assert (eq :table (second (first args))) nil "First argument in a table handler must be a table.")
-  (with-handler-prelude
-    `(define-easy-handler ,opts ,final-args
+  (multiple-value-bind (final-args table-lookups table-assertions type-conversions lookup-assertions)
+      (type-pieces args)
+    `(define-closing-handler (,name :content-type "application/json") ,final-args
        (assert (and ,@final-args))
        (let* ,table-lookups
 	 ,@table-assertions
@@ -113,20 +106,20 @@ also need to be treated specially by some of the handler-definition macros."
 	     ,@lookup-assertions
 	     (encode-json-to-string (progn ,@body))))))))
 
-(defmacro define-player-handler ((name) (&rest args) &body body)
+(defmacro define-player-handler (name (&rest args) &body body)
   "Defines a table-specific handler that checks whether the requester is a player at the named table.
 This could be folded in with define-table-handler, if not for lobby/join (which is a handler that both
 needs to establish a lock on the named table, AND must deal with players who are not sitting at the named table yet)."
   (assert (eq :table (second (first args))) nil "First argument in a player handler must be a table.")
-  (with-handler-prelude
-    `(define-easy-handler ,opts ,final-args
-       (assert (session-value :player))
+  (multiple-value-bind (final-args table-lookups table-assertions type-conversions lookup-assertions)
+      (type-pieces args)
+    `(define-closing-handler (,name :content-type "application/json") ,final-args
+       (assert (lookup :player session))
        (assert (and ,@final-args))
        (let* ,table-lookups
 	 ,@table-assertions
-	 (assert (member (session-value :player) (players ,(first (first args)))))
+	 (assert (member (lookup :player session) (players ,(first (first args)))))
 	 (with-lock-held ((lock ,(caar table-lookups)))
 	   (let* ,type-conversions
 	     ,@lookup-assertions
-	     (setf (last-seen (session-value :player)) (get-universal-time))
 	     (encode-json-to-string (progn ,@body))))))))

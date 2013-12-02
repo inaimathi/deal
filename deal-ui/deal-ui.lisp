@@ -339,7 +339,7 @@
 		      ($ "#backpack" (tabs (create :active 3))))
 	     
 	     (setf *table-stream*
-		   (event-source (+ "/ev/" (chain (@ *table-info* id) (to-upper-case)))
+		   (event-source (+ "/source?channel=" (chain (@ *table-info* id) (to-upper-case)))
 				 (joined)
 				 (left)
 				 (said)
@@ -952,7 +952,7 @@
 	       (with-slots (handlers decks public-tables) res
 		 (setf *server-info* res
 		       *lobby-stream*
-		       (event-source "/ev/lobby"
+		       (event-source "/source?channel=lobby"
 				     (said)
 				     (changed-tag)
 				     (started-table

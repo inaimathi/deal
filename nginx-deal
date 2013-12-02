@@ -1,93 +1,18 @@
-### -*- mode: conf; -*-
-pid         logs/nginx.pid;
-error_log   logs/nginx-main_error.log debug;
-
-# Development Mode
-master_process      off;
-daemon              off;
-worker_rlimit_core  500M;
-working_directory /tmp/nginx;
-
-worker_processes    2;
-
-events {
-    worker_connections  1024;
-    use                 epoll;
-}
-
-http {
-    include         mime.types;
-    default_type    application/octet-stream;
-
-    access_log      logs/nginx-http_access.log;
-    error_log       logs/nginx-http_error.log debug;
-
-    tcp_nopush                      off;
-    tcp_nodelay                     on;
-    keepalive_timeout               10;
-    send_timeout                    10;
-    client_body_timeout             10;
-    client_header_timeout           10;
-    sendfile                        on;
-    client_header_buffer_size       1k;
-    large_client_header_buffers     2 4k;
-    client_max_body_size            1k;
-    client_body_buffer_size         1k;
-    ignore_invalid_headers          on;
-
-    push_stream_shared_memory_size              100m;
-    push_stream_max_channel_id_length           200;
-    # max messages to store in memory
-    push_stream_max_messages_stored_per_channel  20;
-    # message ttl
-    push_stream_message_ttl                      5m;
-    # ping frequency
-    push_stream_ping_message_interval           10s;
-    # connection ttl to enable recycle
-    push_stream_subscriber_connection_ttl        15m;
-    # connection ttl for long polling
-    push_stream_longpolling_connection_ttl        30s;
-    # broadcast
-    push_stream_broadcast_channel_prefix        "broad_";
-
-    push_stream_message_template                "~text~";
-
-    # subscriber may create channels on demand or only authorized
-    # (publisher) may do it?
-    push_stream_authorized_channels_only        off;
-    push_stream_broadcast_channel_max_qtd       3;
-
-    server {
+server {
        listen 80;
-       server_name diecast.ca;
+       server_name diecast.ca deal.inaimathi.ca deal.inaimathi.com;
 
-       rewrite .*/favicon.ico /img/favicon.ico last;
+       rewrite .*/favicon.ico /static/img/favicon.ico last;
 
-       	location ~ ^/(static)/ {
-		 root /home/inaimathi/projects/deal;
-		 expires 30d;
-	}
-
-	location /ev {
-		proxy_pass http://localhost:9080;
-                proxy_redirect off;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                client_max_body_size 10m;
-                client_body_buffer_size 128k;
-                proxy_connect_timeout 90;
-                proxy_send_timeout 90;
-                proxy_read_timeout 90;
-                proxy_buffer_size 4k;
-                proxy_buffers 4 32k;
-                proxy_busy_buffers_size 64k;
-                proxy_temp_file_write_size 64k;
-	}
+        location ~ ^/static/ {
+                root /home/inaimathi/projects/deal/;
+                expires 30d;
+                }
 
         location / {
                 proxy_pass http://localhost:8080;
                 proxy_redirect off;
+		proxy_http_version 1.1;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -101,45 +26,4 @@ http {
                 proxy_busy_buffers_size 64k;
                 proxy_temp_file_write_size 64k;
                 }
-    }
-
-
-    server {
-        listen           9080 default_server;
-        #listen          9443 ssl;
-        #ssl_certificate     /usr/local/nginx/ssl/server.crt;
-        #ssl_certificate_key /usr/local/nginx/ssl/server.key;
-        server_name     localhost;
-
-        location /channels-stats {
-            push_stream_channels_statistics;
-            set $push_stream_channel_id             $arg_id;
-        }
-
-        location /pub {
-            # activate publisher mode for this location, with admin support
-            push_stream_publisher admin;
-
-            # query string based channel id
-            set $push_stream_channel_id             $arg_id;
-
-            push_stream_store_messages              off;
-            push_stream_keepalive                   on;
-
-            # Message size limit
-            # client_max_body_size MUST be equal to client_body_buffer_size or
-            # you will be sorry.
-            client_max_body_size                    64k;
-            client_body_buffer_size                 64k;
-
-	    allow 127.0.0.1;
-	    deny all;
-        }
-
-        location ~ /ev/(.*) {
-            push_stream_subscriber;
-            set $push_stream_channels_path              $1;
-            push_stream_eventsource_support on;
-        }
-    }
 }

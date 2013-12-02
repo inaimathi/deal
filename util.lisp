@@ -1,15 +1,5 @@
 (in-package #:deal)
 
-(proclaim '(inline ->keyword))
-
-;;;;; Simple anaphora
-(defmacro aif (test-form then-form &optional else-form)
-  `(let ((it ,test-form))
-     (if it ,then-form ,else-form)))
-
-(defmacro awhen (test-form &body then-form)
-  `(aif ,test-form (progn ,@then-form)))
-
 ;;;;; Basic macros
 (defmacro set-props (target &rest props)
   (assert (every #'symbolp props))
@@ -34,7 +24,7 @@ This works where it's used inside of Deal, but probably isn't what you want exte
     `(with-slots ,slots ,instance
        (hash ,@(loop for s in slots for sym = (->keyword s)
 		  unless (member sym extra-keys)
-		  collect (->keyword s) and collect s)
+		  collect sym and collect s)
 	     ,@extra-values))))
 
 ;;;;; Basic functions
@@ -81,15 +71,8 @@ This works where it's used inside of Deal, but probably isn't what you want exte
       (loop repeat (- count 1) for (elem . rest) on seq
 	 finally (return rest))))
 
-(defun make-id (&optional (prefix "G")) (->keyword (gensym prefix)))
-
-(defmethod ->keyword ((sym symbol))
-  (if (keywordp sym) 
-      sym
-      (intern (symbol-name sym) :keyword)))
-
-(defmethod ->keyword ((str string))
-  (intern (string-upcase str) :keyword))
+(defun make-id (&optional (prefix "G")) 
+  (->keyword (gensym prefix)))
 
 (defun getj (item json-assoc-list)
   (cdr (assoc item json-assoc-list)))

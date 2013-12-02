@@ -17,8 +17,9 @@
 
 (defun args->plist (arg-syms)
   (loop for arg in arg-syms
-     collect (deal::->keyword arg)
-     collect arg))
+     unless (member arg '(&optional &rest &body &key))
+     append (let ((ar (if (symbolp arg) arg (car arg))))
+	      (list (->keyword ar) ar))))
 
 ;;;;;;;;;; HTML-related 
 (defmacro html-str (&body body)
