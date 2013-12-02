@@ -19,9 +19,7 @@
     (unwind-protect
 	 (loop (loop for ready in (wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
 		  do (if (typep ready 'stream-server-usocket)
-			 (progn
-			   (format t "New connection ...~%")
-			   (setf (gethash (socket-accept ready) conns) :on))
+			 (setf (gethash (socket-accept ready) conns) :on)
 			 (let ((buf (gethash ready buffers (make-instance 'buffer))))
 			   (format t "Reading from buffer ...~%")
 			   (when (eq :eof (buffer! (socket-stream ready) buf))
@@ -91,13 +89,11 @@
 
 ;;;;; Handling requests
 (defmethod handle-request ((sock usocket) (req request))
-  (format t "Handling request for '~a'...~%" (resource req))
   (aif (lookup (resource req) *handlers*)
        (handler-case
-	   (let* ((check? (aand (session-token req) (get-session! it)))
-		  (sess (aif check? it (new-session!))))
-	     (format t "Got session ~s (check? :: ~s)...~%" sess check?)
-	     (funcall it sock check? sess (parameters req)))
+	 (let* ((check? (aand (session-token req) (get-session! it)))
+		(sess (aif check? it (new-session!))))
+	   (funcall it sock check? sess (parameters req)))
 	 ((not simple-error) () (error! +400+ sock)))
        (error! +404+ sock)))
 
@@ -158,7 +154,7 @@
   (with-gensyms (cookie?)
     `(lambda (sock ,cookie? session parameters)
        (declare (ignorable session))
-       (let ,(loop for arg in args collect `(,arg (cdr (assoc ,(->keyword arg) parameters))))
+       (let ,(loop for arg in args collect `(,arg (uri-decode (cdr (assoc ,(->keyword arg) parameters)))))
 	 (let ((res (make-instance 
 		     'response 
 		     :content-type ,content-type 
@@ -172,7 +168,7 @@
     `(lambda (sock ,cookie? session parameters)
        (declare (ignorable session))
        (let ,(loop for arg in args 
-		collect `(,arg (cdr (assoc ,(->keyword arg) parameters))))
+		collect `(,arg (uri-decode (cdr (assoc ,(->keyword arg) parameters)))))
 	 (let ((res (progn ,@body)))
 	   (write! (make-instance 'response
 				  :keep-alive? t :content-type "text/event-stream" 
