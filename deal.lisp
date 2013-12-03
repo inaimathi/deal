@@ -86,7 +86,7 @@
   (assert (= (player-count table) 1) nil "You can't load a table once the game has started.")
   (let ((player (lookup :player session)))
     (loop for thing in (getj :things file)
-       do (case (intern (string-upcase (getj :type thing)) :keyword)
+       do (case (->keyword (getj :type thing))
 	    (:stack 
 	     (insert! table (stack<-json player thing)))
 	    (:card

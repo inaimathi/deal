@@ -21,7 +21,6 @@
 		  do (if (typep ready 'stream-server-usocket)
 			 (setf (gethash (socket-accept ready) conns) :on)
 			 (let ((buf (gethash ready buffers (make-instance 'buffer))))
-			   (format t "Reading from buffer ...~%")
 			   (when (eq :eof (buffer! (socket-stream ready) buf))
 			     (remhash ready conns)
 			     (remhash ready buffers))
@@ -63,7 +62,7 @@
 (defmethod parse-params ((params string))
   (loop for pair in (split "&" params)
      for (name val) = (split "=" pair)
-     collect (cons (->keyword name) val)))
+     collect (cons (->keyword name) (or val ""))))
 
 (defmethod parse ((str string))
   (let ((lines (split "\\r?\\n" str)))
@@ -116,26 +115,11 @@
     (when (keep-alive? res) 
       (write-ln "Connection: keep-alive")
       (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
-    (write! (body res) stream)
+    (awhen (body res)
+      (write-ln "Content-Length: " (write-to-string (length it)))
+      (crlf stream)
+      (write-ln it))
     (values)))
-
-(defmethod write! ((body string) (stream stream))
-  (write-string "Content-Length: " stream) (write (length body) :stream stream) (crlf stream) 
-  (crlf stream)
-  (write-string body stream)
-  (crlf stream)
-  (values))
-
-(defmethod write! ((body array) (stream stream))
-  (write-string "Content-Length: " stream) (write (length body) :stream stream) (crlf stream)
-  (crlf stream)
-  (write-string (flexi-streams:octets-to-string body) stream)
-  (crlf stream)
-  (values))
-
-(defmethod write! ((body null) (stream stream))
-  (crlf stream)
-  (values))
 
 (defmethod write! ((res sse) (stream stream))
   (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
@@ -153,7 +137,7 @@
 (defmacro make-closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
   (with-gensyms (cookie?)
     `(lambda (sock ,cookie? session parameters)
-       (declare (ignorable session))
+       (declare (ignorable session parameters))
        (let ,(loop for arg in args collect `(,arg (uri-decode (cdr (assoc ,(->keyword arg) parameters)))))
 	 (let ((res (make-instance 
 		     'response 
@@ -209,7 +193,7 @@
 		       (read-sequence buf s)
 		       (write! (make-instance 
 				'response :content-type mime
-				:body buf) 
+				:body (flex:octets-to-string buf)) 
 			       sock))
 		     (socket-close sock))))))
 	(t

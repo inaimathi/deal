@@ -12,7 +12,7 @@
     (:json-file
      `(decode-json-from-source (first ,arg)))
     ((or :keyword :facing)
-     `(intern (string-upcase ,arg) :keyword))
+     `(->keyword ,arg))
     (:table 
      (lookup-expression arg '(private-tables *server*) '(public-tables *server*)))
     ((list :list :keyword)
