@@ -19,7 +19,7 @@
     (unwind-protect
 	 (loop (loop for ready in (wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
 		  do (if (typep ready 'stream-server-usocket)
-			 (setf (gethash (socket-accept ready) conns) :on)
+			 (setf (gethash (socket-accept ready :element-type 'octet) conns) :on)
 			 (let ((buf (gethash ready buffers (make-instance 'buffer))))
 			   (when (eq :eof (buffer! (socket-stream ready) buf))
 			     (remhash ready conns)
@@ -47,11 +47,21 @@
 (defmethod too-old? ((buffer buffer))
   (> (- (get-universal-time) (started buffer)) +max-request-size+))
 
+(defun read-byte-no-hang (&optional (stream *standard-output*) (eof-error-p t) eof-value)
+  (handler-case
+      (trivial-timeout:with-timeout (.00001)
+	(read-byte stream eof-error-p eof-value))
+    (trivial-timeout:timeout-error () nil)))
+
 (defmethod buffer! (stream (buffer buffer))
-  (loop for char = (read-char-no-hang stream nil :eof)
+  (loop for byte = (read-byte-no-hang stream nil :eof)
+     for char = (if (and byte (not (eq :eof byte)))
+		    (code-char byte)
+		    byte)
      do (when (and (eql #\newline char)
-		   (starts-with-subseq (list #\return #\newline #\return)
-				       (contents buffer)))
+		   (starts-with-subseq 
+		    (list #\return #\newline #\return)
+		    (contents buffer)))
 	  (setf (found-crlf? buffer) t))
      until (or (null char) (eql :eof char))
      do (push char (contents buffer)) do (incf (content-size buffer))
@@ -118,7 +128,8 @@
     (awhen (body res)
       (write-ln "Content-Length: " (write-to-string (length it)))
       (crlf stream)
-      (write-ln it))
+      (write-sequence it stream)
+      (crlf stream))
     (values)))
 
 (defmethod write! ((res sse) (stream stream))
@@ -126,7 +137,7 @@
 	  (id res) (event res) (retry res) (data res)))
 
 (defmethod write! (msg (sock usocket))
-  (write! msg (socket-stream sock)))
+  (write! msg (flex:make-flexi-stream (socket-stream sock) :external-format :utf-8)))
 
 (defmethod error! ((err response) (sock usocket))
   (ignore-errors 
@@ -191,10 +202,7 @@
 		   (with-open-file (s path :direction :input :element-type 'octet)
 		     (let ((buf (make-array (file-length s) :element-type 'octet)))
 		       (read-sequence buf s)
-		       (write! (make-instance 
-				'response :content-type mime
-				:body (flex:octets-to-string buf)) 
-			       sock))
+		       (write! (make-instance 'response :content-type mime :body buf) sock))
 		     (socket-close sock))))))
 	(t
 	 (warn "Tried serving nonexistent file '~a'" path)))
