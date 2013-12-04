@@ -112,8 +112,8 @@
   (values))
 
 (defmethod write! ((res response) (stream stream))
-  (flet ((write-ln (&rest strings)
-	   (mapc (lambda (str) (write-string str stream)) strings)
+  (flet ((write-ln (&rest sequences)
+	   (mapc (lambda (seq) (write-sequence seq stream)) sequences)
 	   (crlf stream)))
     (write-ln "HTTP/1.1 " (response-code res))  
     (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
@@ -128,8 +128,7 @@
     (awhen (body res)
       (write-ln "Content-Length: " (write-to-string (length it)))
       (crlf stream)
-      (write-sequence it stream)
-      (crlf stream))
+      (write-ln it))
     (values)))
 
 (defmethod write! ((res sse) (stream stream))
@@ -168,7 +167,7 @@
 	   (write! (make-instance 'response
 				  :keep-alive? t :content-type "text/event-stream" 
 				  :cookie (unless ,cookie? (token session))) sock)
-	   (awhen res (write! (make-instance 'sse :data it) sock))
+	   (write! (make-instance 'sse :data (or res ":-1")) sock)
 	   (force-output (socket-stream sock)))))))
 
 (defmacro bind-handler (name handler)
