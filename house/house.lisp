@@ -167,7 +167,7 @@
 	   (write! (make-instance 'response
 				  :keep-alive? t :content-type "text/event-stream" 
 				  :cookie (unless ,cookie? (token session))) sock)
-	   (write! (make-instance 'sse :data (or res ":-1")) sock)
+	   (write! (make-instance 'sse :data (or res "Listening...")) sock)
 	   (force-output (socket-stream sock)))))))
 
 (defmacro bind-handler (name handler)

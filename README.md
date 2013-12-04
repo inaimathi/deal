@@ -3,40 +3,25 @@
 
 ## Requirements
 
-Deal directly depends on [optima](https://github.com/m2ym/optima), [cl-ppcre](http://weitz.de/cl-ppcre/), [drakma](http://weitz.de/drakma/), [hunchentoot](http://weitz.de/hunchentoot/), [cl-json](http://common-lisp.net/project/cl-json/) and [bordeaux-threads](http://common-lisp.net/project/bordeaux-threads/). All of those can be installed using [`quicklisp`](http://www.quicklisp.org/beta/).
+Deal directly depends on a fuckton of other Lisp libraries, all of which will be installed automatically by [`quicklisp`](http://www.quicklisp.org/beta/) the first time you run it. If you plan on installing Deal manually, the required libraries are
 
-Deal depends on an external SSE publishing service to provide push capability to its clients. The easiest approach is using [nginx](http://wiki.nginx.org/Main) with its [push-stream module](https://github.com/wandenberg/nginx-push-stream-module). The installation instructions deal with this route, but you can probably set up some other streaming service that can be set to publish messages based on input from `localhost` HTTP requests.
+    :alexandria :anaphora :bordeaux-threads :cl-base64 :cl-css :cl-fad :cl-json
+    :cl-ppcre :cl-who :deal :flexi-streams :ironclad :optima :parenscript
+    :trivial-timeout :usocket
 
 ## Installation
 
-**1** Pick a directory and run the following in it:
+**1** Pick a directory, and clone [this project](https://github.com/Inaimathi/deal) with `git clone https://github.com/Inaimathi/deal.git`
 
-    git clone http://github.com/wandenberg/nginx-push-stream-module.git
-    wget http://nginx.org/download/nginx-1.2.0.tar.gz
-    tar xzvf nginx-1.2.0.tar.gz
-    cd nginx-1.2.0
-    ./configure --add-module=../nginx-push-stream-module
-    make
-    sudo make install
+**2** Start a lisp in that directory and evaluate `(ql:quickload :deal-ui)`
 
-**2** Pick another directory, and clone [this project](https://github.com/Inaimathi/deal) with `git clone https://github.com/Inaimathi/deal.git`
+**3** Evaluate `(deal::start 8080)`
 
-**3** Change the config variables in [`package.lisp`](https://github.com/Inaimathi/deal/blob/master/package.lisp) to your liking
-
-**4** Change the contents of [`nginx-deal`](https://github.com/Inaimathi/deal/blob/master/nginx-deal) to your liking. In particular, by default it binds port `80` for listening, port `9080` for publishing/subscribing, and proxies to port `8080` for any dynamic requests (it should proxy to wherever `hunchentoot` is listening for requests). It also serves static files from `/home/inaimathi/projects/deal`, which is certainly incorrect unless you're me.
-
-**5** Copy `nginx-deal` to your `nginx` config directory, and run `nginx`. If you did this on Debian, the newly installed binary will be at `/usr/local/nginx/sbin/nginx`, and the config file will be at `/usr/local/nginx/conf/nginx.conf`.
-
-**6** Run your copy of `deal` by starting a lisp in the appropriate directory and evaluating `(ql:quickload :deal-ui)`
-
-That's a *lot* more compliacted than I like to make installation, but there isn't a good option for async serving natively in Common Lisp at the moment. Hopefully I can fix that in a future release. 
-
-In any case, you should now be able to visit `[your-server]/static/index.html` and play.
+You should now be able to visit `[your-server]:8080/` and play.
 
 ## TODO
 
-The House server is still under construction (when that's done, you won't need to do the above nginx whiskey tango foxtrot).
-
+- Look into iolib/socket as an alternative to the shitty implementation of `read-byte-no-hang`
 - Sessions should actually expire at some point
 - Add session-expiration hooks
 
