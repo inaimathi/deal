@@ -19,6 +19,10 @@ Deal directly depends on a fuckton of other Lisp libraries, all of which will be
 
 You should now be able to visit `[your-server]:8080/` and play.
 
+**Optionally**
+
+If you're going to be hosting a public server, it's a good idea to set up a reverse proxy, and leave the static file handling up to something that can do it more efficiently than House. I recommend [nginx](http://nginx.org/). To make that easier, I've included [a config file](https://github.com/Inaimathi/deal/blob/master/nginx-deal) that you can drop into `/etc/nginx/sites-enabled/` if you're on Debian.
+
 ## TODO
 
 - Look into iolib/socket as an alternative to the shitty implementation of `read-byte-no-hang`
@@ -27,7 +31,7 @@ You should now be able to visit `[your-server]:8080/` and play.
 
 ## License
 
-This program is released under the GNU AGPL (License text can be found in the [LICENSE.md](https://github.com/Inaimathi/deal/blob/master/LICENSE.md) file, or at <http://www.gnu.org/licenses/agpl-3.0.html>)
+This program is released under the GNU AGPL (License text can be found in the [LICENSE.md](https://github.com/Inaimathi/deal/blob/master/LICENSE.md) file, or at <http://www.gnu.org/licenses/agpl-3.0.html>). Unofficial, legally non-binding short version: *You are free to use, distribute, modify and distribute modified copies as long as you give each of your users (including those that just connect to your Deal server as web clients) access to your (potentially modified) source code*.
 
 Deal bundles some javascript libraries.
 
