@@ -117,11 +117,11 @@
 	  (join "")))
 
 (defpsmacro $post (uri arg-plist &body body)
-  `(chain j-query 
+  `(progn (log "POSTING" ,uri (obj->string (create ,@arg-plist))) (chain j-query 
 	  (post ,uri (create ,@arg-plist)
 		(lambda (data status jqXHR)
 		  (let ((res (string->obj (@ jqXHR response-text))))
-		    ,@body)))))
+		    ,@body))))))
 
 (defpsmacro $highlight (target &body body)
   `($ ,target (stop t t) (effect :highlight nil 500)))

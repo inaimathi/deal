@@ -36,7 +36,7 @@
 (define-handler rename ((new-tag (:string :max 255)))
   (let* ((player (lookup :player session))
 	 (old (tag player)))
-    (assert player)
+    (assert-http player)
     (when (string/= new-tag (tag player))
       (setf (tag player) new-tag)
       (publish! (aif (current-table player) it *server*) player :changed-tag `((old-tag . ,old))))
@@ -45,13 +45,13 @@
 ;;;;;;;;;; Lobby actions
 (define-handler lobby/speak ((message (:string :min 2 :max 255)))
   (let ((player (lookup :player session)))
-    (assert player)
+    (assert-http player)
     (publish! *server* player :said `((message . ,(escape-string message))))
     :ok))
 
 (define-handler lobby/new-table ((tag :string) (passphrase :string))
   (let ((player (lookup :player session)))
-    (assert player)
+    (assert-http player)
     (with-lock-held ((lock *server*))
       (let ((table (make-instance 'table :tag tag)))
 	(insert! *server* table)
@@ -63,7 +63,7 @@
 	(redact table)))))
 
 (define-table-handler lobby/join-table ((table :table) (passphrase :string))
-  (assert (and (lookup :player session) (not (full? table))))
+  (assert-http (and (lookup :player session) (not (full? table))))
   (with-slots (id players) table
     (let ((player (lookup :player session)))
       (unless (member player (players table))
@@ -77,13 +77,13 @@
 ;;;;;;;;;; Table related
 ;;;;; Direct table actions
 (define-player-handler table/save ((table :table))
-  (assert (= (player-count table) 1) nil "You can't save a table once the game has started.")
+  (assert-http (= (player-count table) 1))
   (setf (header-out :content-type) "application/json"
 	(header-out :content-disposition) "attachment; filename=\"game.json\"")
   (serialize table))
 
 (define-player-handler table/load ((table :table) (file :json-file))
-  (assert (= (player-count table) 1) nil "You can't load a table once the game has started.")
+  (assert-http (= (player-count table) 1))
   (let ((player (lookup :player session)))
     (loop for thing in (getj :things file)
        do (case (->keyword (getj :type thing))
@@ -182,7 +182,7 @@
 
 (define-player-handler table/new/stack-from-json ((table :table) (deck :json) (x :int) (y :int) (z :int) (rot :int))
   (let ((stack (stack<-json (lookup :player session) deck)))
-    (assert (cards stack))
+    (assert-http (cards stack))
     (set-props stack x y z rot)
     (insert! table stack)
     (publish! table (lookup :player session) :new-deck `((name . ,(getj :deck-name deck)) (stack . ,(redact stack))))
@@ -238,7 +238,7 @@
 ;;         This happens in three places, so it'd be worth pulling out into the define-handler language
 (define-player-handler table/stack/play ((table :table) (stack :stack) (card-id :keyword) (face :facing) (x :int) (y :int) (z :int) (rot :int))
   (let ((card (find card-id (cards stack) :key #'id)))
-    (assert card)
+    (assert-http card)
     (set-props card face x y z rot)
     (publish! table (lookup :player session) :played-from-stack `((stack . ,(id stack)) (card . ,(redact card))))
     (move! card stack table)
@@ -281,7 +281,7 @@
 
 (define-player-handler table/stack/take ((table :table) (stack :stack) (card-id :keyword))
   (let ((card (find card-id (cards stack) :key #'id)))
-    (assert card)
+    (assert-http card)
     (move! card stack (lookup :player session))
     (publish! table (lookup :player session) :took-from `((stack . ,(id stack))))
     card))
@@ -292,7 +292,7 @@
 	   (head (take count cards))
 	   (changed (loop for c-id in card-order
 		       for card = (find c-id head :key #'id)
-		       do (assert card) collect card)))
+		       do (assert-http card) collect card)))
       (setf cards (append changed (drop count cards)))))
   (publish! table (lookup :player session) :reordered `((stack . ,(id stack)) (count . ,(length card-order))))
   :ok)

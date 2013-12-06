@@ -36,27 +36,27 @@
 
 (defun lookup-assertion (arg type)
   (match type
-    (:table `(assert (typep ,arg 'table)))
-    (:stack `(assert (typep ,arg 'stack)))
-    (:facing `(assert (member ,arg (list :up :down))))
-    (:note `(assert (typep ,arg 'note)))
-    (:placeable `(assert (typep ,arg 'placeable)))
-    (:flippable `(assert (typep ,arg 'flippable)))
+    (:table `(assert-http (typep ,arg 'table)))
+    (:stack `(assert-http (typep ,arg 'stack)))
+    (:facing `(assert-http (member ,arg (list :up :down))))
+    (:note `(assert-http (typep ,arg 'note)))
+    (:placeable `(assert-http (typep ,arg 'placeable)))
+    (:flippable `(assert-http (typep ,arg 'flippable)))
     ((list :string :min min) 
-     `(assert (>= (length ,arg) ,min)))
+     `(assert-http (>= (length ,arg) ,min)))
     ((list :string :max max)
-     `(assert (>= ,max (length ,arg))))
+     `(assert-http (>= ,max (length ,arg))))
     ((list :string :min min :max max)
-     `(assert (>= ,max (length ,arg) ,min)))
+     `(assert-http (>= ,max (length ,arg) ,min)))
     ((list :int :min min)
-     `(assert (>= ,arg ,min)))
+     `(assert-http (>= ,arg ,min)))
     ((list :int :max max)
-     `(assert (>= ,arg ,max)))
+     `(assert-http (>= ,arg ,max)))
     ((list :int :min min :max max)
-     `(assert (>= ,max ,arg ,min)))
-    ((list :card _) `(assert (typep ,arg 'card)))
+     `(assert-http (>= ,max ,arg ,min)))
+    ((list :card _) `(assert-http (typep ,arg 'card)))
     ((list :list :card)
-     `(assert (every (lambda (a) (typep a 'card)) ,arg)))
+     `(assert-http (every (lambda (a) (typep a 'card)) ,arg)))
     (_ nil)))
 
 (defun type-pieces (args)
@@ -87,7 +87,7 @@ also need to be treated specially by some of the handler-definition macros."
        ,(if (not args)
 	    `(encode-json-to-string (progn ,@body))
 	    `(progn
-	       (assert (and ,@final-args))
+	       (assert-http (and ,@final-args))
 	       (let* ,(append table-lookups type-conversions)
 		 ,@(append table-assertions lookup-assertions)
 		 (encode-json-to-string (progn ,@body))))))))
@@ -110,15 +110,15 @@ also need to be treated specially by some of the handler-definition macros."
   "Defines a table-specific handler that checks whether the requester is a player at the named table.
 This could be folded in with define-table-handler, if not for lobby/join (which is a handler that both
 needs to establish a lock on the named table, AND must deal with players who are not sitting at the named table yet)."
-  (assert (eq :table (second (first args))) nil "First argument in a player handler must be a table.")
+  (assert (eq :table (second (first args))) nil "First argument in a table handler must be a table.")
   (multiple-value-bind (final-args table-lookups table-assertions type-conversions lookup-assertions)
       (type-pieces args)
     `(define-closing-handler (,name :content-type "application/json") ,final-args
-       (assert (lookup :player session))
-       (assert (and ,@final-args))
+       (assert-http (lookup :player session))
+       (assert-http (and ,@final-args))
        (let* ,table-lookups
 	 ,@table-assertions
-	 (assert (member (lookup :player session) (players ,(first (first args)))))
+	 (assert-http (member (lookup :player session) (players ,(first (first args)))))
 	 (with-lock-held ((lock ,(caar table-lookups)))
 	   (let* ,type-conversions
 	     ,@lookup-assertions
