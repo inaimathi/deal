@@ -11,6 +11,12 @@
 ;;; The basic structure of the server is
 ; buffering-listen -> parse -> session-lookup -> handle -> channel
 
+(defmethod flex-stream ((str stream))
+  (flex:make-flexi-stream str :external-format :utf-8))
+
+(defmethod flex-stream ((sock usocket))
+  (flex-stream (socket-stream sock)))
+
 ;;;;; Buffer/listen-related
 (defmethod start ((port integer))
   (let ((server (socket-listen usocket:*wildcard-host* port :reuse-address t))
@@ -20,8 +26,8 @@
 	 (loop (loop for ready in (wait-for-input (cons server (alexandria:hash-table-keys conns)) :ready-only t)
 		  do (if (typep ready 'stream-server-usocket)
 			 (setf (gethash (socket-accept ready :element-type 'octet) conns) :on)
-			 (let ((buf (gethash ready buffers (make-instance 'buffer))))
-			   (when (eq :eof (buffer! (socket-stream ready) buf))
+			 (let ((buf (gethash ready buffers (make-instance 'buffer :bi-stream (flex-stream ready)))))
+			   (when (eq :eof (buffer! buf))
 			     (remhash ready conns)
 			     (remhash ready buffers))
 			   (let ((complete? (complete? buf))
@@ -47,25 +53,17 @@
 (defmethod too-old? ((buffer buffer))
   (> (- (get-universal-time) (started buffer)) +max-request-size+))
 
-(defun read-byte-no-hang (&optional (stream *standard-output*) (eof-error-p t) eof-value)
-  (handler-case
-      (trivial-timeout:with-timeout (.00001)
-	(read-byte stream eof-error-p eof-value))
-    (trivial-timeout:timeout-error () nil)))
-
-(defmethod buffer! (stream (buffer buffer))
-  (loop for byte = (read-byte-no-hang stream nil :eof)
-     for char = (if (and byte (not (eq :eof byte)))
-		    (code-char byte)
-		    byte)
-     do (when (and (eql #\newline char)
-		   (starts-with-subseq 
-		    (list #\return #\newline #\return)
-		    (contents buffer)))
-	  (setf (found-crlf? buffer) t))
-     until (or (null char) (eql :eof char))
-     do (push char (contents buffer)) do (incf (content-size buffer))
-     finally (return char)))
+(defmethod buffer! ((buffer buffer))
+  (let ((stream (bi-stream buffer)))
+    (loop for char = (read-char-no-hang stream nil :eof)
+       do (when (and (eql #\newline char)
+		     (starts-with-subseq 
+		      (list #\return #\newline #\return)
+		      (contents buffer)))
+	    (setf (found-crlf? buffer) t))
+       until (or (null char) (eql :eof char))
+       do (push char (contents buffer)) do (incf (content-size buffer))
+       finally (return char))))
 
 ;;;;; Parse-related
 (defmethod parse-params ((params null)) nil)
@@ -78,7 +76,7 @@
   (let ((lines (split "\\r?\\n" str)))
     (destructuring-bind (req-type path http-version) (split " " (pop lines))
       (declare (ignore req-type))
-      (assert (string= http-version "HTTP/1.1"))
+      (assert-http (string= http-version "HTTP/1.1"))
       (let* ((path-pieces (split "\\?" path))
 	     (resource (first path-pieces))
 	     (parameters (second path-pieces))
@@ -135,8 +133,7 @@
   (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
 	  (id res) (event res) (retry res) (data res)))
 
-(defmethod write! (msg (sock usocket))
-  (write! msg (flex:make-flexi-stream (socket-stream sock) :external-format :utf-8)))
+(defmethod write! (msg (sock usocket)) (write! msg (flex-stream sock)))
 
 (defmethod error! ((err response) (sock usocket))
   (ignore-errors 

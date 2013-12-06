@@ -1,7 +1,18 @@
 (in-package :house)
 
+(define-condition http-assertion-error (error)
+  ((assertion :initarg :assertion :initform nil :reader assertion))
+  (:report (lambda (condition stream)
+	     (format stream "Failed assertions '~s'"
+		     (assertion condition)))))
+
+(defmacro assert-http (assertion)
+  `(unless ,assertion
+     (error (make-instance 'http-assertion-error :assertion ',assertion))))
+
 (defclass buffer ()
   ((contents :accessor contents :initform nil)
+   (bi-stream :reader bi-stream :initarg :bi-stream)
    (found-crlf? :accessor found-crlf? :initform nil)
    (content-size :accessor content-size :initform 0)
    (started :reader started :initform (get-universal-time))))

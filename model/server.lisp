@@ -67,11 +67,11 @@
   "Publishes a message to the lobby stream."
   (let ((full-message `((type . ,action-type) 
 			(time . ,(get-universal-time))
-			(player . ,(id player))
+			(player . ,(id player)) 
 			(player-tag . ,(tag player))
 			,@message)))
     (house:publish! :lobby (encode-json-to-string full-message))))
-
+ 
 (defmethod publish! ((table table) (player player) action-type &optional move)
   "Publishes a message to the specified table stream."
   (let ((full-move `((time . ,(get-universal-time))
