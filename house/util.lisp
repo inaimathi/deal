@@ -21,6 +21,9 @@
 (defmethod (setf lookup) (new-value key (hash hash-table))
   (setf (gethash key hash) new-value))
 
+(defmethod flex-stream ((sock usocket))
+  (flex:make-flexi-stream (socket-stream sock) :external-format :utf-8))
+
 (defmethod uri-decode ((thing null)) nil)
 
 (defmethod uri-decode ((string string))

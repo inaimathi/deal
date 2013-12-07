@@ -11,12 +11,6 @@
 ;;; The basic structure of the server is
 ; buffering-listen -> parse -> session-lookup -> handle -> channel
 
-(defmethod flex-stream ((str stream))
-  (flex:make-flexi-stream str :external-format :utf-8))
-
-(defmethod flex-stream ((sock usocket))
-  (flex-stream (socket-stream sock)))
-
 ;;;;; Buffer/listen-related
 (defmethod start ((port integer))
   (let ((server (socket-listen usocket:*wildcard-host* port :reuse-address t))
@@ -109,31 +103,31 @@
   (write-char #\linefeed stream)
   (values))
 
-(defmethod write! ((res response) (stream stream))
-  (flet ((write-ln (&rest sequences)
-	   (mapc (lambda (seq) (write-sequence seq stream)) sequences)
-	   (crlf stream)))
-    (write-ln "HTTP/1.1 " (response-code res))  
-    (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
-    (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
-    (awhen (cookie res)
-      (write-ln "Set-Cookie: " it))
-    (awhen (location res)
-      (write-ln "Location: " it))
-    (when (keep-alive? res) 
-      (write-ln "Connection: keep-alive")
-      (write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
-    (awhen (body res)
-      (write-ln "Content-Length: " (write-to-string (length it)))
-      (crlf stream)
-      (write-ln it))
-    (values)))
+(defmethod write! ((res response) (sock usocket))
+  (let ((stream (flex-stream sock)))
+    (flet ((write-ln (&rest sequences)
+	     (mapc (lambda (seq) (write-sequence seq stream)) sequences)
+	     (crlf stream)))
+      (write-ln "HTTP/1.1 " (response-code res))  
+      (write-ln "Content-Type: " (content-type res) "; charset=" (charset res))
+      (write-ln "Cache-Control: no-cache, no-store, must-revalidate")
+      (awhen (cookie res)
+	(write-ln "Set-Cookie: " it))
+      (awhen (location res)
+	(write-ln "Location: " it))
+      (when (keep-alive? res) 
+	(write-ln "Connection: keep-alive")
+	(write-ln "Expires: Thu, 01 Jan 1970 00:00:01 GMT"))
+      (awhen (body res)
+	(write-ln "Content-Length: " (write-to-string (length it)))
+	(crlf stream)
+	(write-ln it))
+      (values))))
 
-(defmethod write! ((res sse) (stream stream))
-  (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
-	  (id res) (event res) (retry res) (data res)))
-
-(defmethod write! (msg (sock usocket)) (write! msg (flex-stream sock)))
+(defmethod write! ((res sse) (sock usocket))
+  (let ((stream (flex-stream sock)))
+    (format stream "~@[id: ~a~%~]~@[event: ~a~%~]~@[retry: ~a~%~]data: ~a~%~%"
+	    (id res) (event res) (retry res) (data res))))
 
 (defmethod error! ((err response) (sock usocket))
   (ignore-errors 
