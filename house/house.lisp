@@ -181,9 +181,6 @@
 (defmacro define-stream-handler ((name) (&rest args) &body body)
   `(bind-handler ,name (make-stream-handler ,args ,@body)))
 
-;;;;; TODO
-;; Read/transmit files with read-byte rather than read-char
-;; (some PNGs are erroring under the assumption that everything's a char)
 (defmethod define-file-handler ((path pathname) &key stem-from)
   (cond ((cl-fad:directory-exists-p path)
 	 (cl-fad:walk-directory 
@@ -229,10 +226,13 @@
   (setf *new-session-hook* nil))
 
 (defun new-session-token ()
-  (cl-base64:usb8-array-to-base64-string
-   (with-open-file (s "/dev/urandom" :element-type '(unsigned-byte 8))
-     (make-array 32 :initial-contents (loop repeat 32 collect (read-byte s))))
-   :uri t))
+  (concatenate 
+   'string
+   "session="
+   (cl-base64:usb8-array-to-base64-string
+    (with-open-file (s "/dev/urandom" :element-type '(unsigned-byte 8))
+      (make-array 32 :initial-contents (loop repeat 32 collect (read-byte s))))
+    :uri t)))
 
 (defun new-session! ()
   (let ((session (make-instance 'session :token (new-session-token))))
