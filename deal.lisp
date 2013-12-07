@@ -17,9 +17,7 @@
   (hash :handlers (hash-keys house::*handlers*)
 	:public-tables (loop for tbl being the hash-values of (public-tables *server*)
 			  collect (obj->hash tbl () id tag player-count max-players))
-	:decks (mapcar #'deck-name (decks *server*))
-	:minis *mini-uris*
-	:tablecloths *tablecloth-uris*))
+	:decks (mapcar #'deck-name (decks *server*))))
 
 (define-handler get-session ()
   (with-slots (id tag current-table hand) (lookup :player session)

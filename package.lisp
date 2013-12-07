@@ -13,16 +13,6 @@
 (defparameter *server-port* 8080)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun dir->uris (dir)
-  (let ((uri (concatenate 'string "/" dir)))
-    (mapcar 
-     (lambda (path)
-       (namestring (merge-pathnames (file-namestring path) uri)))
-     (list-directory (merge-pathnames dir)))))
-
-(defparameter *mini-uris* (dir->uris "static/img/minis/"))
-(defparameter *tablecloth-uris* (dir->uris "static/img/tablecloths/"))
-
 ;;;;;;;;;; Generic definitions
 (defgeneric insert! (container item)
   (:documentation "A generic insertion function. It takes a container object and an item, and inserts the second into the first in a destructive manner. It takes care of updating object state related to, but not part of, naive item insertion."))
