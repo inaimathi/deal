@@ -14,7 +14,7 @@
 
 ;;;;;;;;;; Player-info related
 (define-handler server-info ()
-  (hash :handlers *handlers*
+  (hash :handlers (hash-keys house::*handlers*)
 	:public-tables (loop for tbl being the hash-values of (public-tables *server*)
 			  collect (obj->hash tbl () id tag player-count max-players))
 	:decks (mapcar #'deck-name (decks *server*))

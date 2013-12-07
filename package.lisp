@@ -13,8 +13,6 @@
 (defparameter *server-port* 8080)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter *handlers* (make-hash-table :test 'equal))
-
 (defun dir->uris (dir)
   (let ((uri (concatenate 'string "/" dir)))
     (mapcar 
