@@ -48,12 +48,11 @@
   (> (- (get-universal-time) (started buffer)) +max-request-size+))
 
 (defmethod buffer! ((buffer buffer))
-  (let ((stream (bi-stream buffer)))
+  (let ((stream (bi-stream buffer))
+	(partial-crlf (list #\return #\newline #\return)))
     (loop for char = (read-char-no-hang stream nil :eof)
        do (when (and (eql #\newline char)
-		     (starts-with-subseq 
-		      (list #\return #\newline #\return)
-		      (contents buffer)))
+		     (starts-with-subseq partial-crlf (contents buffer)))
 	    (setf (found-crlf? buffer) t))
        until (or (null char) (eql :eof char))
        do (push char (contents buffer)) do (incf (content-size buffer))
@@ -91,11 +90,9 @@
 ;;;;; Handling requests
 (defmethod handle-request ((sock usocket) (req request))
   (aif (lookup (resource req) *handlers*)
-       (handler-case
-	 (let* ((check? (aand (session-token req) (get-session! it)))
-		(sess (aif check? it (new-session!))))
-	   (funcall it sock check? sess (parameters req)))
-	 ((not simple-error) () (error! +400+ sock)))
+       (let* ((check? (aand (session-token req) (get-session! it)))
+	      (sess (aif check? it (new-session!))))
+	 (funcall it sock check? sess (parameters req)))
        (error! +404+ sock)))
 
 (defun crlf (&optional (stream *standard-output*))
