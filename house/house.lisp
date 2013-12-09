@@ -48,15 +48,17 @@
   (> (- (get-universal-time) (started buffer)) +max-request-size+))
 
 (defmethod buffer! ((buffer buffer))
-  (let ((stream (bi-stream buffer))
-	(partial-crlf (list #\return #\newline #\return)))
-    (loop for char = (read-char-no-hang stream nil :eof)
-       do (when (and (eql #\newline char)
-		     (starts-with-subseq partial-crlf (contents buffer)))
-	    (setf (found-crlf? buffer) t))
-       until (or (null char) (eql :eof char))
-       do (push char (contents buffer)) do (incf (content-size buffer))
-       finally (return char))))
+  (unwind-protect
+       (let ((stream (bi-stream buffer))
+	     (partial-crlf (list #\return #\newline #\return)))
+	 (loop for char = (read-char-no-hang stream nil :eof)
+	    do (when (and (eql #\newline char)
+			  (starts-with-subseq partial-crlf (contents buffer)))
+		 (setf (found-crlf? buffer) t))
+	    until (or (null char) (eql :eof char))
+	    do (push char (contents buffer)) do (incf (content-size buffer))
+	    finally (return char)))
+    :eof))
 
 ;;;;; Parse-related
 (defmethod parse-params ((params null)) nil)
@@ -128,8 +130,8 @@
 
 (defmethod error! ((err response) (sock usocket))
   (ignore-errors 
-    (write! err sock))
-  (socket-close sock))
+    (write! err sock)
+    (socket-close sock)))
 
 ;;;;; Defining Handlers
 (defmacro make-closing-handler ((&key (content-type "text/html")) (&rest args) &body body)
