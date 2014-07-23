@@ -154,7 +154,6 @@
 		 ($ selector (append msg-html))
 		 (when scrl? (scroll-to-bottom selector))))
 
-	     ;;; TODO local-storage
 	     (defun push-chat-message (message)
 	       (let* ((re (new (-reg-exp "\\s+$")))
 		      (msg (chain message (replace re ""))))
@@ -166,7 +165,6 @@
 		     (if (> (length messages) 50)
 			 (chain messages (splice 0 1))
 			 (incf current-message))))))
-	     ;;; END TODO
 	     
 	     (defun chat-command (txt)
 	       (let ((re (new (-reg-exp "^(@\\S+)"))))
@@ -300,12 +298,10 @@
 	     (local-load! (:custom-minis :default (list))
 			  ($map res (create-custom-mini "#minis-tab .content" (create :uri elem))))
 
-	     ;;; TODO local-storage
 	     ($draggable ".moveable" (:handle "h3")
 			 (setf (@ *session* :element-locations (+ "#" ($ this (attr :id)))) 
 			       ($ this (offset)))
 			 (local-store! :element-locations))
-	     ;;;;;;;;;; END TODO
 	     
 	     ($button ".die-roll-icon .increment" (:plus)
 		      ($incf ($ this (siblings ".num-dice")) +1 :max 4096)
@@ -487,14 +483,11 @@
 		      ($ this (parent) (remove)))
 	     ($draggable $self (:revert t)))
 
-	   
-	   ;;; TODO local-storage
 	   (defun store-dice ()
 	     (setf (@ *session* :dice)
 		   (loop for elem in ($ "#dice-tab .num-dice")
 				   collect ($ elem (text))))
 	     (local-store! :dice))
-	   ;;;;;;;; END TODO
 	   
 	   (defun render-board (table)
 	     (let ((board-selector "#board")
@@ -819,19 +812,15 @@
 		      ($load "load-deck-file" (load-deck-for-editing res))
 		      ($ $self (hide))))))
 
-;;; TODO local-storage
 (to-file "static/js/local-storage.js"
 	 (ps
-	   ;; get tag from local storage
 	   (aif (@ window local-storage :tag)
 		(rename it)
 		($ "#player-info .player-tag" (text (@ *session* :tag))))
 
-	   ;; get chat history from local storage
 	   (aif (@ window local-storage :chat-messages)
 		(setf (@ *chat-history* messages) (string->obj it)
 		      (@ *chat-history* current-message) (length (@ *chat-history* messages))))))
-;;; END TODO
 
 (to-file "static/js/util.js"
 	 (ps
@@ -973,8 +962,6 @@
 	       (setf *session* res)
 	       ($ "#player-info .player-id" (text (@ *session* id)))
 
-
-	       ;;; TODO local-storage
 	       (aif (@ window local-storage :tag)
 		    (rename it)
 		    ($ "#player-info .player-tag" (text (@ *session* tag))))
@@ -982,7 +969,6 @@
 	       (aif (@ window local-storage :chat-messages)
 		    (setf (@ *chat-history* messages) (string->obj it)
 			  (@ *chat-history* current-message) (length (@ *chat-history* messages))))
-	       ;;; END TODO 
 
 	       (when (@ res current-table)
 		 (setf *table-info* (@ res current-table))
@@ -994,14 +980,12 @@
 	     (define-ajax look/table () (render-board res))
 	     (define-ajax look/hand () (render-hand res))
 	     
-	     ;;; TODO local-storage
 	     (define-ajax rename (new-tag)
 	       (setf (@ *session* tag) new-tag)
 	       (unless (= new-tag (@ window local-storage :tag))
 		 (setf (@ window local-storage :tag) new-tag))
 	       ($ "#player-info .player-tag" (text new-tag))
 	       ($replace "input.player-tag" (:span :class "player-tag" new-tag)))
-	     ;;; END TODO
 
 	     ;;;;; Lobby actions
 	     (define-ajax lobby/speak (message)
