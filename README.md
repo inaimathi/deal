@@ -3,11 +3,13 @@
 
 ## Requirements
 
-Deal directly depends on a fuckton of other Lisp libraries, all of which will be installed automatically by [`quicklisp`](http://www.quicklisp.org/beta/) the first time you run it. If you plan on installing Deal manually, the required libraries are
+Deal directly depends on a fuckton of other Lisp libraries, most of which will be installed automatically by [`quicklisp`](http://www.quicklisp.org/beta/) the first time you run it. If you plan on installing Deal manually, the required libraries are
 
     :alexandria :anaphora :bordeaux-threads :cl-base64 :cl-css :cl-fad :cl-json
     :cl-ppcre :cl-who :deal :flexi-streams :ironclad :optima :parenscript
-    :trivial-timeout :usocket
+    :trivial-timeout :usocket :isaac :session-token :house
+
+Of those, [`:isaac`](https://github.com/Inaimathi/isaac), [`:session-token`](https://github.com/Inaimathi/session-token) and [`:house`](https://github.com/Inaimathi/house).
 
 ## Installation
 
