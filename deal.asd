@@ -8,7 +8,6 @@
   :depends-on (#:alexandria #:anaphora #:optima #:house #:cl-ppcre #:cl-json #:bordeaux-threads #:cl-fad)
   :components ((:file "package")
 	       (:file "util")
-	       (:file "define-handler")
 	       (:file "model/table")
 	       (:file "model/server")
 	       (:file "deal")

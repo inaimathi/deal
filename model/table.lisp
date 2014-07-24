@@ -10,8 +10,7 @@
    (things :accessor things :initform (make-hash-table))
    (passphrase :accessor passphrase :initform nil :initarg :passphrase)
    (tablecloth :accessor tablecloth :initform nil :initarg :tablecloth)
-   (history :accessor history :initform nil)
-   (lock :accessor lock :initform (make-lock))))
+   (history :accessor history :initform nil)))
 
 (defmethod full? ((table table)) 
   (with-slots (player-count max-players) table

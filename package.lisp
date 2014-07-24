@@ -2,6 +2,7 @@
 (defpackage #:deal 
   (:use #:cl #:optima #:json #:house)
   (:shadow #:publish!)
+  (:import-from :house #:->keyword)
   (:import-from :cl-ppcre #:regex-replace-all)
   (:import-from :cl-fad #:list-directory)
   (:import-from :bordeaux-threads #:make-lock #:with-lock-held)
@@ -12,6 +13,39 @@
 ;;;;;;;;;; Config variables
 (defparameter *server-port* 8080)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-http-type (:table :priority 5)
+    :type-expression `(or (lookup (intern (string-upcase ,parameter) :keyword) (private-tables *server*))
+			 (lookup (intern (string-upcase ,parameter) :keyword) (public-tables *server*)))
+    :type-assertion `(typep ,parameter 'table))
+
+(define-http-type (:json-file)
+    :type-expression `(decode-json-from-source (first ,parameter)))
+
+(define-http-type (:facing)
+    :type-expression `(intern (string-upcase ,parameter) :keyword)
+    :type-assertion `(member ,parameter (list :up :down)))
+
+(define-http-type (:placeable)
+    :type-expression `(gethash (intern (string-upcase ,parameter) :keyword) (things table))
+    :type-assertion `(typep ,parameter 'placeable))
+
+(define-http-type (:stack)
+    :type-expression `(gethash (intern (string-upcase ,parameter) :keyword) (things table))
+    :type-assertion `(typep ,parameter 'stack))
+
+(define-http-type (:card-in-hand)
+    :type-expression `(gethash (intern (string-upcase ,parameter) :keyword) (hand (lookup :player session)))
+    :type-assertion `(typep ,parameter 'card))
+
+(define-http-type (:card-on-table)
+    :type-expression `(gethash (intern (string-upcase ,parameter) :keyword) (things table))
+    :type-assertion `(typep ,parameter 'card))
+
+(define-http-type (:list-of-cards)
+    :type-expression `(loop for elem in (decode-json-from-string ,parameter)
+			 collect (gethash elem (things table)))
+    :type-assertion `(every (lambda (a) (typep a 'card)) ,parameter))
 
 ;;;;;;;;;; Generic definitions
 (defgeneric insert! (container item)

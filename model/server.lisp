@@ -8,8 +8,7 @@
    (table-count :accessor table-count :initform 0)
    (max-tables :accessor max-tables :initform 10)
    (player-count :accessor player-count :initform 0)
-   (max-players :accessor max-players :initform 50)
-   (lock :accessor lock :initform (make-lock))))
+   (max-players :accessor max-players :initform 50)))
 
 (defclass player ()
   ((id :reader id :initform (make-id "PLAYER"))
