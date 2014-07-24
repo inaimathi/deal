@@ -1,8 +1,10 @@
 ;;;; deal.lisp
-(in-package #:house)
+(in-package #:deal)
 
 (new-session-hook!
-  (setf (lookup :player session) (make-instance 'deal::player :tag "Anonymous Coward")))
+  (lambda (session)
+    (setf (lookup :player session) 
+	  (make-instance 'deal::player :tag "Anonymous Coward"))))
 
 (define-redirect-handler (root :permanent? t)
     "/static/index.html")
