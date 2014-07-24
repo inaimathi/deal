@@ -4,7 +4,7 @@
 (new-session-hook!
   (lambda (session)
     (setf (lookup :player session) 
-	  (make-instance 'deal::player :tag "Anonymous Coward"))))
+	  (make-instance 'player :tag "Anonymous Coward"))))
 
 (define-redirect-handler (root :permanent? t)
     "/static/index.html")
@@ -19,7 +19,9 @@
   (hash :handlers (hash-keys house::*handlers*)
 	:public-tables (loop for tbl being the hash-values of (public-tables *server*)
 			  collect (obj->hash tbl () id tag player-count max-players))
-	:decks (mapcar #'deck-name (decks *server*))))
+	:decks (mapcar #'deck-name (decks *server*))
+	:minis *default-minis*
+	:tablecloths *default-boards*))
 
 (define-json-handler (get-session) ()
   (with-slots (id tag current-table hand) (lookup :player session)

@@ -16,6 +16,18 @@
 			collect `((suit . ,s) (rank . ,r)))))))
 
 (format t "Making default decks ...~%")
+
+;;;;; Default Minis/boads ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun dir->uris (directory)
+  (let ((uris))
+    (cl-fad:walk-directory
+     (merge-pathnames directory (asdf/system:system-source-directory :deal))
+     (lambda (f) (push (path->uri f :stem-from "static") uris)))
+    uris))
+
+(defparameter *default-minis* (dir->uris "static/img/minis/"))
+(defparameter *default-boards* (dir->uris "static/img/tablecloths/"))
+
 ;;;;; Default Decks ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (unless (decks *server*)
   (setf (decks *server*)
