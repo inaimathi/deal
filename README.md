@@ -7,17 +7,19 @@ Deal directly depends on a fuckton of other Lisp libraries, most of which will b
 
     :alexandria :anaphora :bordeaux-threads :cl-base64 :cl-css :cl-fad :cl-json
     :cl-ppcre :cl-who :deal :flexi-streams :ironclad :optima :parenscript
-    :trivial-timeout :usocket :isaac :session-token :house
+    :trivial-timeout :usocket :cl-isaac :session-token :house
 
-Of those, [`:isaac`](https://github.com/Inaimathi/isaac), [`:session-token`](https://github.com/Inaimathi/session-token) and [`:house`](https://github.com/Inaimathi/house).
+Of those, only [`:session-token`](https://github.com/Inaimathi/session-token) and [`:house`](https://github.com/Inaimathi/house) are not quicklispable.
 
 ## Installation
 
-**1** Pick a directory, and clone [this project](https://github.com/Inaimathi/deal) with `git clone https://github.com/Inaimathi/deal.git`
+**1** Clone [`:session-token`](https://github.com/Inaimathi/session-token) into your `quicklisp/local-projects/` directory with `git clone https://github.com/Inaimathi/session-token.git`, _or_ install it via `asdf-install`.
 
-**2** Start a lisp in that directory and evaluate `(ql:quickload :deal-ui)`
+**2** Pick a directory, and clone [this project](https://github.com/Inaimathi/deal) with `git clone https://github.com/Inaimathi/deal.git`
 
-**3** Evaluate `(deal::start 8080)`
+**3** Start a lisp in that directory and evaluate `(ql:quickload :deal-ui)`
+
+**4** Evaluate `(deal::start 8080)`
 
 You should now be able to visit `[your-server]:8080/` and play.
 
